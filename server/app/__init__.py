@@ -1,18 +1,24 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from dotenv import load_dotenv
-import os
+from flask_jwt_extended import JWTManager
+from config import Config
 
-load_dotenv()  # nạp biến môi trường từ file .env
+db = SQLAlchemy()
+jwt = JWTManager()
 
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-# Lấy thông tin từ env
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
+    # Init extensions
+    db.init_app(app)
+    jwt.init_app(app)
 
+    # Register blueprints
+    from .api_conf import api_bp
+    app.register_blueprint(api_bp)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_USER}:{DB_PASS}@localhost/dental_clinic"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Import API resources
+    from .api import user_api, auth_api
 
-db = SQLAlchemy(app)
+    return app

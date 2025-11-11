@@ -1,6 +1,13 @@
 CREATE DATABASE dental_clinic;
 USE dental_clinic;
 
+-- Bảng chuyên ngành
+CREATE TABLE specialization (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    description VARCHAR(255)
+);
+
 -- Bảng người dùng (bác sĩ, bệnh nhân, nhân viên)
 CREATE TABLE user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -9,8 +16,9 @@ CREATE TABLE user (
     lastname VARCHAR(100),
     gender ENUM('MALE', 'FEMALE', 'OTHER'),
     phone_number VARCHAR(20),
-    address VARCHAR(255),
+    address VARCHAR(255) ,
     username VARCHAR(100),
+    avatar VARCHAR(255),
     password VARCHAR(255),
     created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     role ENUM('ROLE_ADMIN', 'ROLE_DENTIST', 'ROLE_STAFF', 'ROLE_PATIENT'),
@@ -18,12 +26,6 @@ CREATE TABLE user (
     FOREIGN KEY (specialization_id) REFERENCES specialization(id)
 );
 
--- Bảng chuyên ngành
-CREATE TABLE specialization (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100),
-    description VARCHAR(255)
-);
 
 -- Bảng thuốc
 CREATE TABLE medicine (

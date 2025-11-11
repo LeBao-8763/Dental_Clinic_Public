@@ -1,6 +1,37 @@
 from app import db
 from datetime import datetime
+import enum
 
+# ------------------------------
+# 🔹 Enum Python
+# ------------------------------
+
+class GenderEnum(enum.Enum):
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    OTHER = "OTHER"
+
+class RoleEnum(enum.Enum):
+    ROLE_ADMIN = "ROLE_ADMIN"
+    ROLE_DENTIST = "ROLE_DENTIST"
+    ROLE_STAFF = "ROLE_STAFF"
+    ROLE_PATIENT = "ROLE_PATIENT"
+
+class StatusEnum(enum.Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+
+class MedicineTypeEnum(enum.Enum):
+    PILL = "PILL"
+    CREAM = "CREAM"
+    LIQUID = "LIQUID"
+    OTHER = "OTHER"
+
+class AppointmentStatusEnum(enum.Enum):
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
 
 # ------------------------------
 # 🔹 Bảng chuyên ngành (Specialization)
@@ -27,14 +58,16 @@ class User(db.Model):
     specialization_id = db.Column(db.BigInteger, db.ForeignKey('specialization.id'))
     firstname = db.Column(db.String(100))
     lastname = db.Column(db.String(100))
-    gender = db.Column(db.Enum('MALE', 'FEMALE', 'OTHER'))
+    gender = db.Column(db.Enum(GenderEnum))
     phone_number = db.Column(db.String(20))
     address = db.Column(db.String(255))
     username = db.Column(db.String(100), unique=True)
+    avatar = db.Column(db.String(255))
     password = db.Column(db.String(255))
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
-    role = db.Column(db.Enum('ROLE_ADMIN', 'ROLE_DENTIST', 'ROLE_STAFF', 'ROLE_PATIENT'))
-    status = db.Column(db.Enum('ACTIVE', 'INACTIVE'))
+    role = db.Column(db.Enum(RoleEnum),default=RoleEnum.ROLE_PATIENT)
+    status = db.Column(db.Enum(StatusEnum),default=StatusEnum.ACTIVE)
+    
 
     # Quan hệ ngược lại
     specialization = db.relationship('Specialization', back_populates='users')
@@ -54,7 +87,7 @@ class Medicine(db.Model):
     production_date = db.Column(db.DateTime)
     expiration_date = db.Column(db.DateTime)
     stock_quantity = db.Column(db.Integer)
-    type = db.Column(db.Enum('PILL', 'CREAM', 'LIQUID', 'OTHER'))
+    type = db.Column(db.Enum(MedicineTypeEnum))
     amount_per_unit = db.Column(db.Integer)
     retail_unit = db.Column(db.String(50))
 
@@ -92,7 +125,7 @@ class Appointment(db.Model):
     appointment_date = db.Column(db.DateTime)
     appointment_time = db.Column(db.Time)
     note = db.Column(db.String(255))
-    status = db.Column(db.Enum('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'))
+    status = db.Column(db.Enum(AppointmentStatusEnum))
     specialization_id = db.Column(db.BigInteger, db.ForeignKey('specialization.id'))
 
     dentist = db.relationship('User', foreign_keys=[dentist_id], back_populates='dentist_appointments')
