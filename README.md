@@ -1,3 +1,3 @@
 # Dental_Clinic
 
-.env
+server/.env
