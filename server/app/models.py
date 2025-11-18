@@ -1,11 +1,10 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, time, date
 import enum
 
 # ------------------------------
 # 🔹 Enum Python
 # ------------------------------
-
 class GenderEnum(enum.Enum):
     MALE = "MALE"
     FEMALE = "FEMALE"
@@ -33,8 +32,18 @@ class AppointmentStatusEnum(enum.Enum):
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
 
+class DayOfWeekEnum(enum.Enum):
+    MONDAY = "MONDAY"
+    TUESDAY = "TUESDAY"
+    WEDNESDAY = "WEDNESDAY"
+    THURSDAY = "THURSDAY"
+    FRIDAY = "FRIDAY"
+    SATURDAY = "SATURDAY"
+    SUNDAY = "SUNDAY"
+
+
 # ------------------------------
-# 🔹 Bảng chuyên ngành (Specialization)
+# 🔹 Bảng chuyên ngành
 # ------------------------------
 class Specialization(db.Model):
     __tablename__ = 'specialization'
@@ -43,13 +52,11 @@ class Specialization(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255))
 
-    # Quan hệ 1-n với User và Appointment
     users = db.relationship('User', back_populates='specialization', lazy=True)
-    appointments = db.relationship('Appointment', back_populates='specialization', lazy=True)
 
 
 # ------------------------------
-# 🔹 Bảng người dùng (User)
+# 🔹 Bảng người dùng
 # ------------------------------
 class User(db.Model):
     __tablename__ = 'user'
@@ -59,25 +66,26 @@ class User(db.Model):
     firstname = db.Column(db.String(100))
     lastname = db.Column(db.String(100))
     gender = db.Column(db.Enum(GenderEnum))
-    phone_number = db.Column(db.String(20))
+    phone_number = db.Column(db.String(20), unique=True)
     address = db.Column(db.String(255))
     username = db.Column(db.String(100), unique=True)
     avatar = db.Column(db.String(255))
     password = db.Column(db.String(255))
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
-    role = db.Column(db.Enum(RoleEnum),default=RoleEnum.ROLE_PATIENT)
-    status = db.Column(db.Enum(StatusEnum),default=StatusEnum.ACTIVE)
-    
+    role = db.Column(db.Enum(RoleEnum), default=RoleEnum.ROLE_PATIENT)
+    status = db.Column(db.Enum(StatusEnum), default=StatusEnum.ACTIVE)
 
-    # Quan hệ ngược lại
     specialization = db.relationship('Specialization', back_populates='users')
     dentist_appointments = db.relationship('Appointment', foreign_keys='Appointment.dentist_id', back_populates='dentist')
     patient_appointments = db.relationship('Appointment', foreign_keys='Appointment.patient_id', back_populates='patient')
     medicine_imports = db.relationship('MedicineImport', back_populates='user', lazy=True)
 
+    dentist_schedules = db.relationship('DentistSchedule', back_populates='dentist', lazy=True)
+    dentist_schedule_exceptions = db.relationship('DentistScheduleException', back_populates='dentist', lazy=True)
+
 
 # ------------------------------
-# 🔹 Bảng thuốc (Medicine)
+# 🔹 Bảng thuốc
 # ------------------------------
 class Medicine(db.Model):
     __tablename__ = 'medicine'
@@ -96,7 +104,7 @@ class Medicine(db.Model):
 
 
 # ------------------------------
-# 🔹 Bảng nhập thuốc (Medicine Import)
+# 🔹 Bảng nhập thuốc
 # ------------------------------
 class MedicineImport(db.Model):
     __tablename__ = 'medicine_import'
@@ -114,7 +122,51 @@ class MedicineImport(db.Model):
 
 
 # ------------------------------
-# 🔹 Bảng lịch hẹn (Appointments)
+# 🔹 Bảng lịch hoạt động chung của phòng khám
+# ------------------------------
+class ClinicHours(db.Model):
+    __tablename__ = 'clinic_hours'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    day_of_week = db.Column(db.Enum(DayOfWeekEnum), nullable=False)
+    open_time = db.Column(db.Time, nullable=False)
+    close_time = db.Column(db.Time, nullable=False)
+    slot_duration_minutes = db.Column(db.Integer, default=30)
+
+
+# ------------------------------
+# 🔹 Bảng lịch làm việc của bác sĩ
+# ------------------------------
+class DentistSchedule(db.Model):
+    __tablename__ = 'dentist_schedule'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
+    day_of_week = db.Column(db.Enum(DayOfWeekEnum), nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+
+    dentist = db.relationship('User', back_populates='dentist_schedules')
+
+
+# ------------------------------
+# 🔹 Bảng ngoại lệ lịch bác sĩ
+# ------------------------------
+class DentistScheduleException(db.Model):
+    __tablename__ = 'dentist_schedule_exception'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
+    exception_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+    reason = db.Column(db.String(255))
+
+    dentist = db.relationship('User', back_populates='dentist_schedule_exceptions')
+
+
+# ------------------------------
+# 🔹 Bảng lịch hẹn
 # ------------------------------
 class Appointment(db.Model):
     __tablename__ = 'appointments'
@@ -122,22 +174,21 @@ class Appointment(db.Model):
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
     patient_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
-    appointment_date = db.Column(db.DateTime)
-    appointment_time = db.Column(db.Time)
+    appointment_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
     note = db.Column(db.String(255))
-    status = db.Column(db.Enum(AppointmentStatusEnum))
-    specialization_id = db.Column(db.BigInteger, db.ForeignKey('specialization.id'))
+    status = db.Column(db.Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.PENDING)
 
     dentist = db.relationship('User', foreign_keys=[dentist_id], back_populates='dentist_appointments')
     patient = db.relationship('User', foreign_keys=[patient_id], back_populates='patient_appointments')
-    specialization = db.relationship('Specialization', back_populates='appointments')
     treatments = db.relationship('TreatmentRecord', back_populates='appointment', lazy=True)
     prescriptions = db.relationship('Prescription', back_populates='appointment', lazy=True)
     invoice = db.relationship('Invoice', back_populates='appointment', uselist=False)
 
 
 # ------------------------------
-# 🔹 Bảng dịch vụ (Service)
+# 🔹 Bảng dịch vụ
 # ------------------------------
 class Service(db.Model):
     __tablename__ = 'service'
@@ -151,7 +202,7 @@ class Service(db.Model):
 
 
 # ------------------------------
-# 🔹 Bảng hồ sơ điều trị (Treatment Record)
+# 🔹 Bảng hồ sơ điều trị
 # ------------------------------
 class TreatmentRecord(db.Model):
     __tablename__ = 'treatment_record'
@@ -167,7 +218,7 @@ class TreatmentRecord(db.Model):
 
 
 # ------------------------------
-# 🔹 Bảng toa thuốc (Prescriptions)
+# 🔹 Bảng toa thuốc
 # ------------------------------
 class Prescription(db.Model):
     __tablename__ = 'prescriptions'
@@ -186,7 +237,7 @@ class Prescription(db.Model):
 
 
 # ------------------------------
-# 🔹 Bảng hóa đơn (Invoice)
+# 🔹 Bảng hóa đơn
 # ------------------------------
 class Invoice(db.Model):
     __tablename__ = 'invoice'

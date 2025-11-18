@@ -11,13 +11,13 @@ CREATE TABLE specialization (
 -- Bảng người dùng (bác sĩ, bệnh nhân, nhân viên)
 CREATE TABLE user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    specialization_id BIGINT,
+    specialization_id BIGINT NULL,
     firstname VARCHAR(100),
     lastname VARCHAR(100),
     gender ENUM('MALE', 'FEMALE', 'OTHER'),
-    phone_number VARCHAR(20),
+    phone_number VARCHAR(20) UNIQUE,
     address VARCHAR(255) ,
-    username VARCHAR(100),
+    username VARCHAR(100) UNIQUE,
     avatar VARCHAR(255),
     password VARCHAR(255),
     created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -52,19 +52,54 @@ CREATE TABLE medicine_import (
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
 
--- Bảng lịch hẹn
+-- Bảng giờ hoạt động chung của phòng khám (do admin cấu hình)
+CREATE TABLE clinic_hours (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    day_of_week ENUM(
+        'MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'
+    ) NOT NULL,
+    open_time TIME NOT NULL,
+    close_time TIME NOT NULL,
+    slot_duration_minutes INT DEFAULT 30
+);
+
+
+-- Bảng lịch làm việc của bác sĩ (bác sĩ chọn khung giờ mình làm)
+-- Lưu các khoảng giờ liên tục, không lưu từng slot nhỏ
+CREATE TABLE dentist_schedule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    dentist_id BIGINT NOT NULL,
+    day_of_week ENUM(
+        'MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'
+    ) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    FOREIGN KEY (dentist_id) REFERENCES user(id)
+);
+
+-- Bảng ngoại lệ (bác sĩ xin nghỉ, bận đột xuất,...)
+CREATE TABLE dentist_schedule_exception (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    dentist_id BIGINT NOT NULL,
+    exception_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    reason VARCHAR(255),
+    FOREIGN KEY (dentist_id) REFERENCES user(id)
+);
+
+-- Bảng lịch hẹn (khi bệnh nhân đặt slot cụ thể)
 CREATE TABLE appointments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT,
     patient_id BIGINT,
-    appointment_date DATETIME,
-    appointment_time TIME,
+    appointment_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
     note VARCHAR(255),
     status ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'),
-    specialization_id BIGINT,
     FOREIGN KEY (dentist_id) REFERENCES user(id),
-    FOREIGN KEY (patient_id) REFERENCES user(id),
-    FOREIGN KEY (specialization_id) REFERENCES specialization(id)
+    FOREIGN KEY (patient_id) REFERENCES user(id)
 );
 
 -- Bảng dịch vụ
