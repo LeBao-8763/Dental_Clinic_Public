@@ -126,6 +126,22 @@ treatment_record_model = api.model('TreatmentRecord', {
     'note': fields.String(description='Ghi chú')
 })
 
+# Model cho input (tạo treatment record)
+treatment_record_input_model = api.model('TreatmentRecordInput', {
+    'service_id': fields.Integer(required=True, description='ID dịch vụ'),
+    'price': fields.Float(required=False, description='Giá dịch vụ (để trống sẽ lấy từ Service)'),
+    'note': fields.String(required=False, description='Ghi chú')
+})
+
+# Model cho request tạo nhiều treatment records
+treatment_records_create_model = api.model('TreatmentRecordsCreate', {
+    'appointment_id': fields.Integer(required=True, description='ID lịch hẹn'),
+    'services': fields.List(
+        fields.Nested(treatment_record_input_model), 
+        required=True, 
+        description='Danh sách dịch vụ'
+    )
+})
 
 # ------------------------------
 # --- Định nghĩa Parsers cho Swagger UI ---
@@ -179,11 +195,4 @@ service_parser = reqparse.RequestParser()
 service_parser.add_argument('name', type=str, required=True, help='Tên dịch vụ')
 service_parser.add_argument('price', type=float, required=True, help='Giá dịch vụ')
 service_parser.add_argument('description', type=str, required=True, help='Mô tả dịch vụ')
-
-''' TREATMENT RECORD '''
-treatment_record_parser = reqparse.RequestParser()
-treatment_record_parser.add_argument('appointment_id', type=int, required=True, help='ID lịch hẹn là bắt buộc')
-treatment_record_parser.add_argument('service_id', type=int, required=True, help='ID dịch vụ là bắt buộc')
-treatment_record_parser.add_argument('price', type=float, required=False, help='Giá dịch vụ')
-treatment_record_parser.add_argument('note', type=str, required=False, help='Ghi chú')
 
