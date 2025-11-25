@@ -31,3 +31,15 @@ class UserList(Resource):
             return new_user, 201
 
         return 500
+
+@user_ns.route('/<int:user_id>')
+@user_ns.param('user_id', 'ID của người dùng')
+class UserResource(Resource):
+    @user_ns.doc('get_user')
+    @user_ns.marshal_with(user_model)  # Định nghĩa định dạng response cho Swagger UI
+    def get(self, user_id):
+        "Lấy thông tin người dùng theo ID"
+        user = dao_user.get_user_by_id(user_id)
+        if user:
+            return user,200
+        user_ns.abort(404, "User not found")

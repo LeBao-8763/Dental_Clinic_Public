@@ -41,14 +41,17 @@ def create_user(firstname, lastname, gender,username, password,avatar, phone_num
     db.session.commit()
     return user
 
-def login (password,username=None, phone_number=None):
-    if username:
-        user=User.query.filter_by(username=username).first()
-    elif phone_number:
-        user=User.query.filter_by(phone_number=phone_number).first()
+def login(password, account_identifier):
+    if account_identifier:
+        user = User.query.filter(
+            (User.username == account_identifier) | (User.phone_number == account_identifier)
+        ).first()
     else:
         raise ValueError("Phải nhập ít nhất username hoặc phone_number")
 
     if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
         return user
     return None
+
+def get_user_by_id(user_id):
+    return User.query.get(user_id)

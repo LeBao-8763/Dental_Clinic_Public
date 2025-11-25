@@ -162,8 +162,7 @@ user_creation_parser.add_argument('avatar', type=FileStorage, required=False, he
 
 ''' AUTH '''
 auth_parser = reqparse.RequestParser()
-auth_parser.add_argument('username', type=str, required=False, help='Tên người dùng')
-auth_parser.add_argument('phonenumber', type=str, required=False, help='Tên người dùng')
+auth_parser.add_argument('account_identifier', type=str, required=True, help='Tên người dùng hoặc số điện thoại')
 auth_parser.add_argument('password', type=str, required=True, help='Mật khẩu')
 
 ''' APPOINMENT '''

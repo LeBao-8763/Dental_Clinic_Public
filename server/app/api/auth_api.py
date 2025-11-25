@@ -11,15 +11,14 @@ class Login(Resource):
     def post(self):
         """ Đăng nhập """
         args = auth_parser.parse_args()
-        username = args['username']
-        phonenumber=args['phonenumber']
+        account_identifier = args['account_identifier']
         password = args['password']
-        user = dao_user.login(password, username)
+        user = dao_user.login(password, account_identifier)
 
         if not user:
             return jsonify({"msg": "Bad username or password"}), 401
 
         access_token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
-        return {"access_token": access_token}, 200
+        return {"user_id":user.id,"access_token": access_token}, 200
 
 
