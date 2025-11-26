@@ -80,7 +80,7 @@ const Testimonials = () => {
             {/* Previous Button */}
             <button
               onClick={handlePrev}
-              className="flex-shrink-0 w-12 h-12 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors mt-20"
+              className="shrink-0 w-12 h-12 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors mt-20"
               aria-label="Previous testimonial"
             >
               <svg
@@ -158,7 +158,7 @@ const Testimonials = () => {
             {/* Next Button */}
             <button
               onClick={handleNext}
-              className="flex-shrink-0 w-12 h-12 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors mt-20"
+              className="shrink-0 w-12 h-12 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors mt-20"
               aria-label="Next testimonial"
             >
               <svg

@@ -16,7 +16,6 @@ CREATE TABLE user (
     lastname VARCHAR(100),
     gender ENUM('MALE', 'FEMALE', 'OTHER'),
     phone_number VARCHAR(20) UNIQUE,
-    address VARCHAR(255) ,
     username VARCHAR(100) UNIQUE,
     avatar VARCHAR(255),
     password VARCHAR(255),
@@ -24,6 +23,20 @@ CREATE TABLE user (
     role ENUM('ROLE_ADMIN', 'ROLE_DENTIST', 'ROLE_STAFF', 'ROLE_PATIENT'),
     status ENUM('ACTIVE', 'INACTIVE'),
     FOREIGN KEY (specialization_id) REFERENCES specialization(id)
+);
+
+-- Bảng thông tin bác sĩ
+CREATE TABLE dentist_profile (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    dentist_id BIGINT,
+    
+	introduction TEXT,
+    education TEXT,
+    experience TEXT,
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (dentist_id) REFERENCES user(id)
 );
 
 
@@ -78,14 +91,16 @@ CREATE TABLE dentist_schedule (
 );
 
 -- Bảng ngoại lệ (bác sĩ xin nghỉ, bận đột xuất,...)
-CREATE TABLE dentist_schedule_exception (
+CREATE TABLE dentist_custom_schedule (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT NOT NULL,
-    exception_date DATE NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    reason VARCHAR(255),
-    FOREIGN KEY (dentist_id) REFERENCES user(id)
+    custom_date DATE NOT NULL,
+    is_day_off BOOLEAN DEFAULT FALSE,   -- <== thêm cái này
+    start_time TIME NULL,
+    end_time TIME NULL,
+    note VARCHAR(255),
+    FOREIGN KEY (dentist_id) REFERENCES user(id),
+    UNIQUE (dentist_id, custom_date)
 );
 
 -- Bảng lịch hẹn (khi bệnh nhân đặt slot cụ thể)

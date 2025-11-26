@@ -1,27 +1,60 @@
 import React, { useState } from "react";
+import { NavLink } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import bgImage from "../../assets/jose-vazquez-4SUyx4KQ5Ik-unsplash.jpg";
+import { logout } from "../../store/slices/authSlice";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAvatarOpen, setIsAvatarOpen] = useState(false);
+  const dispatch = useDispatch();
+
+  const user = useSelector((state) => state.auth.user);
 
   const toggleMenu = () => setIsOpen(!isOpen);
+  const toggleAvatarMenu = () => setIsAvatarOpen(!isAvatarOpen);
+
+  const handleLogout = async () => {
+    try {
+      dispatch(logout());
+      window.location.reload();
+      setIsAvatarOpen(false);
+    } catch (err) {
+      console.log("Logout error:", err);
+    }
+  };
+
+  const menuItems = [
+    { name: "Trang chủ", path: "/" },
+    { name: "Đặt lịch bác sĩ", path: "/patient/doctor-booking" },
+    { name: "Các cuộc hẹn đã đặt", path: "/patient/appointment" },
+  ];
+
+  const getNavLinkClass = ({ isActive }) =>
+    `block font-medium text-[15px] px-3 py-2 transition-all ${
+      isActive
+        ? "text-[#009688] border-b-2 border-[#009688]"
+        : "text-slate-900 hover:text-[#009688]"
+    }`;
 
   return (
     <header className="flex shadow-md py-4 px-4 sm:px-10 bg-white min-h-[70px] tracking-wide relative z-50">
       <div className="flex flex-wrap items-center justify-between gap-5 w-full">
-        <a href="javascript:void(0)" className="max-sm:hidden">
+        {/* Logo */}
+        <NavLink to="/" className="max-sm:hidden">
           <img
             src="https://readymadeui.com/readymadeui.svg"
             alt="logo"
             className="w-36"
           />
-        </a>
-        <a href="javascript:void(0)" className="hidden max-sm:block">
+        </NavLink>
+        <NavLink to="/" className="hidden max-sm:block">
           <img
             src="https://readymadeui.com/readymadeui-short.svg"
             alt="logo"
             className="w-9"
           />
-        </a>
+        </NavLink>
 
         {/* Menu */}
         <ul
@@ -30,40 +63,76 @@ const Header = () => {
           }`}
         >
           <li className="mb-6 hidden max-lg:block">
-            <a href="javascript:void(0)">
+            <NavLink to="/">
               <img
                 src="https://readymadeui.com/readymadeui.svg"
                 alt="logo"
                 className="w-36"
               />
-            </a>
+            </NavLink>
           </li>
-          {["Trang chủ", "Đặt lịch bác sĩ", "Các cuộc hẹn đã đặt"].map(
-            (item) => (
-              <li
-                key={item}
-                className="max-lg:border-b max-lg:border-gray-300 max-lg:py-3 px-3"
+
+          {menuItems.map((item) => (
+            <li
+              key={item.name}
+              className="max-lg:border-b max-lg:border-gray-300 max-lg:py-3"
+            >
+              <NavLink
+                to={item.path}
+                className={getNavLinkClass}
+                onClick={() => setIsOpen(false)}
               >
-                <a
-                  href="javascript:void(0)"
-                  className="hover:text-[#009688] text-slate-900 block font-medium text-[15px]"
-                >
-                  {item}
-                </a>
-              </li>
-            )
-          )}
+                {item.name}
+              </NavLink>
+            </li>
+          ))}
         </ul>
 
-        <div className="flex max-lg:ml-auto space-x-4">
-          <button className="px-4 py-2 text-sm rounded-full font-medium cursor-pointer tracking-wide text-[#009688] border border-gray-400 bg-transparent hover:bg-gray-50 transition-all">
-            Đăng nhập
-          </button>
-          <button className="px-4 py-2 text-sm rounded-full font-medium cursor-pointer tracking-wide text-white border border-[#009688] bg-[#009688] hover:bg-blue-700 transition-all">
-            Đăng ký
-          </button>
+        {/* Buttons / Avatar */}
+        <div className="flex max-lg:ml-auto items-center space-x-4 relative">
+          {user ? (
+            <div className="relative">
+              <img
+                src={bgImage} // thay bằng user.avatar nếu có
+                alt="avatar"
+                className="w-10 h-10 rounded-full object-cover border border-gray-300 cursor-pointer"
+                onClick={toggleAvatarMenu}
+              />
+              {isAvatarOpen && (
+                <ul className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden z-50">
+                  <li>
+                    <NavLink
+                      to="/profile"
+                      className="block px-4 py-2 hover:bg-gray-100"
+                      onClick={() => setIsAvatarOpen(false)}
+                    >
+                      Profile
+                    </NavLink>
+                  </li>
+                  <li>
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      onClick={() => {
+                        handleLogout();
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
+          ) : (
+            <>
+              <NavLink to="/login">
+                <button className="px-4 py-2 text-sm rounded-full font-medium cursor-pointer tracking-wide text-[#009688] border border-gray-400 bg-transparent hover:bg-gray-50 transition-all">
+                  Đăng nhập
+                </button>
+              </NavLink>
+            </>
+          )}
 
-          {/* Toggle button */}
+          {/* Toggle button mobile */}
           <button onClick={toggleMenu} className="lg:hidden cursor-pointer">
             <svg
               className="w-7 h-7"
@@ -75,7 +144,7 @@ const Header = () => {
                 fillRule="evenodd"
                 d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
                 clipRule="evenodd"
-              ></path>
+              />
             </svg>
           </button>
         </div>

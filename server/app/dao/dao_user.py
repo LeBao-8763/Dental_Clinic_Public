@@ -3,7 +3,7 @@ from app.models import User
 from app.models import GenderEnum, RoleEnum, StatusEnum
 import bcrypt
 
-def create_user(firstname, lastname, gender,username, password,avatar, phone_number, specialization_id=None,address=None,role=None):
+def create_user(firstname, lastname, gender,username, password, phone_number, specialization_id=None,address=None,role=None, avatar=None):
     user=User.query.filter_by(phone_number=phone_number).first()
 
     if user is not None:
@@ -55,3 +55,6 @@ def login(password, account_identifier):
 
 def get_user_by_id(user_id):
     return User.query.get(user_id)
+
+def get_dentist_list():
+    return User.query.filter_by(role=RoleEnum.ROLE_DENTIST, status=StatusEnum.ACTIVE).all()

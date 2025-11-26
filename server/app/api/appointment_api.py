@@ -10,18 +10,16 @@ class Appointment(Resource):
     @appointment_ns.marshal_with(appointment_model, code=201) # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
     def post(self):
         "Tạo lịch hẹn mới"
-        args=appointment_creation_parser.parse_args()
+        data = request.get_json()
         new_appointment=dao_appointment.create_appointment(
-            dentist_id=args.get('dentist_id'),
-            patient_id=args.get('patient_id'),
-            appointment_date=args.get('appointment_date'),
-            start_time=args.get('start_time'),
-            end_time=args.get('end_time'),
-            note=args.get('note')
+            dentist_id=data.get('dentist_id'),
+            patient_id=data.get('patient_id'),
+            appointment_date=data.get('appointment_date'),
+            start_time=data.get('start_time'),
+            end_time=data.get('end_time'),
+            note=data.get('note')
         )
         if new_appointment:
             return new_appointment, 201
 
         return 500
-
-

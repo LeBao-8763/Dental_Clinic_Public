@@ -21,6 +21,6 @@ def create_app():
     app.register_blueprint(api_bp)
 
     # Import API resources
-    from .api import user_api, auth_api, clinic_hour_api, appointment_api, dentist_schedule_api, service_api, treatment_record_api
+    from .api import user_api, auth_api, clinic_hour_api, appointment_api, dentist_schedule_api, service_api, treatment_record_api, dentist_profile_api
 
     return app

@@ -18,11 +18,13 @@ api = Api(
 
 auth_ns = api.namespace('auth', description='Các thao tác liên quan đến chứng thực người dùng')
 user_ns = api.namespace('users', description='Các thao tác liên quan đến người dùng')
+dentist_ns=api.namespace('dentists', description='Các thao tác liên quan đến bác sĩ')
 appointment_ns=api.namespace('appointments', description='Các thao tác liên quan đến lịch hẹn')
 clinic_hours_ns=api.namespace('clinic_hours', description='Các thao tác liên quan đến khung giờ phòng khám')
 dentist_shedule_ns=api.namespace('dentist_schedules', description='Các thao tác liên quan đến lịch làm việc của bác sĩ')
 service_ns=api.namespace('services', description='Các thao tác liên quan đến dịch vụ')
 treatment_record_ns=api.namespace('treatment_records', description='Các thao tác liên quan đến hồ sơ điều trị')
+dentist_profile_ns=api.namespace('dentist_profiles', description='Các thao tác liên quan đến hồ sơ bác sĩ')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -50,6 +52,14 @@ user_model = api.model('User', {
     'role': fields.String(enum=[e.value for e in RoleEnum], description='Quyền người dùng'),
     'status': fields.String(enum=[e.value for e in StatusEnum], description='Trạng thái'),
     'created_date': fields.DateTime(description='Ngày tạo')
+})
+
+dentist_model = api.model('Dentist', {
+    'id': fields.Integer(readOnly=True, description='ID người dùng'),
+    'firstname': fields.String(required=True, description='Tên'),
+    'lastname': fields.String(required=True, description='Họ'),
+    'gender': fields.String(enum=[e.value for e in GenderEnum], description='Giới tính'),
+    'avatar': fields.String(description='URL avatar')
 })
 
 medicine_model = api.model('Medicine', {
@@ -143,6 +153,15 @@ treatment_records_create_model = api.model('TreatmentRecordsCreate', {
     )
 })
 
+#Model cho hồ sơ bác sĩ
+dentist_profile_model = api.model('DentistProfile', {
+    'id': fields.Integer(readOnly=True, description='ID hồ sơ bác sĩ'),
+    'dentist_id': fields.Integer(description='ID người dùng (bác sĩ)'),
+    'introduction': fields.String(description='Tiểu sử'),
+    'education': fields.String(description='Giáo dục'),
+    'experience': fields.String(description='Số năm kinh nghiệm')
+})
+
 # ------------------------------
 # --- Định nghĩa Parsers cho Swagger UI ---
 # Parsers được sử dụng để định nghĩa các tham số đầu vào (query params, form data)
@@ -167,8 +186,8 @@ auth_parser.add_argument('password', type=str, required=True, help='Mật khẩu
 
 ''' APPOINMENT '''
 appointment_creation_parser = reqparse.RequestParser()
-appointment_creation_parser.add_argument('dentist_id', type=str, required=True, help='Id bác sĩ')
-appointment_creation_parser.add_argument('patient_id', type=str, required=True, help='Id bệnh nhân')
+appointment_creation_parser.add_argument('dentist_id', type=int, required=True, help='Id bác sĩ')
+appointment_creation_parser.add_argument('patient_id', type=int, required=True, help='Id bệnh nhân')
 appointment_creation_parser.add_argument('appointment_date', type=str, required=True, help='Ngày khám (YYYY-MM-DD)')
 appointment_creation_parser.add_argument('start_time', type=str, required=True, help='Giờ bắt đầu (HH:MM:SS)')
 appointment_creation_parser.add_argument('end_time', type=str, required=True, help='Giờ kết thúc (HH:MM:SS)')
@@ -194,4 +213,11 @@ service_parser = reqparse.RequestParser()
 service_parser.add_argument('name', type=str, required=True, help='Tên dịch vụ')
 service_parser.add_argument('price', type=float, required=True, help='Giá dịch vụ')
 service_parser.add_argument('description', type=str, required=True, help='Mô tả dịch vụ')
+
+''' DENTIST PROFILE '''
+dentist_profile_parser = reqparse.RequestParser()
+dentist_profile_parser.add_argument('user_id', type=int, required=True, help='ID người dùng (bác sĩ)')
+dentist_profile_parser.add_argument('introduction', type=str, required=False, help='Tiểu sử')
+dentist_profile_parser.add_argument('education', type=str, required=False, help='Bằng cấp')
+dentist_profile_parser.add_argument('experience', type=str, required=False, help='Kinh nghiệm làm việc')
 

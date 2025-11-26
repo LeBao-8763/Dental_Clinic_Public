@@ -1,5 +1,5 @@
 from app.dao import dao_user
-from app.api_conf import user_ns, user_creation_parser,user_model
+from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, dentist_model
 from flask_restx import Resource
 from app.models import User
 from cloudinary import uploader
@@ -13,6 +13,8 @@ class UserList(Resource):
         "Tạo một người dùng mới"
         args=user_creation_parser.parse_args()
         avatar=args.get('avatar')
+        avatar_url = None  # <-- khởi tạo mặc định
+
         if avatar:
             upload_result = uploader.upload(avatar)
             avatar_url = upload_result.get('secure_url')
@@ -31,6 +33,15 @@ class UserList(Resource):
             return new_user, 201
 
         return 500
+
+@dentist_ns.route('/')
+class DentistList(Resource):
+    @dentist_ns.doc('get_dentist_list')
+    @dentist_ns.marshal_list_with(dentist_model)  # Định nghĩa định dạng response cho Swagger UI
+    def get(self):
+        "Lấy danh sách bác sĩ"
+        dentists = dao_user.get_dentist_list()
+        return dentists, 200
 
 @user_ns.route('/<int:user_id>')
 @user_ns.param('user_id', 'ID của người dùng')

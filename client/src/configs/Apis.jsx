@@ -6,7 +6,21 @@ const BASE_URL = "http://127.0.0.1:5000/api/";
 
 export const endpoints = {
   login: "auth/login",
+  register: "users",
   get_user_info: (id) => `users/${id}`,
+  get_dentist_list: "dentists",
+  clinic_hour: {
+    list: "clinic_hours",
+  },
+  dentist_profile: {
+    get_profile: (dentistId) => `dentist_profiles/${dentistId}`,
+  },
+  dentist_schedule: {
+    get_schedule: (dentistId) => `dentist_schedules/${dentistId}`,
+  },
+  appointment: {
+    create: "appointments/",
+  },
 };
 
 export const publicApi = axios.create({

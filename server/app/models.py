@@ -67,7 +67,6 @@ class User(db.Model):
     lastname = db.Column(db.String(100))
     gender = db.Column(db.Enum(GenderEnum))
     phone_number = db.Column(db.String(20), unique=True)
-    address = db.Column(db.String(255))
     username = db.Column(db.String(100), unique=True)
     avatar = db.Column(db.String(255))
     password = db.Column(db.String(255))
@@ -81,7 +80,30 @@ class User(db.Model):
     medicine_imports = db.relationship('MedicineImport', back_populates='user', lazy=True)
 
     dentist_schedules = db.relationship('DentistSchedule', back_populates='dentist', lazy=True)
-    dentist_schedule_exceptions = db.relationship('DentistScheduleException', back_populates='dentist', lazy=True)
+    dentist_custom_schedules = db.relationship('DentistCustomSchedule', back_populates='dentist', lazy=True)
+    dentist_profile = db.relationship('DentistProfile', back_populates='dentist', uselist=False)
+
+# ------------------------------
+# 🔹 Bảng hồ sơ bác sĩ
+# ------------------------------
+class DentistProfile(db.Model):
+    __tablename__ = 'dentist_profile'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
+
+    introduction = db.Column(db.Text)
+    education = db.Column(db.Text)
+    experience = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    dentist = db.relationship('User', back_populates='dentist_profile')
 
 
 # ------------------------------
@@ -150,19 +172,29 @@ class DentistSchedule(db.Model):
 
 
 # ------------------------------
-# 🔹 Bảng ngoại lệ lịch bác sĩ
+# 🔹 Bảng ngoại lệ — lịch cá nhân bác sĩ
 # ------------------------------
-class DentistScheduleException(db.Model):
-    __tablename__ = 'dentist_schedule_exception'
+class DentistCustomSchedule(db.Model):
+    __tablename__ = 'dentist_custom_schedule'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
-    exception_date = db.Column(db.Date, nullable=False)
-    start_time = db.Column(db.Time, nullable=False)
-    end_time = db.Column(db.Time, nullable=False)
-    reason = db.Column(db.String(255))
+    custom_date = db.Column(db.Date, nullable=False)
 
-    dentist = db.relationship('User', back_populates='dentist_schedule_exceptions')
+    # TRUE → nghỉ nguyên ngày
+    is_day_off = db.Column(db.Boolean, default=False)
+
+    # Nếu không nghỉ nguyên ngày → có giờ bắt đầu/kết thúc
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+
+    note = db.Column(db.String(255))
+
+    dentist = db.relationship('User', back_populates='dentist_custom_schedules')
+
+    __table_args__ = (
+        db.UniqueConstraint('dentist_id', 'custom_date', name='uq_dentist_custom_date'),
+    )
 
 
 # ------------------------------

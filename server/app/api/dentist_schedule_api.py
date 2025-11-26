@@ -22,4 +22,15 @@ class UserList(Resource):
 
         return 500
 
+@dentist_shedule_ns.route('/<int:dentist_id>')
+class DentistScheduleList(Resource):
+    @dentist_shedule_ns.doc('get_dentist_schedules')
+    @dentist_shedule_ns.param('day_of_week', "Ngày trong tuần để lọc lịch làm việc (tùy chọn)")
+    @dentist_shedule_ns.marshal_list_with(dentist_shedule_model) # Định nghĩa định dạng response
+    def get(self, dentist_id):
+        "Lấy danh sách lịch làm việc của nha sĩ theo ID và ngày trong tuần (nếu có)"
+        day_of_week = request.args.get('day_of_week')
+        schedules = dao_dentist_schedule.get_dentist_schedules(dentist_id, day_of_week)
+        return schedules
+
 
