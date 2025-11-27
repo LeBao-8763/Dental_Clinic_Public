@@ -1,23 +1,43 @@
-import React, { useEffect, useState } from "react";
-import { Edit } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Edit,
+  Calendar as CalendarIcon,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { endpoints, publicApi } from "../../configs/Apis";
 import Loading from "../../components/common/Loading";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
+// NOTE: This is a single-file React component (Tailwind CSS assumed available).
+// It replaces the plain <input type="date"> with a visual, interactive month calendar.
+
 const ScheduleArrange = () => {
   const [activeTab, setActiveTab] = useState("weekly");
   const [expandedDay, setExpandedDay] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState({});
-  const [tempSelectedSlots, setTempSelectedSlots] = useState({}); // State tạm thời khi đang chọn
+  const [tempSelectedSlots, setTempSelectedSlots] = useState({});
   const [selectedDate, setSelectedDate] = useState("");
   const [showScheduleDetail, setShowScheduleDetail] = useState(false);
+
+  // New states for "xin nghỉ" feature
+  const [showDayOffDialog, setShowDayOffDialog] = useState(false);
+  const [dayOffReason, setDayOffReason] = useState("");
+  const [dayOffLoading, setDayOffLoading] = useState(false);
 
   const user = useSelector((state) => state.auth.user);
 
   const [loading, setLoading] = useState(false);
   const [clinicHoursData, setClinicHoursData] = useState([]);
   const [dentistScheduleData, setDentistScheduleData] = useState([]);
+
+  // Calendar current month state (used for the visual calendar)
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
   // Mapping day_of_week từ API sang tiếng Việt
   const dayMapping = {
@@ -37,6 +57,7 @@ const ScheduleArrange = () => {
       setClinicHoursData(res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu giờ làm việc phòng khám", err);
+      toast.error("Không lấy được giờ làm việc phòng khám");
     } finally {
       setLoading(false);
     }
@@ -48,10 +69,24 @@ const ScheduleArrange = () => {
       const res = await publicApi.get(
         endpoints.dentist_schedule.get_schedule(dentistId)
       );
-      console.log("Lịch làm việc bác sĩ theo id:", res.data);
       setDentistScheduleData(res.data);
     } catch (err) {
       console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomSchedule = async (dentist_id) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.custom_schedule.get_by_dentist_id(dentist_id)
+      );
+
+      console.log("Dữ liệu custom schedule", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy dữ liệu giờ custom", err);
     } finally {
       setLoading(false);
     }
@@ -64,6 +99,7 @@ const ScheduleArrange = () => {
   useEffect(() => {
     if (user) {
       fetchDentistScheduleById(user.id);
+      fetchCustomSchedule(user.id);
     }
   }, [user]);
 
@@ -76,7 +112,6 @@ const ScheduleArrange = () => {
       item.slot_duration_minutes > 0
   );
 
-  // Nếu không có ngày hợp lệ → timeSlots = []
   const timeSlots = validDay
     ? generateTimeSlots(
         validDay.open_time,
@@ -85,7 +120,6 @@ const ScheduleArrange = () => {
       )
     : [];
 
-  // Hàm tạo time slots
   function generateTimeSlots(openTime, closeTime, slotDuration) {
     const slots = [];
     const [openHour, openMinute] = openTime.split(":").map(Number);
@@ -113,7 +147,6 @@ const ScheduleArrange = () => {
     return slots;
   }
 
-  // Hàm chuyển đổi start_time và end_time thành slot indices
   function getSlotIndicesForSchedule(dayOfWeek) {
     if (!validDay || timeSlots.length === 0) return [];
 
@@ -124,14 +157,11 @@ const ScheduleArrange = () => {
     const indices = [];
 
     schedulesForDay.forEach((schedule) => {
-      const startTime = schedule.start_time.slice(0, 5); // "08:00:00" -> "08:00"
-      const endTime = schedule.end_time.slice(0, 5); // "09:00:00" -> "09:00"
+      const startTime = schedule.start_time.slice(0, 5);
+      const endTime = schedule.end_time.slice(0, 5);
 
-      // Tìm các slot khớp với khoảng thời gian này
       timeSlots.forEach((slot, idx) => {
         const [slotStart, slotEnd] = slot.split("-");
-
-        // Kiểm tra nếu slot nằm trong khoảng start_time -> end_time
         if (slotStart >= startTime && slotEnd <= endTime) {
           if (!indices.includes(idx)) {
             indices.push(idx);
@@ -143,41 +173,32 @@ const ScheduleArrange = () => {
     return indices;
   }
 
-  // Helper: Chuyển đổi từng slot thành khoảng thời gian riêng biệt
   function convertSlotsToTimeRanges(slotIndices) {
     if (!slotIndices || slotIndices.length === 0) return [];
 
     const sorted = [...slotIndices].sort((a, b) => a - b);
-    const ranges = [];
-
-    // Mỗi slot tạo thành 1 range riêng, không gộp
-    sorted.forEach((slotIndex) => {
+    return sorted.map((slotIndex) => {
       const [start, end] = timeSlots[slotIndex].split("-");
-      ranges.push({
+      return {
         start_time: start + ":00",
         end_time: end + ":00",
-      });
+      };
     });
-
-    return ranges;
   }
+
   const handleConfirm = async (dayId) => {
     setLoading(true);
     try {
+      // dayEnum extraction (works only for numeric dayId like 2..8)
       const dayEnum = dayEnums[dayId - 2];
       const dayEnumValue = dayEnum.split(".")[1];
 
-      console.log("Cập nhật lịch làm việc cho", dayEnumValue);
-
-      //Xóa tất cả lịch cũ
-
+      // Xóa lịch cũ
       await publicApi.delete(
         endpoints.dentist_schedule.delete_by_day(user.id, dayEnumValue)
       );
 
-      console.log("Đã xóa lịch làm việc cũ cho", dayEnumValue);
-
-      //Tiến hành thêm lịch làm việc mới
+      // Thêm lịch mới nếu có
       const newSlots = tempSelectedSlots[dayId] || [];
       if (newSlots.length > 0) {
         const schedules = convertSlotsToTimeRanges(newSlots);
@@ -202,7 +223,6 @@ const ScheduleArrange = () => {
     }
   };
 
-  // Schedule hiển thị trong popup
   const clinicSchedule = [
     "DayOfWeekEnum.MONDAY",
     "DayOfWeekEnum.TUESDAY",
@@ -223,7 +243,6 @@ const ScheduleArrange = () => {
     };
   });
 
-  // Days ở tab weekly
   const dayEnums = [
     "DayOfWeekEnum.MONDAY",
     "DayOfWeekEnum.TUESDAY",
@@ -237,16 +256,11 @@ const ScheduleArrange = () => {
   const days = dayEnums
     .map((dayEnum, index) => {
       const dayId = index + 2;
-
-      // Lấy slot indices từ dentist schedule
       const scheduleSlotIndices = getSlotIndicesForSchedule(dayEnum);
-
-      // Combine với selectedSlots nếu có
       const currentSelectedSlots = selectedSlots[dayId] || [];
       const allSlots = [
         ...new Set([...currentSelectedSlots, ...scheduleSlotIndices]),
       ];
-
       const hasSlots = allSlots.length > 0;
 
       return {
@@ -264,6 +278,17 @@ const ScheduleArrange = () => {
       const dayEnum = dayEnums[day.id - 2];
       return clinicHoursData.some((item) => item.day_of_week === dayEnum);
     });
+
+  const getMinDate = () => {
+    const today = new Date();
+    today.setDate(today.getDate() + 3);
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const minDateString = useMemo(() => getMinDate(), [clinicHoursData]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -285,30 +310,30 @@ const ScheduleArrange = () => {
   const toggleDay = (dayId) => {
     if (expandedDay === dayId) {
       setExpandedDay(null);
-      setTempSelectedSlots({}); // Clear temp khi đóng
+      setTempSelectedSlots({});
     } else {
       setExpandedDay(dayId);
 
-      // Lấy dayEnum tương ứng với dayId
-      const dayEnum = dayEnums[dayId - 2];
-
-      // Lấy các slot indices từ dentist schedule
-      const existingSlotIndices = getSlotIndicesForSchedule(dayEnum);
-
-      // Copy slots hiện tại vào temp để edit, kết hợp với existing slots
-      const currentSlots = selectedSlots[dayId] || [];
-      const mergedSlots = [
-        ...new Set([...currentSlots, ...existingSlotIndices]),
-      ];
-
-      setTempSelectedSlots({ [dayId]: mergedSlots });
+      // Nếu là weekday (numeric), lấy existing slots từ schedule
+      if (typeof dayId === "number") {
+        const dayEnum = dayEnums[dayId - 2];
+        const existingSlotIndices = getSlotIndicesForSchedule(dayEnum);
+        const currentSlots = selectedSlots[dayId] || [];
+        const mergedSlots = [
+          ...new Set([...currentSlots, ...existingSlotIndices]),
+        ];
+        setTempSelectedSlots({ [dayId]: mergedSlots });
+      } else {
+        // dayId dạng "date-YYYY-MM-DD"
+        const currentSlots = selectedSlots[dayId] || [];
+        setTempSelectedSlots({ [dayId]: [...new Set(currentSlots)] });
+      }
     }
   };
 
   const toggleSlot = (dayId, slotIndex) => {
     if (!timeSlots || timeSlots.length === 0) return;
 
-    // Chỉ thay đổi tempSelectedSlots, không động vào selectedSlots
     setTempSelectedSlots((prev) => {
       const daySlots = prev[dayId] || [];
       if (daySlots.includes(slotIndex)) {
@@ -325,9 +350,123 @@ const ScheduleArrange = () => {
     });
   };
 
+  // New: open dialog to confirm day off (triggered by checkbox click)
+  const openDayOffDialog = () => {
+    if (!selectedDate) {
+      toast.error("Vui lòng chọn ngày trước khi xin nghỉ");
+      return;
+    }
+    setShowDayOffDialog(true);
+  };
+
+  const cancelDayOff = () => {
+    setShowDayOffDialog(false);
+    setDayOffReason("");
+  };
+
+  const confirmDayOff = async () => {
+    setDayOffLoading(true);
+    try {
+      // call backend to create custom schedule day off
+      await publicApi.post(endpoints.custom_schedule.create, {
+        dentist_id: user.id,
+        custom_date: selectedDate,
+        is_day_off: true,
+        reason: dayOffReason,
+      });
+
+      toast.success("Xin nghỉ thành công cho ngày đã chọn");
+      setShowDayOffDialog(false);
+      setDayOffReason("");
+      // refresh schedule
+      await fetchDentistScheduleById(user.id);
+    } catch (err) {
+      console.error("Lỗi khi xin nghỉ:", err);
+      toast.error("Xin nghỉ thất bại. Thử lại sau.");
+    } finally {
+      setDayOffLoading(false);
+    }
+  };
+
+  // ---- New calendar helpers ----
+  // dayEnums: MON..SUN where index 0 => MONDAY, ... 6 => SUNDAY
+  // JS getDay: 0 => SUN, 1 => MON, ... 6 => SAT
+  const dayEnumForJSDate = (dateObj) => {
+    const jsDow = dateObj.getDay();
+    const idx = (jsDow + 6) % 7; // shift so Monday=0
+    return dayEnums[idx];
+  };
+
+  const isClinicOpenOnDate = (dateObj) => {
+    if (!clinicHoursData || clinicHoursData.length === 0) return false;
+    const dayEnum = dayEnumForJSDate(dateObj);
+    return clinicHoursData.some((item) => item.day_of_week === dayEnum);
+  };
+
+  const getISODate = (dateObj) => {
+    // Build YYYY-MM-DD in local timezone (avoid toISOString which converts to UTC and can shift the day)
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const d = String(dateObj.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const daysOfWeekShort = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+  const prevMonth = () => {
+    setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1));
+  };
+  const nextMonth = () => {
+    setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1));
+  };
+
+  const calendarGrid = useMemo(() => {
+    // produce array of Date objects for a 6x7 calendar starting Monday
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstOfMonth = new Date(year, month, 1);
+    const startOffset = (firstOfMonth.getDay() + 6) % 7; // how many days from prev month to show
+    const startDate = new Date(year, month, 1 - startOffset);
+
+    const grid = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate() + i
+      );
+      grid.push(d);
+    }
+    return grid;
+  }, [calendarMonth]);
+
+  // When user clicks a date on the calendar
+  const handlePickDateFromCalendar = (dateObj) => {
+    const iso = getISODate(dateObj);
+    // enforce min date
+    if (iso < minDateString) {
+      toast.error("Bạn phải chọn ngày cách hiện tại ít nhất 3 ngày");
+      return;
+    }
+    // enforce clinic open days
+    if (!isClinicOpenOnDate(dateObj)) {
+      toast.error("Phòng khám đóng vào ngày này");
+      return;
+    }
+
+    setSelectedDate(iso);
+    // open expanded editor for that date
+    setExpandedDay(`date-${iso}`);
+
+    // Prefill tempSelectedSlots for this date from selectedSlots if present
+    const current = selectedSlots[`date-${iso}`] || [];
+    setTempSelectedSlots({ [`date-${iso}`]: [...new Set(current)] });
+  };
+
+  // ---- End calendar helpers ----
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
-      {/* Loading overlay */}
       {loading && (
         <div className="absolute inset-0 bg-white/70 flex justify-center items-center z-50">
           <Loading />
@@ -357,7 +496,6 @@ const ScheduleArrange = () => {
         </div>
       </div>
 
-      {/* Schedule Detail Modal */}
       {showScheduleDetail && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
@@ -370,7 +508,6 @@ const ScheduleArrange = () => {
                 ×
               </button>
             </div>
-
             <div className="p-6">
               <table className="w-full">
                 <thead>
@@ -406,7 +543,6 @@ const ScheduleArrange = () => {
                 </tbody>
               </table>
             </div>
-
             <div className="p-6 pt-0">
               <button
                 onClick={() => setShowScheduleDetail(false)}
@@ -521,27 +657,28 @@ const ScheduleArrange = () => {
                         getSlotIndicesForSchedule(dayEnum);
                       const isFromSchedule = existingSlotIndices.includes(idx);
 
+                      const btnClass = isSelected
+                        ? "text-white"
+                        : isFromSchedule
+                        ? "text-[#00695C]"
+                        : "bg-white text-gray-700 border-gray-300";
+
+                      const btnStyle = isSelected
+                        ? { backgroundColor: "#009688", borderColor: "#00796B" }
+                        : isFromSchedule
+                        ? {
+                            backgroundColor: "#B2DFDB",
+                            borderColor: "#B2DFDB",
+                            color: "#00695C",
+                          }
+                        : {};
+
                       return (
                         <button
                           key={idx}
                           onClick={() => toggleSlot(day.id, idx)}
-                          className={`py-2 px-3 rounded text-sm border transition-colors ${
-                            isSelected
-                              ? "text-white"
-                              : "bg-white text-gray-700 border-gray-300"
-                          } ${
-                            isFromSchedule && !isSelected
-                              ? "ring-2 ring-teal-400"
-                              : ""
-                          }`}
-                          style={
-                            isSelected
-                              ? {
-                                  backgroundColor: "#009688",
-                                  borderColor: "#00796B",
-                                }
-                              : {}
-                          }
+                          className={`py-2 px-3 rounded text-sm border transition-colors ${btnClass}`}
+                          style={btnStyle}
                         >
                           {slot}
                         </button>
@@ -563,21 +700,163 @@ const ScheduleArrange = () => {
         </div>
       ) : (
         <div>
-          {/* Date Picker */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Chọn ngày
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50"
-              style={{ focusRing: "#009688" }}
-            />
+          {/* VISUAL Date Picker - calendar UI */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={prevMonth}
+                      className="p-2 rounded hover:bg-gray-100"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <div className="font-semibold">
+                      {calendarMonth.toLocaleString("vi-VN", { month: "long" })}{" "}
+                      {calendarMonth.getFullYear()}
+                    </div>
+                    <button
+                      onClick={nextMonth}
+                      className="p-2 rounded hover:bg-gray-100"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Chọn ngày để chỉnh lịch / xin nghỉ
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {daysOfWeekShort.map((d, i) => (
+                    <div
+                      key={i}
+                      className="text-xs font-medium text-gray-600 py-2"
+                    >
+                      {d}
+                    </div>
+                  ))}
+
+                  {calendarGrid.map((d, idx) => {
+                    const iso = getISODate(d);
+                    const isCurrentMonth =
+                      d.getMonth() === calendarMonth.getMonth();
+                    const isToday =
+                      iso === new Date().toISOString().split("T")[0];
+                    const isSelected = iso === selectedDate;
+                    const disabled =
+                      iso < minDateString || !isClinicOpenOnDate(d);
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handlePickDateFromCalendar(d)}
+                        className={`p-2 h-12 flex items-center justify-center rounded transition-all text-sm ${
+                          isCurrentMonth ? "" : "opacity-40"
+                        } ${
+                          disabled ? "cursor-not-allowed" : "hover:bg-gray-100"
+                        }`}
+                        disabled={disabled}
+                        title={
+                          isClinicOpenOnDate(d)
+                            ? "Phòng khám mở"
+                            : "Phòng khám đóng"
+                        }
+                      >
+                        <div
+                          className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                            isSelected
+                              ? "bg-[#009688] text-white"
+                              : isToday
+                              ? "ring-1 ring-[#009688]/40"
+                              : ""
+                          }`}
+                        >
+                          <span
+                            className={`${
+                              disabled ? "line-through text-gray-400" : ""
+                            }`}
+                          >
+                            {d.getDate()}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 text-xs flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#009688] rounded" /> Đã chọn
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-gray-300 rounded" /> Ngày khác
+                    tháng
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-200 rounded" /> Phòng khám
+                    nghỉ
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-1">
+              <div className="bg-white p-4 rounded-lg border border-gray-200 h-full">
+                <h4 className="font-semibold mb-2">Thông tin nhanh</h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Ngày chọn:{" "}
+                  <span className="font-medium text-gray-800">
+                    {selectedDate ? formatDate(selectedDate) : "—"}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Lịch phòng khám (theo tuần):
+                </p>
+                <div className="text-sm">
+                  {clinicSchedule.map((c, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between py-1 text-xs"
+                    >
+                      <span className="text-gray-700">{c.day}</span>
+                      <span
+                        className={`text-right ${
+                          c.hours === "Nghỉ" ? "text-red-500" : "text-gray-600"
+                        }`}
+                      >
+                        {c.hours}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      // Quick select: choose next available date in calendarMonth that is open and >= minDate
+                      const found = calendarGrid.find(
+                        (d) =>
+                          getISODate(d) >= minDateString &&
+                          isClinicOpenOnDate(d)
+                      );
+                      if (found) handlePickDateFromCalendar(found);
+                      else
+                        toast.info(
+                          "Không tìm thấy ngày khả dụng trong tháng này"
+                        );
+                    }}
+                    className="w-full bg-[#009688] text-white py-2 rounded"
+                  >
+                    Chọn tự động
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Selected Date Schedule */}
+          {/* Selected Date Schedule (same as before, reused) */}
           {selectedDate && (
             <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
               <div className="p-4 flex items-center justify-between">
@@ -592,6 +871,46 @@ const ScheduleArrange = () => {
                         } khung giờ`
                       : "Chưa chọn thời gian"}
                   </p>
+                  {/* Show weekly/default slots for the weekday of selectedDate as subtle highlights */}
+                  {(() => {
+                    const dayEnum = selectedDate
+                      ? dayEnumForJSDate(new Date(selectedDate))
+                      : null;
+                    const weeklyIndices = dayEnum
+                      ? getSlotIndicesForSchedule(dayEnum)
+                      : [];
+                    const weeklySlots = weeklyIndices
+                      .map((i) => timeSlots[i])
+                      .filter(Boolean)
+                      .slice(0, 5);
+                    return weeklySlots && weeklySlots.length > 0 ? (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {weeklySlots.map((slot, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 rounded text-sm"
+                            style={{
+                              backgroundColor: "#B2DFDB",
+                              color: "#00695C",
+                            }}
+                          >
+                            {slot}
+                          </span>
+                        ))}
+                        {weeklyIndices.length > 5 && (
+                          <span
+                            className="px-3 py-1 rounded text-sm"
+                            style={{
+                              backgroundColor: "#B2DFDB",
+                              color: "#00695C",
+                            }}
+                          >
+                            +{weeklyIndices.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 <button
                   onClick={() => toggleDay(`date-${selectedDate}`)}
@@ -605,44 +924,95 @@ const ScheduleArrange = () => {
 
               {expandedDay === `date-${selectedDate}` && (
                 <div className="border-t border-gray-200 p-4 bg-gray-50">
-                  <p className="text-sm mb-3">
-                    <span className="font-medium">Đã chọn: </span>
-                    <span style={{ color: "#009688" }}>
-                      {(tempSelectedSlots[`date-${selectedDate}`] || []).length}
-                    </span>
-                  </p>
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm">
+                      <span className="font-medium">Đã chọn: </span>
+                      <span style={{ color: "#009688" }}>
+                        {
+                          (tempSelectedSlots[`date-${selectedDate}`] || [])
+                            .length
+                        }
+                      </span>
+                    </p>
+
+                    {/* NEW: Xin nghỉ checkbox (bấm sẽ mở dialog confirm với ô nhập lí do) */}
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          onChange={openDayOffDialog}
+                          className="form-checkbox h-4 w-4"
+                        />
+                        <span className="text-sm">Xin nghỉ hôm đó</span>
+                      </label>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-6 gap-2 mb-4">
-                    {timeSlots.map((slot, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => toggleSlot(`date-${selectedDate}`, idx)}
-                        className={`py-2 px-3 rounded text-sm border transition-colors ${
-                          (
-                            tempSelectedSlots[`date-${selectedDate}`] || []
-                          ).includes(idx)
-                            ? "text-white"
-                            : "bg-white text-gray-700 border-gray-300"
-                        }`}
-                        style={
-                          (
-                            tempSelectedSlots[`date-${selectedDate}`] || []
-                          ).includes(idx)
-                            ? {
-                                backgroundColor: "#009688",
-                                borderColor: "#00796B",
-                              }
-                            : {}
-                        }
-                      >
-                        {slot}
-                      </button>
-                    ))}
+                    {(() => {
+                      const dayEnum = selectedDate
+                        ? dayEnumForJSDate(new Date(selectedDate))
+                        : null;
+                      const existingSlotIndices = dayEnum
+                        ? getSlotIndicesForSchedule(dayEnum)
+                        : [];
+
+                      return timeSlots.map((slot, idx) => {
+                        const isSelected = (
+                          tempSelectedSlots[`date-${selectedDate}`] || []
+                        ).includes(idx);
+                        const isFromSchedule =
+                          existingSlotIndices.includes(idx);
+
+                        const btnClass = isSelected
+                          ? "text-white"
+                          : isFromSchedule
+                          ? "text-[#00695C]"
+                          : "bg-white text-gray-700 border-gray-300";
+
+                        const btnStyle = isSelected
+                          ? {
+                              backgroundColor: "#009688",
+                              borderColor: "#00796B",
+                            }
+                          : isFromSchedule
+                          ? {
+                              backgroundColor: "#B2DFDB",
+                              borderColor: "#B2DFDB",
+                              color: "#00695C",
+                            }
+                          : {};
+
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              toggleSlot(`date-${selectedDate}`, idx)
+                            }
+                            className={`py-2 px-3 rounded text-sm border transition-colors ${btnClass}`}
+                            style={btnStyle}
+                          >
+                            {slot}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
 
                   <button
                     className="w-full text-white font-medium py-3 rounded-lg transition-opacity hover:opacity-90"
                     style={{ backgroundColor: "#009688" }}
+                    onClick={() => {
+                      // Xử lý lưu selectedSlots cho date cụ thể (nếu cần)
+                      setSelectedSlots((prev) => ({
+                        ...prev,
+                        [`date-${selectedDate}`]:
+                          tempSelectedSlots[`date-${selectedDate}`] || [],
+                      }));
+                      setExpandedDay(null);
+                      setTempSelectedSlots({});
+                      toast.success("Lưu lịch ngày đã chọn thành công");
+                    }}
                   >
                     Xác nhận
                   </button>
@@ -652,6 +1022,85 @@ const ScheduleArrange = () => {
           )}
         </div>
       )}
+
+      {/* Day-off confirmation dialog */}
+      {showDayOffDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">
+            <button
+              onClick={cancelDayOff}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center">
+                <CalendarIcon className="text-teal-600" size={32} />
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
+              Xác nhận xin nghỉ
+            </h3>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <p className="text-gray-700 text-center mb-3">
+                Bạn có chắc chắn muốn xin nghỉ vào:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 text-gray-800">
+                  <CalendarIcon size={18} className="text-teal-600" />
+                  <span className="font-semibold">
+                    {formatDate(selectedDate)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Lý do (bắt buộc)
+            </label>
+            <textarea
+              value={dayOffReason}
+              onChange={(e) => setDayOffReason(e.target.value)}
+              placeholder="Nhập lý do xin nghỉ..."
+              className="w-full p-3 border border-gray-300 rounded-lg mb-4 min-h-[100px] focus:outline-none"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelDayOff}
+                disabled={dayOffLoading}
+                className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Không
+              </button>
+              <button
+                onClick={confirmDayOff}
+                disabled={dayOffLoading || !dayOffReason.trim()}
+                className="flex-1 bg-[#009688] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#00796B] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {dayOffLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  "Xác nhận"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes scale-in {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
