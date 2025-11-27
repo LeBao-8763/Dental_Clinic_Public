@@ -1,5 +1,5 @@
-from app.dao import dao_user
-from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, dentist_model
+from app.dao import dao_user, dao_appointment
+from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, dentist_model, appointment_model
 from flask_restx import Resource
 from app.models import User
 from cloudinary import uploader
@@ -54,3 +54,13 @@ class UserResource(Resource):
         if user:
             return user,200
         user_ns.abort(404, "User not found")
+
+@user_ns.route('/<int:user_id>/appointments')
+class UserAppointmentsResource(Resource):
+    @user_ns.doc('get_user_appointments')
+    @user_ns.marshal_list_with(appointment_model)  # Định nghĩa định dạng response cho Swagger UI
+    def get(self, user_id):
+        "Lấy danh sách lịch hẹn của bác sĩ theo ID"
+        appointments = dao_appointment.get_appointments_by_dentist(user_id)
+        return appointments, 200
+

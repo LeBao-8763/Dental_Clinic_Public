@@ -192,9 +192,6 @@ class DentistCustomSchedule(db.Model):
 
     dentist = db.relationship('User', back_populates='dentist_custom_schedules')
 
-    __table_args__ = (
-        db.UniqueConstraint('dentist_id', 'custom_date', name='uq_dentist_custom_date'),
-    )
 
 
 # ------------------------------

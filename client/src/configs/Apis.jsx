@@ -8,18 +8,25 @@ export const endpoints = {
   login: "auth/login",
   register: "users",
   get_user_info: (id) => `users/${id}`,
-  get_dentist_list: "dentists",
+  get_dentist_list: "dentists/",
   clinic_hour: {
-    list: "clinic_hours",
+    list: "clinic_hours/",
   },
   dentist_profile: {
     get_profile: (dentistId) => `dentist_profiles/${dentistId}`,
   },
   dentist_schedule: {
     get_schedule: (dentistId) => `dentist_schedules/${dentistId}`,
+    create_multiple: `dentist_schedules/`,
+    delete_by_day: (dentistId, dayOfWeek) =>
+      `/dentist_schedules/${dentistId}/${dayOfWeek}`,
   },
   appointment: {
     create: "appointments/",
+    get_by_dentist_id: (dentistId) => `users/${dentistId}/appointments`,
+  },
+  custom_schedule: {
+    get_by_dentist_id: (dentistId) => `dentist_custom_schedules/${dentistId}`,
   },
 };
 

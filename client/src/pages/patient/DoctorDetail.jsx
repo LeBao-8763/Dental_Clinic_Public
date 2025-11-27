@@ -6,11 +6,14 @@ import {
   User,
   GraduationCap,
   Briefcase,
+  X,
+  AlertCircle,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { endpoints, publicApi } from "../../configs/Apis";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
+import Loading from "../../components/common/Loading";
 
 const DoctorDetail = () => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -19,7 +22,10 @@ const DoctorDetail = () => {
   const [doctorData, setDoctorData] = useState(null);
   const [dentist, setDentist] = useState(null);
   const [selectedDaySchedule, setSelectedDaySchedule] = useState([]);
+  const [customSchedules, setCustomSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [appointments, setAppointments] = useState([]);
   const buttonRef = React.useRef(null);
 
   const location = useLocation();
@@ -56,6 +62,7 @@ const DoctorDetail = () => {
     return dayMap[dayIndex];
   };
 
+  //Lấy thông tin giói thiệu của bác sĩ
   const fetchDentistProfileById = async (id) => {
     setLoading(true);
     try {
@@ -63,7 +70,6 @@ const DoctorDetail = () => {
         endpoints.dentist_profile.get_profile(id)
       );
       setDoctorData(response.data);
-      console.log("Dentist Profile:", response.data);
     } catch (error) {
       console.error("Error fetching dentist data:", error);
       setLoading(false);
@@ -72,12 +78,12 @@ const DoctorDetail = () => {
     }
   };
 
+  //Lấy thông tin bác sĩ theo id
   const fetchDentistById = async (id) => {
     setLoading(true);
     try {
       const response = await publicApi.get(endpoints.get_user_info(id));
       setDentist(response.data);
-      console.log("Dentist data:", response.data);
     } catch (error) {
       console.log("Error fetching dentist data:", error);
       setLoading(false);
@@ -86,6 +92,7 @@ const DoctorDetail = () => {
     }
   };
 
+  //Lấy lịch làm việc của bác sĩ theo ngày trong tuần
   const fetchDentistSchedule = async (id, dayOfWeek) => {
     setLoading(true);
     try {
@@ -94,8 +101,40 @@ const DoctorDetail = () => {
           id
         )}?day_of_week=${dayOfWeek}`
       );
-      setSelectedDaySchedule(response.data);
-      console.log("Dentist Schedule for", dayOfWeek, ":", response.data);
+      // If there are custom schedules for the currently selected date, prefer them
+      const today = weekDays[selectedDate]?.fullDate;
+      if (today) {
+        const dateString = today.toISOString().split("T")[0];
+        const customForDate = customSchedules.filter(
+          (cs) => cs.custom_date === dateString
+        );
+
+        // If there's a custom day off for this date, clear schedule (will be shown as blocked)
+        if (customForDate.some((c) => c.is_day_off)) {
+          setSelectedDaySchedule([]);
+        } else if (customForDate.length > 0) {
+          // Map custom entries to slot objects compatible with schedule API
+          const mapped = customForDate
+            .filter((c) => !c.is_day_off && c.start_time && c.end_time)
+            .map((c, idx) => ({
+              id: `custom-${dateString}-${idx}`,
+              start_time: c.start_time,
+              end_time: c.end_time,
+              is_custom: true,
+            }));
+
+          if (mapped.length > 0) {
+            setSelectedDaySchedule(mapped);
+          } else {
+            // fallback to regular schedule if custom entries are empty
+            setSelectedDaySchedule(response.data);
+          }
+        } else {
+          setSelectedDaySchedule(response.data);
+        }
+      } else {
+        setSelectedDaySchedule(response.data);
+      }
     } catch (error) {
       console.log("Error fetching dentist schedule:", error);
       setSelectedDaySchedule([]);
@@ -104,13 +143,134 @@ const DoctorDetail = () => {
     }
   };
 
-  const createAppointment = async () => {
-    // FIX: Kiểm tra null thay vì falsy để cho phép giá trị 0
+  //Lấy các lịch hẹn của bác sĩ
+  const fetchDentistWorkingScheduleById = async (dentistId) => {
+    setLoading(true);
+    try {
+      const response = await publicApi.get(
+        endpoints.appointment.get_by_dentist_id(dentistId)
+      );
+      setAppointments(response.data);
+      console.log("Lịch làm việc bác sĩ theo id:", response.data);
+    } catch (err) {
+      console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomSchedule = async (dentistId) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.custom_schedule.get_by_dentist_id(dentistId)
+      );
+      console.log("Dữ liệu custom schedule", res.data);
+      setCustomSchedules(res.data || []);
+
+      // If a date is already selected, and the selected date has custom entries,
+      // override the displayed schedule accordingly.
+      const selectedDateObj = weekDays[selectedDate]?.fullDate;
+      if (selectedDateObj) {
+        const dateString = selectedDateObj.toISOString().split("T")[0];
+        const customForDate = (res.data || []).filter(
+          (cs) => cs.custom_date === dateString
+        );
+
+        if (customForDate.some((c) => c.is_day_off)) {
+          setSelectedDaySchedule([]);
+        } else if (customForDate.length > 0) {
+          const mapped = customForDate
+            .filter((c) => !c.is_day_off && c.start_time && c.end_time)
+            .map((c, idx) => ({
+              id: `custom-${dateString}-${idx}`,
+              start_time: c.start_time,
+              end_time: c.end_time,
+              is_custom: true,
+            }));
+
+          if (mapped.length > 0) setSelectedDaySchedule(mapped);
+        }
+      }
+    } catch (err) {
+      console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helpers for custom schedule
+  const getCustomForDate = (date) => {
+    if (!date) return [];
+    const dateString = date.toISOString().split("T")[0];
+    return customSchedules.filter((cs) => cs.custom_date === dateString);
+  };
+
+  const isCustomDayOff = (date) => {
+    const list = getCustomForDate(date);
+    return list.some((c) => c.is_day_off === true);
+  };
+
+  const isDisabledDate = (date) => {
+    return isDayFullyBooked(date) || isCustomDayOff(date);
+  };
+
+  const handleSelectDay = (index) => {
+    const item = weekDays[index];
+    const date = item?.fullDate;
+    if (!date) return;
+
+    // If custom day off, just set selected date and clear selection
+    if (isCustomDayOff(date)) {
+      setSelectedDate(index);
+      setSelectedTime(null);
+      setSelectedDaySchedule([]);
+      return;
+    }
+
+    // If custom slots exist for this date, use them
+    const customForDate = getCustomForDate(date).filter((c) => !c.is_day_off);
+    if (customForDate.length > 0) {
+      const dateString = date.toISOString().split("T")[0];
+      const mapped = customForDate
+        .filter((c) => c.start_time && c.end_time)
+        .map((c, idx) => ({
+          id: `custom-${dateString}-${idx}`,
+          start_time: c.start_time,
+          end_time: c.end_time,
+          is_custom: true,
+        }));
+
+      setSelectedDate(index);
+      setSelectedTime(null);
+      setSelectedDaySchedule(mapped);
+      return;
+    }
+
+    // Otherwise fetch regular weekly schedule
+    setSelectedDate(index);
+    setSelectedTime(null);
+    const dayEnum = mapDayToEnum(date.getDay());
+    fetchDentistSchedule(doctorId, dayEnum);
+  };
+
+  const handleBookingClick = () => {
     if (selectedDate === null || selectedTime === null) {
       toast.error("Vui lòng chọn ngày và giờ khám");
       return;
     }
 
+    // Kiểm tra xem ngày đã chọn có kín lịch không
+    const selectedDateObj = weekDays[selectedDate]?.fullDate;
+    if (isDisabledDate(selectedDateObj)) {
+      toast.error("Ngày này đã kín lịch. Vui lòng chọn ngày khác");
+      return;
+    }
+
+    setShowConfirmDialog(true);
+  };
+
+  const confirmAppointment = async () => {
     const slot = selectedDaySchedule.find((s) => s.id === selectedTime);
     if (!slot) {
       toast.error("Không tìm thấy khung giờ đã chọn");
@@ -122,23 +282,25 @@ const DoctorDetail = () => {
       .split("T")[0]; // YYYY-MM-DD
 
     setLoading(true);
-    console.log("Creating appointment with data:", {
-      dentist_id: doctorId,
-      patient_id: patient.id,
-      appointment_date: appointmentDate,
-      start_time: slot.start_time, // "HH:mm"
-      end_time: slot.end_time, // "HH:mm"
-    });
     try {
       await publicApi.post(endpoints.appointment.create, {
         dentist_id: doctorId,
         patient_id: patient.id,
         appointment_date: appointmentDate,
-        start_time: slot.start_time, // "HH:mm"
-        end_time: slot.end_time, // "HH:mm"
+        start_time: slot.start_time,
+        end_time: slot.end_time,
       });
 
       toast.success("Đặt lịch thành công!");
+      setShowConfirmDialog(false);
+      setSelectedTime(null);
+
+      // 1. Refresh appointments
+      await fetchDentistWorkingScheduleById(doctorId);
+
+      // 2. Refresh schedule cho ngày hiện tại
+      const dayEnum = mapDayToEnum(weekDays[selectedDate].fullDate.getDay());
+      await fetchDentistSchedule(doctorId, dayEnum);
     } catch (error) {
       console.log("Lỗi khi tạo lịch hẹn", error);
       toast.error("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
@@ -147,10 +309,43 @@ const DoctorDetail = () => {
     }
   };
 
+  const cancelAppointment = () => {
+    setShowConfirmDialog(false);
+  };
+
+  const getSelectedDateString = () => {
+    if (selectedDate !== null) {
+      return `${weekDays[selectedDate].day}, ${weekDays[selectedDate].date}`;
+    }
+    return "";
+  };
+
+  const getSelectedTimeString = () => {
+    if (selectedTime !== null) {
+      const slot = selectedDaySchedule.find((s) => s.id === selectedTime);
+      return slot
+        ? `${slot.start_time.slice(0, 5)} - ${slot.end_time.slice(0, 5)}`
+        : "";
+    }
+    return "";
+  };
+
+  // Kiểm tra ngày đã đủ 5 appointment chưa
+  const isDayFullyBooked = (date) => {
+    if (!date) return false;
+    const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD
+    const count = appointments.filter(
+      (apt) => apt.appointment_date === dateString
+    ).length;
+    return count >= 5; // Giới hạn 5 appointment/ngày
+  };
+
   useEffect(() => {
     if (doctorId) {
       fetchDentistProfileById(doctorId);
       fetchDentistById(doctorId);
+      fetchDentistWorkingScheduleById(doctorId);
+      fetchCustomSchedule(doctorId);
 
       // Fetch schedule for today by default
       const today = new Date();
@@ -158,6 +353,7 @@ const DoctorDetail = () => {
       fetchDentistSchedule(doctorId, todayEnum);
       setSelectedDate(0); // Select today by default
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctorId]);
 
   // Parse education data
@@ -185,6 +381,19 @@ const DoctorDetail = () => {
       .split("\n")
       .filter((line) => line.trim())
       .map((line) => line.trim());
+  };
+
+  // Check if a time slot is booked
+  const isTimeSlotBooked = (date, startTime, endTime) => {
+    const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    return appointments.some((apt) => {
+      return (
+        apt.appointment_date === dateString &&
+        apt.start_time === startTime &&
+        apt.end_time === endTime
+      );
+    });
   };
 
   // Generate week days dynamically (from today + 7 days)
@@ -269,27 +478,45 @@ const DoctorDetail = () => {
 
           {/* Week Days */}
           <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
-            {weekDays.map((item, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setSelectedDate(index);
-                  setSelectedTime(null);
-                  const dayEnum = mapDayToEnum(item.fullDate.getDay());
-                  fetchDentistSchedule(doctorId, dayEnum);
-                }}
-                className={`shrink-0 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 min-w-[130px] hover:-translate-y-1 hover:shadow-lg ${
-                  selectedDate === index
-                    ? "border-teal-500 bg-teal-50 shadow-md"
-                    : "border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50"
-                }`}
-              >
-                <span className="text-sm font-medium text-gray-700">
-                  {item.day},
-                </span>
-                <span className="text-sm text-gray-600">{item.date}</span>
-              </button>
-            ))}
+            {weekDays.map((item, index) => {
+              const disabled = isDisabledDate(item.fullDate);
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    if (!disabled) {
+                      handleSelectDay(index);
+                    } else {
+                      // still update selection if it's the current index so UI reflects blocked state
+                      setSelectedDate(index);
+                      setSelectedTime(null);
+                    }
+                  }}
+                  disabled={disabled}
+                  className={`shrink-0 flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 min-w-[130px] ${
+                    disabled
+                      ? "border-red-300 bg-red-50 cursor-not-allowed opacity-70"
+                      : selectedDate === index
+                      ? "border-teal-500 bg-teal-50 shadow-md hover:-translate-y-1"
+                      : "border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50 hover:-translate-y-1 hover:shadow-lg"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      {item.day},
+                    </span>
+                    <span className="text-sm text-gray-600">{item.date}</span>
+                  </div>
+                  {disabled && (
+                    <div className="flex items-center gap-1 text-red-600 text-xs font-semibold">
+                      <AlertCircle size={14} />
+                      <span>Đã kín lịch</span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Time Slots */}
@@ -303,33 +530,77 @@ const DoctorDetail = () => {
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto"></div>
               </div>
-            ) : selectedDaySchedule.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {selectedDaySchedule.map((slot) => {
-                  const timeLabel = `${slot.start_time.slice(
-                    0,
-                    5
-                  )} - ${slot.end_time.slice(0, 5)}`;
-                  return (
-                    <button
-                      key={slot.id}
-                      onClick={() => setSelectedTime(slot.id)}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        selectedTime === slot.id
-                          ? "border-teal-500 bg-teal-500 text-white shadow-md"
-                          : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50"
-                      }`}
-                    >
-                      <span className="text-sm font-medium">{timeLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="mx-auto mb-2 text-gray-400" size={32} />
-                <p>Không có lịch khám cho ngày này</p>
-              </div>
+              (() => {
+                const selectedDateObj = weekDays[selectedDate]?.fullDate;
+                if (isDisabledDate(selectedDateObj)) {
+                  return (
+                    <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
+                      <AlertCircle
+                        className="mx-auto mb-3 text-red-500"
+                        size={48}
+                      />
+                      <p className="text-lg font-semibold text-red-700 mb-2">
+                        Ngày này đã kín lịch
+                      </p>
+                      <p className="text-sm text-red-600">
+                        Vui lòng chọn ngày khác để đặt lịch khám
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (selectedDaySchedule.length > 0) {
+                  return (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {selectedDaySchedule.map((slot) => {
+                        const timeLabel = `${slot.start_time.slice(
+                          0,
+                          5
+                        )} - ${slot.end_time.slice(0, 5)}`;
+                        const isBooked = selectedDateObj
+                          ? isTimeSlotBooked(
+                              selectedDateObj,
+                              slot.start_time,
+                              slot.end_time
+                            )
+                          : false;
+
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={() =>
+                              !isBooked && setSelectedTime(slot.id)
+                            }
+                            disabled={isBooked}
+                            className={`p-3 rounded-lg border-2 transition-all ${
+                              isBooked
+                                ? "border-red-200 bg-red-100 text-gray-700 cursor-not-allowed"
+                                : selectedTime === slot.id
+                                ? "border-teal-500 bg-teal-500 text-white shadow-md"
+                                : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50"
+                            }`}
+                          >
+                            <span className="text-sm font-medium">
+                              {timeLabel}
+                            </span>
+                            {isBooked && (
+                              <span className="block text-xs mt-1">Đã đặt</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="mx-auto mb-2 text-gray-400" size={32} />
+                    <p>Không có lịch khám cho ngày này</p>
+                  </div>
+                );
+              })()
             )}
           </div>
         </div>
@@ -425,10 +696,17 @@ const DoctorDetail = () => {
         {/* Booking Button */}
         <div ref={buttonRef} className="mt-6">
           <button
-            onClick={createAppointment}
-            className="w-full bg-[#009688] text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-[#00796B] transition-all"
+            onClick={handleBookingClick}
+            disabled={isDisabledDate(weekDays[selectedDate]?.fullDate)}
+            className={`w-full font-semibold py-3 px-6 rounded-lg shadow-md transition-all ${
+              isDisabledDate(weekDays[selectedDate]?.fullDate)
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-[#009688] text-white hover:bg-[#00796B]"
+            }`}
           >
-            Đặt khám ngay
+            {isDisabledDate(weekDays[selectedDate]?.fullDate)
+              ? "Ngày này đã kín lịch"
+              : "Đặt khám ngay"}
           </button>
         </div>
 
@@ -437,15 +715,108 @@ const DoctorDetail = () => {
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-linear-to-t from-white via-white to-transparent z-50">
             <div className="max-w-6xl mx-auto">
               <button
-                onClick={createAppointment}
-                className="w-full bg-[#009688] text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:bg-[#00796B] transition-all"
+                onClick={handleBookingClick}
+                disabled={isDisabledDate(weekDays[selectedDate]?.fullDate)}
+                className={`w-full font-semibold py-3 px-6 rounded-lg shadow-lg transition-all ${
+                  isDisabledDate(weekDays[selectedDate]?.fullDate)
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-[#009688] text-white hover:bg-[#00796B]"
+                }`}
               >
-                Đặt khám ngay
+                {isDisabledDate(weekDays[selectedDate]?.fullDate)
+                  ? "Ngày này đã kín lịch"
+                  : "Đặt khám ngay"}
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">
+            {/* Close button */}
+            <button
+              onClick={cancelAppointment}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center">
+                <Calendar className="text-teal-600" size={32} />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
+              Xác nhận đặt lịch
+            </h3>
+
+            {/* Content */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-gray-700 text-center mb-3">
+                Bạn có chắc chắn muốn đặt lịch khám vào:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 text-gray-800">
+                  <Calendar size={18} className="text-teal-600" />
+                  <span className="font-semibold">
+                    {getSelectedDateString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-gray-800">
+                  <Clock size={18} className="text-teal-600" />
+                  <span className="font-semibold">
+                    {getSelectedTimeString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={cancelAppointment}
+                disabled={loading}
+                className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Không
+              </button>
+              <button
+                onClick={confirmAppointment}
+                disabled={loading}
+                className="flex-1 bg-[#009688] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#00796B] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  "Có"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes scale-in {
+          from {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 };

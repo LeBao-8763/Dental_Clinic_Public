@@ -1,4 +1,6 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { useEffect } from "react";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import DentistHome from "./pages/dentist/DentistHome";
@@ -12,6 +14,28 @@ import WorkingAppointment from "./pages/dentist/WorkingAppointment";
 import { ToastContainer } from "react-toastify";
 
 function App() {
+  const user = useSelector((state) => state.auth.user);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "RoleEnum.ROLE_DENTIST") {
+        if (!location.pathname.startsWith("/dentist")) {
+          navigate("/dentist");
+        }
+      } else {
+        if (location.pathname.startsWith("/dentist")) {
+          navigate("/");
+        }
+      }
+    }
+    // Optional: If not logged in, redirect from protected routes to login
+    // else if (location.pathname !== "/login" && !["/", "/patient/doctor-booking", "/patient/appointment", "/patient/doctor-detail"].includes(location.pathname)) {
+    //   navigate("/login");
+    // }
+  }, [user, location.pathname, navigate]);
+
   return (
     <>
       <ToastContainer />
@@ -27,7 +51,7 @@ function App() {
         </Route>
 
         <Route element={<DentistLayout />}>
-          <Route path="/detist" element={<DentistHome />} />
+          <Route path="/dentist" element={<DentistHome />} />
           <Route path="/dentist/schedule" element={<ScheduleArrange />} />
           <Route
             path="/dentist/working-appointment"

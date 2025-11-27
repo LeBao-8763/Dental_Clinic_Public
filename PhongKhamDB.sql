@@ -99,8 +99,7 @@ CREATE TABLE dentist_custom_schedule (
     start_time TIME NULL,
     end_time TIME NULL,
     note VARCHAR(255),
-    FOREIGN KEY (dentist_id) REFERENCES user(id),
-    UNIQUE (dentist_id, custom_date)
+    FOREIGN KEY (dentist_id) REFERENCES user(id)
 );
 
 -- Bảng lịch hẹn (khi bệnh nhân đặt slot cụ thể)

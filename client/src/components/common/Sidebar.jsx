@@ -1,19 +1,16 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import {
-  Menu,
-  X,
-  Home,
-  User,
-  Settings,
-  FileText,
-  Mail,
-  Bell,
-  Calendar,
-  Briefcase,
-} from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { User, X, Menu, Calendar, Briefcase } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../../store/slices/authSlice";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+  const [showLogout, setShowLogout] = useState(false);
+
+  const user = useSelector((state) => state.auth.user);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const menuItems = [
     { icon: Calendar, label: "Sắp xếp lịch", path: "/dentist/schedule" },
     {
@@ -23,8 +20,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     },
   ];
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
+  const toggleSidebar = () => setIsOpen(!isOpen);
+
+  const handleAvatarClick = () => setShowLogout(!showLogout);
+
+  const handleLogout = async () => {
+    try {
+      dispatch(logout());
+      navigate("/");
+    } catch (err) {
+      console.log("Logout error:", err);
+    }
   };
 
   return (
@@ -37,7 +43,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Overlay - chỉ hiện trên mobile */}
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
@@ -45,7 +50,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-full bg-linear-to-b from-gray-900 to-gray-800 text-white z-40 transition-all duration-300 ease-in-out shadow-2xl ${
           isOpen ? "w-64" : "w-20"
@@ -56,7 +60,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div className="p-6 border-b border-gray-700 flex items-center justify-between">
             {isOpen && (
               <Link
-                to="/detist"
+                to="/dentist"
                 className="text-2xl font-bold bg-linear-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
               >
                 MyApp
@@ -83,9 +87,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         isOpen ? "gap-3 px-4 py-3" : "justify-center py-3"
                       }`}
                       onClick={() => {
-                        if (window.innerWidth < 1024) {
-                          setIsOpen(false);
-                        }
+                        if (window.innerWidth < 1024) setIsOpen(false);
                       }}
                       title={!isOpen ? item.label : ""}
                     >
@@ -104,22 +106,43 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-gray-700">
+          <div className="p-4 border-t border-gray-700 relative">
             <div
-              className={`flex items-center rounded-lg bg-gray-700 transition-all ${
+              onClick={handleAvatarClick}
+              className={`flex items-center rounded-lg bg-gray-700 transition-all cursor-pointer ${
                 isOpen ? "gap-3 p-3" : "justify-center p-3"
               }`}
             >
-              <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center shrink-0">
-                <User size={20} />
+              <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center shrink-0 overflow-hidden">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={`${user.firstname} avatar`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User size={20} />
+                )}
               </div>
-              {isOpen && (
+              {isOpen && user && (
                 <div className="flex-1">
-                  <p className="font-semibold text-sm">Nha sĩ</p>
-                  <p className="text-xs text-gray-400">dentist@example.com</p>
+                  <p className="font-semibold text-sm">{`${user.firstname} ${user.lastname}`}</p>
+                  <p className="text-xs text-gray-400">{user.username}</p>
                 </div>
               )}
             </div>
+
+            {/* Logout Dropdown */}
+            {showLogout && (
+              <div className="absolute bottom-16 left-0 w-full bg-gray-700 rounded-md shadow-lg py-2 z-50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-600 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>

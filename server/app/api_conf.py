@@ -25,6 +25,7 @@ dentist_shedule_ns=api.namespace('dentist_schedules', description='Các thao tá
 service_ns=api.namespace('services', description='Các thao tác liên quan đến dịch vụ')
 treatment_record_ns=api.namespace('treatment_records', description='Các thao tác liên quan đến hồ sơ điều trị')
 dentist_profile_ns=api.namespace('dentist_profiles', description='Các thao tác liên quan đến hồ sơ bác sĩ')
+dentist_custom_shedule_ns=api.namespace('dentist_custom_schedules', description='Các thao tác liên quan đến lịch làm việc tùy chỉnh của bác sĩ')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -82,6 +83,21 @@ clinic_hours_model = api.model('ClinicHours', {
     'slot_duration_minutes': fields.Integer(description='Thời lượng mỗi slot (phút)')
 })
 
+dentist_schedule_input = api.model('DentistScheduleInput', {
+    'start_time': fields.String(required=True, description='Giờ bắt đầu HH:MM:SS'),
+    'end_time': fields.String(required=True, description='Giờ kết thúc HH:MM:SS')
+})
+
+multiple_schedule_model = api.model('MultipleDentistSchedules', {
+    'dentist_id': fields.Integer(required=True, description='ID bác sĩ'),
+    'day_of_week': fields.String(required=True, description='Ngày trong tuần'),
+    'schedules': fields.List(
+        fields.Nested(dentist_schedule_input),
+        required=True,
+        description='Danh sách lịch làm việc'
+    )
+})
+
 dentist_shedule_model = api.model('DentistSchedule', {
     'id': fields.Integer(readOnly=True, description='ID lịch làm việc của bác sĩ'),
     'dentist_id': fields.Integer(description='ID bác sĩ'),
@@ -89,6 +105,7 @@ dentist_shedule_model = api.model('DentistSchedule', {
     'start_time': fields.String(description='Giờ bắt đầu (HH:MM:SS)'),
     'end_time': fields.String(description='Giờ kết thúc (HH:MM:SS)')
 })
+
 
 appointment_model = api.model('Appointment', {
     'id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
@@ -162,6 +179,34 @@ dentist_profile_model = api.model('DentistProfile', {
     'experience': fields.String(description='Số năm kinh nghiệm')
 })
 
+#Model cho lịch làm việc đột xuất/nghỉ
+dentist_custom_schedule_input_model=api.model('DentistCustomSchedule',{
+    'start_time': fields.String(required=True, description='Giờ bắt đầu HH:MM:SS'),
+    'end_time': fields.String(required=True, description='Giờ kết thúc HH:MM:SS')
+})
+
+multiple_dentist_custom_schedule_model = api.model('MultipleDentistCustomSchedule', {
+    'dentist_id': fields.Integer(description='ID bác sĩ'),
+    'custom_date': fields.Date(description='Ngày tùy chỉnh'),
+    'is_day_off': fields.Boolean(description='Có phải ngày nghỉ không'),
+    'note': fields.String(description='Ghi chú'),
+    'schedules':fields.List(
+        fields.Nested(dentist_custom_schedule_input_model),
+        required=False,
+        description='Danh sách thời gian'
+    )
+})
+
+dentist_custom_schedule_model=api.model('DentistCustomSchedule',{
+    'dentist_id': fields.Integer(description='ID bác sĩ'),
+    'custom_date': fields.Date(description='Ngày tùy chỉnh'),
+    'is_day_off': fields.Boolean(description='Có phải ngày nghỉ không'),
+    'start_time': fields.String(description='Giờ bắt đầu (HH:MM:SS)'),
+    'end_time': fields.String(description='Giờ kết thúc (HH:MM:SS)'),
+    'note': fields.String(description='Ghi chú'),
+})
+
+
 # ------------------------------
 # --- Định nghĩa Parsers cho Swagger UI ---
 # Parsers được sử dụng để định nghĩa các tham số đầu vào (query params, form data)
@@ -221,3 +266,10 @@ dentist_profile_parser.add_argument('introduction', type=str, required=False, he
 dentist_profile_parser.add_argument('education', type=str, required=False, help='Bằng cấp')
 dentist_profile_parser.add_argument('experience', type=str, required=False, help='Kinh nghiệm làm việc')
 
+''' DENTIST CUSTOM SCHEDULE '''
+dentist_custom_schedule_parser = reqparse.RequestParser()
+dentist_custom_schedule_parser.add_argument('dentist_id', type=int, required=True, help='ID bác sĩ')
+dentist_custom_schedule_parser.add_argument('custom_date', type=str, required=True, help='Ngày tùy chỉnh (YYYY-MM-DD)')
+dentist_custom_schedule_parser.add_argument('start_time', type=str, required=False, help='Giờ bắt đầu (HH:MM:SS)')
+dentist_custom_schedule_parser.add_argument('end_time', type=str, required=False, help='Giờ kết thúc (HH:MM:SS)')
+dentist_custom_schedule_parser.add_argument('note', type=str, required=False, help='Ghi chú')

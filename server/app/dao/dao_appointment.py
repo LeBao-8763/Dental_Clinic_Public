@@ -17,7 +17,7 @@ def create_appointment(patient_id, dentist_id, appointment_date, start_time, end
     if db.session.query(Appointment).filter_by(
         dentist_id=dentist_id,
         appointment_date=appointment_date
-    ).count() > 5:
+    ).count() >= 5:
         raise ValueError("Bác sĩ đã tối đa lịch hẹn vào ngày hôm nay")
 
     # Kiểm tra trùng lịch
@@ -47,3 +47,7 @@ def create_appointment(patient_id, dentist_id, appointment_date, start_time, end
     db.session.commit()
 
     return appointment
+
+def get_appointments_by_dentist(dentist_id):
+    appointments = Appointment.query.filter_by(dentist_id=dentist_id).all()
+    return appointments

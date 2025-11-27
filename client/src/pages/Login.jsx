@@ -50,12 +50,12 @@ const Login = () => {
           dispatch(
             loginSuccess({
               user: userRes.data,
-              token: res.data.token,
+              accessToken: res.data.token,
             })
           );
         }
         if (userRes.data.role === "RoleEnum.ROLE_DENTIST") {
-          navigate("/detist");
+          navigate("/dentist");
         } else {
           navigate("/");
         }
