@@ -41,3 +41,30 @@ class Dentist_Custom_Schedule_By_Id(Resource):
         "Lấy danh sách lịch làm việc custome của nha sĩ theo ID "
         custom_schedules=dao_dentist_custom_schedule.get_custom_schedule_by_id(dentist_id)
         return custom_schedules
+
+@dentist_custom_shedule_ns.route('/<int:dentist_id>/<string:custom_date>')
+class Dentist_Custom_Schedule_Delete(Resource):
+    @dentist_custom_shedule_ns.doc('delete_custom_schedule_by_date')
+    def delete(self, dentist_id, custom_date):
+        """
+        Xoá custom schedule của nha sĩ theo ngày
+        custom_date format: YYYY-MM-DD
+        """
+
+        try:
+            deleted_count = dao_dentist_custom_schedule.delete_custom_schedule_by_date(
+                dentist_id=dentist_id,
+                custom_date=custom_date
+            )
+
+            return {
+                "message": "Xoá lịch custom thành công",
+                "deleted": deleted_count,
+                "status": "nothing_to_delete" if deleted_count == 0 else "deleted"
+            }, 200
+
+        except ValueError as e:
+            return {"error": str(e)}, 400
+
+        except Exception as e:
+            return {"error": "Lỗi server: " + str(e)}, 500

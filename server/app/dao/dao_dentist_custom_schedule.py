@@ -70,3 +70,16 @@ def create_custom_schedule(dentist_id, custom_date, note=None, schedules_data=No
 def get_custom_schedule_by_id(dentist_id):
     custom_schedules=DentistCustomSchedule.query.filter_by(dentist_id=dentist_id).all()
     return custom_schedules
+
+def delete_custom_schedule_by_date(dentist_id,custom_date):
+    if User.query.get(dentist_id) is None:
+            raise ValueError("Bác sĩ với ID đã cho không tồn tại")
+    
+    deleted_count = DentistCustomSchedule.query.filter_by(
+        dentist_id=dentist_id,
+        custom_date=custom_date
+    ).delete()
+    
+    db.session.commit()
+    return deleted_count
+

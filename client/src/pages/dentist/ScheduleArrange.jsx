@@ -26,12 +26,15 @@ const ScheduleArrange = () => {
   const [showDayOffDialog, setShowDayOffDialog] = useState(false);
   const [dayOffReason, setDayOffReason] = useState("");
   const [dayOffLoading, setDayOffLoading] = useState(false);
+  const [showRemoveDayOffDialog, setShowRemoveDayOffDialog] = useState(false);
+  const [removeDayOffLoading, setRemoveDayOffLoading] = useState(false);
 
   const user = useSelector((state) => state.auth.user);
 
   const [loading, setLoading] = useState(false);
   const [clinicHoursData, setClinicHoursData] = useState([]);
   const [dentistScheduleData, setDentistScheduleData] = useState([]);
+  const [customSchedules, setCustomSchedules] = useState([]);
 
   // Calendar current month state (used for the visual calendar)
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -85,6 +88,7 @@ const ScheduleArrange = () => {
       );
 
       console.log("Dữ liệu custom schedule", res.data);
+      setCustomSchedules(res.data || []);
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu giờ custom", err);
     } finally {
@@ -288,7 +292,7 @@ const ScheduleArrange = () => {
     return `${y}-${m}-${d}`;
   };
 
-  const minDateString = useMemo(() => getMinDate(), [clinicHoursData]);
+  const minDateString = useMemo(() => getMinDate(), []);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -325,14 +329,46 @@ const ScheduleArrange = () => {
         setTempSelectedSlots({ [dayId]: mergedSlots });
       } else {
         // dayId dạng "date-YYYY-MM-DD"
-        const currentSlots = selectedSlots[dayId] || [];
-        setTempSelectedSlots({ [dayId]: [...new Set(currentSlots)] });
+        // If we already have tempSelectedSlots for this date (e.g. from calendar pick), keep them.
+        const existingTemp = tempSelectedSlots[dayId];
+        if (existingTemp && existingTemp.length > 0) {
+          setTempSelectedSlots({ [dayId]: [...new Set(existingTemp)] });
+        } else {
+          // Prefer saved selectedSlots; if none, prefer custom slots; otherwise fallback to weekly schedule
+          const currentSlots = selectedSlots[dayId] || [];
+          if (currentSlots && currentSlots.length > 0) {
+            setTempSelectedSlots({ [dayId]: [...new Set(currentSlots)] });
+          } else {
+            const iso = dayId.replace("date-", "");
+            const dateObj = new Date(iso);
+            const customIndices = getCustomSlotIndices(dateObj);
+            if (customIndices && customIndices.length > 0) {
+              setTempSelectedSlots({ [dayId]: [...new Set(customIndices)] });
+            } else {
+              const dayEnum = dayEnumForJSDate(dateObj);
+              const weeklyIndices = dayEnum
+                ? getSlotIndicesForSchedule(dayEnum)
+                : [];
+              setTempSelectedSlots({ [dayId]: [...new Set(weeklyIndices)] });
+            }
+          }
+        }
       }
     }
   };
 
   const toggleSlot = (dayId, slotIndex) => {
     if (!timeSlots || timeSlots.length === 0) return;
+
+    // Prevent toggling slots for a day-off custom date
+    if (typeof dayId === "string" && dayId.startsWith("date-")) {
+      const iso = dayId.replace("date-", "");
+      const dateObj = new Date(iso);
+      if (isCustomDayOff(dateObj)) {
+        toast.info("Ngày này đã được đánh dấu là nghỉ. Không thể chỉnh giờ.");
+        return;
+      }
+    }
 
     setTempSelectedSlots((prev) => {
       const daySlots = prev[dayId] || [];
@@ -356,7 +392,39 @@ const ScheduleArrange = () => {
       toast.error("Vui lòng chọn ngày trước khi xin nghỉ");
       return;
     }
-    setShowDayOffDialog(true);
+
+    // If this date is already a day-off, show remove dialog instead
+    const dateObj = new Date(selectedDate);
+    if (isCustomDayOff(dateObj)) {
+      setShowRemoveDayOffDialog(true);
+    } else {
+      setShowDayOffDialog(true);
+    }
+  };
+
+  const resetToWeeklyForSelectedDate = async () => {
+    if (!selectedDate) return;
+    try {
+      // Delete custom schedule for this date
+      await publicApi.delete(
+        endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
+      );
+
+      // Restore weekly schedule slots to tempSelectedSlots
+      const dateObj = new Date(selectedDate);
+      const dayEnum = dayEnumForJSDate(dateObj);
+      const weeklyIndices = dayEnum ? getSlotIndicesForSchedule(dayEnum) : [];
+      setTempSelectedSlots({
+        [`date-${selectedDate}`]: [...new Set(weeklyIndices)],
+      });
+
+      // Refresh custom schedules
+      await fetchCustomSchedule(user.id);
+      toast.info("Quay lại lịch cố định");
+    } catch (err) {
+      console.error("Lỗi khi quay lại lịch cố định:", err);
+      toast.error("Quay lại lịch cố định thất bại. Thử lại sau.");
+    }
   };
 
   const cancelDayOff = () => {
@@ -367,12 +435,18 @@ const ScheduleArrange = () => {
   const confirmDayOff = async () => {
     setDayOffLoading(true);
     try {
-      // call backend to create custom schedule day off
+      // First, delete any existing custom schedule for this date (including time-based ones)
+      await publicApi.delete(
+        endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
+      );
+
+      // Then create new day-off custom schedule
       await publicApi.post(endpoints.custom_schedule.create, {
         dentist_id: user.id,
         custom_date: selectedDate,
         is_day_off: true,
-        reason: dayOffReason,
+        note: dayOffReason,
+        schedules: [],
       });
 
       toast.success("Xin nghỉ thành công cho ngày đã chọn");
@@ -380,11 +454,75 @@ const ScheduleArrange = () => {
       setDayOffReason("");
       // refresh schedule
       await fetchDentistScheduleById(user.id);
+      await fetchCustomSchedule(user.id);
     } catch (err) {
       console.error("Lỗi khi xin nghỉ:", err);
       toast.error("Xin nghỉ thất bại. Thử lại sau.");
     } finally {
       setDayOffLoading(false);
+    }
+  };
+
+  const cancelRemoveDayOff = () => {
+    setShowRemoveDayOffDialog(false);
+  };
+
+  const confirmRemoveDayOff = async () => {
+    setRemoveDayOffLoading(true);
+    try {
+      // Delete the day-off custom schedule
+      await publicApi.delete(
+        endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
+      );
+
+      toast.success("Đã bỏ xin nghỉ cho ngày này");
+      setShowRemoveDayOffDialog(false);
+      // Refresh custom schedules
+      await fetchCustomSchedule(user.id);
+    } catch (err) {
+      console.error("Lỗi khi bỏ xin nghỉ:", err);
+      toast.error("Bỏ xin nghỉ thất bại. Thử lại sau.");
+    } finally {
+      setRemoveDayOffLoading(false);
+    }
+  };
+
+  // Save custom schedule (create or update)
+  const saveCustomSchedule = async (dateStr, slotIndices) => {
+    try {
+      if (slotIndices.length === 0) {
+        // No slots selected → delete custom schedule for this date if it exists
+        await publicApi.delete(
+          endpoints.custom_schedule.delete_by_date(user.id, dateStr)
+        );
+        toast.info("Đã xóa lịch custom cho ngày này");
+      } else {
+        // Convert slot indices to time ranges
+        const schedules = convertSlotsToTimeRanges(slotIndices);
+
+        // First, delete any existing custom schedule for this date
+        await publicApi.delete(
+          endpoints.custom_schedule.delete_by_date(user.id, dateStr)
+        );
+
+        // Then create new custom schedule with the selected slots
+        await publicApi.post(endpoints.custom_schedule.create, {
+          dentist_id: user.id,
+          custom_date: dateStr,
+          is_day_off: false,
+          note: null,
+          schedules: schedules,
+        });
+
+        toast.success("Lịch custom đã được lưu thành công");
+      }
+
+      // Refresh custom schedules
+      await fetchCustomSchedule(user.id);
+    } catch (err) {
+      console.error("Lỗi khi lưu lịch custom:", err);
+      toast.error("Lưu lịch custom thất bại. Thử lại sau.");
+      throw err;
     }
   };
 
@@ -409,6 +547,63 @@ const ScheduleArrange = () => {
     const m = String(dateObj.getMonth() + 1).padStart(2, "0");
     const d = String(dateObj.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
+  };
+
+  const selectedDateObj = selectedDate ? new Date(selectedDate) : null;
+
+  // Custom schedule helpers
+  const getCustomForDate = (dateObj) => {
+    if (!dateObj) return [];
+    const iso = getISODate(dateObj);
+    return (customSchedules || []).filter((c) => c.custom_date === iso);
+  };
+
+  const isCustomDayOff = (dateObj) => {
+    const list = getCustomForDate(dateObj);
+    return list.some((c) => c.is_day_off === true);
+  };
+
+  const getCustomSlotIndices = (dateObj) => {
+    if (!dateObj || !timeSlots || timeSlots.length === 0) return [];
+    const list = getCustomForDate(dateObj).filter(
+      (c) => !c.is_day_off && c.start_time && c.end_time
+    );
+    if (!list || list.length === 0) return [];
+    const indices = [];
+    list.forEach((entry) => {
+      const start = entry.start_time.slice(0, 5);
+      const end = entry.end_time.slice(0, 5);
+      timeSlots.forEach((slot, idx) => {
+        const [slotStart, slotEnd] = slot.split("-");
+        if (slotStart >= start && slotEnd <= end) {
+          if (!indices.includes(idx)) indices.push(idx);
+        }
+      });
+    });
+    return indices.sort((a, b) => a - b);
+  };
+
+  // Helper to get circle style/class for calendar day
+  const getCalendarDayStyle = (dateObj) => {
+    const customList = getCustomForDate(dateObj) || [];
+    const customDayOff = customList.some((c) => c.is_day_off === true);
+    const hasCustomSlots = customList.some(
+      (c) => !c.is_day_off && c.start_time && c.end_time
+    );
+
+    if (customDayOff) {
+      return {
+        style: { backgroundColor: "#FEE2E2", color: "#9B1C1C" },
+        label: "custom-dayoff",
+      };
+    }
+    if (hasCustomSlots) {
+      return {
+        style: { backgroundColor: "#FFF59D", color: "#5A3E00" },
+        label: "custom-with-time",
+      };
+    }
+    return { style: null, label: "normal" };
   };
 
   const daysOfWeekShort = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -443,12 +638,7 @@ const ScheduleArrange = () => {
   // When user clicks a date on the calendar
   const handlePickDateFromCalendar = (dateObj) => {
     const iso = getISODate(dateObj);
-    // enforce min date
-    if (iso < minDateString) {
-      toast.error("Bạn phải chọn ngày cách hiện tại ít nhất 3 ngày");
-      return;
-    }
-    // enforce clinic open days
+    // enforce clinic open days only
     if (!isClinicOpenOnDate(dateObj)) {
       toast.error("Phòng khám đóng vào ngày này");
       return;
@@ -458,9 +648,23 @@ const ScheduleArrange = () => {
     // open expanded editor for that date
     setExpandedDay(`date-${iso}`);
 
-    // Prefill tempSelectedSlots for this date from selectedSlots if present
-    const current = selectedSlots[`date-${iso}`] || [];
-    setTempSelectedSlots({ [`date-${iso}`]: [...new Set(current)] });
+    // If this date is explicitly a day-off via custom schedule, clear prefilled slots and open editor in day-off mode
+    if (isCustomDayOff(dateObj)) {
+      setTempSelectedSlots({ [`date-${iso}`]: [] });
+      return;
+    }
+
+    // Prefill tempSelectedSlots: use custom slots if present, otherwise prefill weekly slots merged with any saved selections
+    const customIndices = getCustomSlotIndices(dateObj);
+    if (customIndices && customIndices.length > 0) {
+      setTempSelectedSlots({ [`date-${iso}`]: [...new Set(customIndices)] });
+    } else {
+      const dayEnum = dayEnumForJSDate(dateObj);
+      const weeklyIndices = dayEnum ? getSlotIndicesForSchedule(dayEnum) : [];
+      const current = selectedSlots[`date-${iso}`] || [];
+      const merged = [...new Set([...(current || []), ...weeklyIndices])];
+      setTempSelectedSlots({ [`date-${iso}`]: merged });
+    }
   };
 
   // ---- End calendar helpers ----
@@ -742,11 +946,13 @@ const ScheduleArrange = () => {
                     const iso = getISODate(d);
                     const isCurrentMonth =
                       d.getMonth() === calendarMonth.getMonth();
-                    const isToday =
-                      iso === new Date().toISOString().split("T")[0];
+                    const isToday = iso === getISODate(new Date());
                     const isSelected = iso === selectedDate;
                     const disabled =
                       iso < minDateString || !isClinicOpenOnDate(d);
+
+                    // NEW: custom checks & styles
+                    const calStyle = getCalendarDayStyle(d);
 
                     return (
                       <button
@@ -766,12 +972,17 @@ const ScheduleArrange = () => {
                       >
                         <div
                           className={`w-9 h-9 rounded-full flex items-center justify-center ${
-                            isSelected
-                              ? "bg-[#009688] text-white"
-                              : isToday
+                            isSelected ? "bg-[#009688] text-white" : ""
+                          } ${
+                            isToday && !isSelected
                               ? "ring-1 ring-[#009688]/40"
                               : ""
                           }`}
+                          style={
+                            isSelected
+                              ? { backgroundColor: "#009688", color: "#fff" }
+                              : calStyle.style || {}
+                          }
                         >
                           <span
                             className={`${
@@ -786,7 +997,7 @@ const ScheduleArrange = () => {
                   })}
                 </div>
 
-                <div className="mt-3 text-xs flex items-center gap-3">
+                <div className="mt-3 text-xs flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-[#009688] rounded" /> Đã chọn
                   </div>
@@ -795,8 +1006,15 @@ const ScheduleArrange = () => {
                     tháng
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-200 rounded" /> Phòng khám
-                    nghỉ
+                    <div className="w-3 h-3 bg-red-200 rounded" /> Ngày nghỉ
+                    (custom day off)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3"
+                      style={{ backgroundColor: "#FFF59D", borderRadius: 6 }}
+                    />{" "}
+                    Ngày custom có giờ (vàng)
                   </div>
                 </div>
               </div>
@@ -873,9 +1091,49 @@ const ScheduleArrange = () => {
                   </p>
                   {/* Show weekly/default slots for the weekday of selectedDate as subtle highlights */}
                   {(() => {
-                    const dayEnum = selectedDate
-                      ? dayEnumForJSDate(new Date(selectedDate))
+                    const dateObj = selectedDate
+                      ? new Date(selectedDate)
                       : null;
+                    const customIndices = dateObj
+                      ? getCustomSlotIndices(dateObj)
+                      : [];
+
+                    if (customIndices && customIndices.length > 0) {
+                      const customSlots = customIndices
+                        .map((i) => timeSlots[i])
+                        .filter(Boolean)
+                        .slice(0, 5);
+                      return (
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          {customSlots.map((slot, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 rounded text-sm"
+                              style={{
+                                backgroundColor: "#FFF59D",
+                                color: "#5A3E00",
+                              }}
+                            >
+                              {slot}
+                            </span>
+                          ))}
+                          {customIndices.length > 5 && (
+                            <span
+                              className="px-3 py-1 rounded text-sm"
+                              style={{
+                                backgroundColor: "#FFF59D",
+                                color: "#5A3E00",
+                              }}
+                            >
+                              +{customIndices.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // fallback to weekly slots when no custom exists
+                    const dayEnum = dateObj ? dayEnumForJSDate(dateObj) : null;
                     const weeklyIndices = dayEnum
                       ? getSlotIndicesForSchedule(dayEnum)
                       : [];
@@ -942,30 +1200,69 @@ const ScheduleArrange = () => {
                           type="checkbox"
                           onChange={openDayOffDialog}
                           className="form-checkbox h-4 w-4"
+                          checked={
+                            selectedDateObj
+                              ? isCustomDayOff(selectedDateObj)
+                              : false
+                          }
                         />
                         <span className="text-sm">Xin nghỉ hôm đó</span>
                       </label>
+                      <button
+                        onClick={resetToWeeklyForSelectedDate}
+                        className="text-sm text-[#009688] hover:underline flex items-center gap-1"
+                        style={{ marginLeft: 8 }}
+                        title="Quay lại lịch cố định"
+                      >
+                        <span aria-hidden>↺</span>
+                        <span>Quay lại lịch cố định</span>
+                      </button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-6 gap-2 mb-4">
                     {(() => {
-                      const dayEnum = selectedDate
-                        ? dayEnumForJSDate(new Date(selectedDate))
+                      const dateObj = selectedDate
+                        ? new Date(selectedDate)
+                        : null;
+                      const customIndices = dateObj
+                        ? getCustomSlotIndices(dateObj)
+                        : [];
+                      const dayEnum = dateObj
+                        ? dayEnumForJSDate(dateObj)
                         : null;
                       const existingSlotIndices = dayEnum
                         ? getSlotIndicesForSchedule(dayEnum)
                         : [];
 
+                      const hasCustom =
+                        customIndices && customIndices.length > 0;
+                      const isDayOff = dateObj
+                        ? isCustomDayOff(dateObj)
+                        : false;
+                      const tempForDate =
+                        tempSelectedSlots[`date-${selectedDate}`];
+                      const isEditingWithTemp =
+                        typeof tempForDate !== "undefined";
+
                       return timeSlots.map((slot, idx) => {
-                        const isSelected = (
-                          tempSelectedSlots[`date-${selectedDate}`] || []
-                        ).includes(idx);
+                        const tempSelected = tempForDate || [];
+                        const isSelected = tempSelected.includes(idx);
+
+                        const isCustom =
+                          hasCustom && customIndices.includes(idx);
+
+                        // If editor is open and tempSelectedSlots exists, respect user selections only.
+                        // Do NOT fallback to weekly highlight for slots the user removed.
                         const isFromSchedule =
+                          !hasCustom &&
+                          !isEditingWithTemp &&
                           existingSlotIndices.includes(idx);
 
                         const btnClass = isSelected
                           ? "text-white"
+                          : isCustom
+                          ? "text-[#5A3E00]"
                           : isFromSchedule
                           ? "text-[#00695C]"
                           : "bg-white text-gray-700 border-gray-300";
@@ -974,6 +1271,12 @@ const ScheduleArrange = () => {
                           ? {
                               backgroundColor: "#009688",
                               borderColor: "#00796B",
+                            }
+                          : isCustom
+                          ? {
+                              backgroundColor: "#FFF59D",
+                              borderColor: "#FFF59D",
+                              color: "#5A3E00",
                             }
                           : isFromSchedule
                           ? {
@@ -989,8 +1292,11 @@ const ScheduleArrange = () => {
                             onClick={() =>
                               toggleSlot(`date-${selectedDate}`, idx)
                             }
-                            className={`py-2 px-3 rounded text-sm border transition-colors ${btnClass}`}
+                            className={`py-2 px-3 rounded text-sm border transition-colors ${btnClass} ${
+                              isDayOff ? "opacity-40 cursor-not-allowed" : ""
+                            }`}
                             style={btnStyle}
+                            disabled={isDayOff}
                           >
                             {slot}
                           </button>
@@ -1002,16 +1308,23 @@ const ScheduleArrange = () => {
                   <button
                     className="w-full text-white font-medium py-3 rounded-lg transition-opacity hover:opacity-90"
                     style={{ backgroundColor: "#009688" }}
-                    onClick={() => {
-                      // Xử lý lưu selectedSlots cho date cụ thể (nếu cần)
-                      setSelectedSlots((prev) => ({
-                        ...prev,
-                        [`date-${selectedDate}`]:
-                          tempSelectedSlots[`date-${selectedDate}`] || [],
-                      }));
-                      setExpandedDay(null);
-                      setTempSelectedSlots({});
-                      toast.success("Lưu lịch ngày đã chọn thành công");
+                    onClick={async () => {
+                      try {
+                        const slotIndices =
+                          tempSelectedSlots[`date-${selectedDate}`] || [];
+                        await saveCustomSchedule(selectedDate, slotIndices);
+
+                        // Update local state after successful API call
+                        setSelectedSlots((prev) => ({
+                          ...prev,
+                          [`date-${selectedDate}`]: slotIndices,
+                        }));
+                        setExpandedDay(null);
+                        setTempSelectedSlots({});
+                      } catch (e) {
+                        // Error already handled in saveCustomSchedule
+                        console.error(e);
+                      }
                     }}
                   >
                     Xác nhận
@@ -1088,6 +1401,68 @@ const ScheduleArrange = () => {
                   </>
                 ) : (
                   "Xác nhận"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove day-off confirmation dialog */}
+      {showRemoveDayOffDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">
+            <button
+              onClick={cancelRemoveDayOff}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                <CalendarIcon className="text-orange-600" size={32} />
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
+              Bỏ xin nghỉ
+            </h3>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <p className="text-gray-700 text-center mb-3">
+                Bạn có chắc chắn muốn bỏ xin nghỉ vào:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 text-gray-800">
+                  <CalendarIcon size={18} className="text-orange-600" />
+                  <span className="font-semibold">
+                    {formatDate(selectedDate)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRemoveDayOff}
+                disabled={removeDayOffLoading}
+                className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmRemoveDayOff}
+                disabled={removeDayOffLoading}
+                className="flex-1 bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {removeDayOffLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  "Bỏ xin nghỉ"
                 )}
               </button>
             </div>

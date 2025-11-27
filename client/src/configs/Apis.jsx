@@ -27,6 +27,9 @@ export const endpoints = {
   },
   custom_schedule: {
     get_by_dentist_id: (dentistId) => `dentist_custom_schedules/${dentistId}`,
+    create: "dentist_custom_schedules/",
+    delete_by_date: (dentist_id, custom_date) =>
+      `dentist_custom_schedules/${dentist_id}/${custom_date}`,
   },
 };
 
