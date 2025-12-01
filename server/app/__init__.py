@@ -44,7 +44,9 @@ def create_app():
         service_api,
         treatment_record_api,
         dentist_profile_api,
-        custom_schedule_api
+        custom_schedule_api,
+        medicine_api,
+        medicine_import_api
     )
 
     return app

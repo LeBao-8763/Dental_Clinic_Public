@@ -1,0 +1,25 @@
+from app import db
+from app.models import Medicine
+
+# Thêm loại thuốc mới vào danh mục
+def create_medicine(name, production_date, expiration_date, type, amount_per_unit, retail_unit):
+    med = Medicine.query.filter_by(name=name).first()
+    if med:
+        return med  # thuốc đã tồn tại
+    med = Medicine(
+        name=name,
+        production_date=production_date,
+        expiration_date=expiration_date,
+        stock_quantity=0,  # mới tạo chưa nhập kho
+        type=type,
+        amount_per_unit=amount_per_unit,
+        retail_unit=retail_unit
+    )
+    db.session.add(med)
+    db.session.commit()
+    return med
+
+
+# Lấy danh sách thuốc
+def get_medicine_list():
+    return Medicine.query.all()
