@@ -122,7 +122,7 @@ class Medicine(db.Model):
     retail_unit = db.Column(db.String(50))
 
     imports = db.relationship('MedicineImport', back_populates='medicine', lazy=True)
-    prescriptions = db.relationship('Prescription', back_populates='medicine', lazy=True)
+    details = db.relationship('PrescriptionDetail', back_populates='medicine', lazy=True)
 
 
 # ------------------------------
@@ -251,19 +251,30 @@ class TreatmentRecord(db.Model):
 # ------------------------------
 class Prescription(db.Model):
     __tablename__ = 'prescriptions'
-
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     appointment_id = db.Column(db.BigInteger, db.ForeignKey('appointments.id'))
-    medicine_id = db.Column(db.BigInteger, db.ForeignKey('medicine.id'))
+    note = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    details = db.relationship('PrescriptionDetail', back_populates='prescription')
+    appointment = db.relationship('Appointment', back_populates='prescriptions')
+
+
+# ------------------------------
+# 🔹 Bảng chi tiết toa thuốc
+# ------------------------------
+class PrescriptionDetail(db.Model):
+    __tablename__ = 'prescription_details'
+    prescription_id = db.Column(db.BigInteger, db.ForeignKey('prescriptions.id'), primary_key=True)
+    medicine_id = db.Column(db.BigInteger, db.ForeignKey('medicine.id'), primary_key=True)
     dosage = db.Column(db.Integer)
     unit = db.Column(db.String(50))
     duration_days = db.Column(db.Integer)
     note = db.Column(db.String(255))
     price = db.Column(db.Numeric(10, 2))
 
-    appointment = db.relationship('Appointment', back_populates='prescriptions')
-    medicine = db.relationship('Medicine', back_populates='prescriptions')
-
+    prescription = db.relationship('Prescription', back_populates='details')
+    medicine = db.relationship('Medicine', back_populates='details')
 
 # ------------------------------
 # 🔹 Bảng hóa đơn
