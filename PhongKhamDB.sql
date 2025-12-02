@@ -138,14 +138,23 @@ CREATE TABLE treatment_record (
 -- Bảng toa thuốc
 CREATE TABLE prescriptions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id BIGINT,
-    medicine_id BIGINT,
+    appointment_id BIGINT NOT NULL,
+    note VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+);
+
+-- Bảng chi tiết toa thuốc
+CREATE TABLE prescription_details (
+    prescription_id BIGINT NOT NULL,
+    medicine_id BIGINT NOT NULL,
     dosage INT,
     unit VARCHAR(50),
     duration_days INT,
     note VARCHAR(255),
     price DECIMAL(10,2),
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+    PRIMARY KEY (prescription_id, medicine_id),
+    FOREIGN KEY (prescription_id) REFERENCES prescriptions(id),
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
 

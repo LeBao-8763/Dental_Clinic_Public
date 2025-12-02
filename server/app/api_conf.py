@@ -28,6 +28,7 @@ dentist_profile_ns=api.namespace('dentist_profiles', description='Các thao tác
 dentist_custom_shedule_ns=api.namespace('dentist_custom_schedules', description='Các thao tác liên quan đến lịch làm việc tùy chỉnh của bác sĩ')
 medicine_ns=api.namespace('medicines', description='Các thao tác liên quan đến thuốc')
 medicine_import_ns=api.namespace('medicines_import', description='Các thao tác liên quan đến nhập thuốc')
+prescription_ns=api.namespace('prescription', description='Các thao tác liên quan đến kê toa thuốc')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -133,12 +134,19 @@ appointment_model = api.model('Appointment', {
 prescription_model = api.model('Prescription', {
     'id': fields.Integer(readOnly=True, description='ID toa thuốc'),
     'appointment_id': fields.Integer(description='ID lịch hẹn'),
-    'medicine_id': fields.Integer(description='ID thuốc'),
-    'dosage': fields.Integer(description='Liều lượng'),
-    'unit': fields.String(description='Đơn vị'),
-    'duration_days': fields.Integer(description='Số ngày dùng'),
-    'note': fields.String(description='Ghi chú'),
-    'price': fields.Float(description='Giá')
+    'note': fields.String(description='Ghi chú toa thuốc'),
+    'created_at': fields.DateTime(description='Ngày tạo toa thuốc')
+})
+
+prescription_detail_model = api.model('PrescriptionDetail', {
+    'prescription_id': fields.Integer(required=True),
+    'medicine_id': fields.Integer(required=True),
+    'medicine_name': fields.String(attribute='medicine.name'),  # chỉ lấy name
+    'dosage': fields.Integer(required=True),
+    'unit': fields.String(required=True),
+    'duration_days': fields.Integer(required=True),
+    'note': fields.String,
+    'price': fields.Float(required=True)
 })
 
 invoice_model = api.model('Invoice', {
@@ -291,6 +299,7 @@ medicine_parser = reqparse.RequestParser()
 medicine_parser.add_argument('name', type=str, required=True, help='Tên thuốc')
 medicine_parser.add_argument('production_date', type=str, required=True, help='Ngày sản xuất (YYYY-MM-DD)')
 medicine_parser.add_argument('expiration_date', type=str, required=True, help='Hạn sử dụng (YYYY-MM-DD)')
+medicine_parser.add_argument('stock_quantity', type=int, required=True, help='Số lượng tồn kho')
 medicine_parser.add_argument('type', type=str, required=True, choices=['PILL', 'CREAM', 'LIQUID', 'OTHER'], help='Loại thuốc')
 medicine_parser.add_argument('amount_per_unit', type=int, required=True, help='Số lượng trên 1 đơn vị')
 medicine_parser.add_argument('retail_unit', type=str, required=True, help='Đơn vị bán lẻ')
@@ -300,4 +309,20 @@ medicine_import_parser = reqparse.RequestParser()
 medicine_import_parser.add_argument('user_id', type=int, required=True, help='ID nhân viên nhập thuốc')
 medicine_import_parser.add_argument('medicine_id', type=int, required=True, help='ID thuốc được nhập')
 medicine_import_parser.add_argument('quantity_imported', type=int, required=True, help='Số lượng nhập')
+medicine_import_parser.add_argument('import_date', type=str, required=False, help='Ngày nhập')
 medicine_import_parser.add_argument('price', type=float, required=True, help='Giá nhập lô thuốc')
+medicine_import_parser.add_argument('stock_quantity', type=int, required=True, help='Số lượng tồn sau nhập')
+
+''' PRESCRIPTION '''
+prescription_parser = reqparse.RequestParser()
+prescription_parser.add_argument('appointment_id', type=int, required=True, help='ID cuộc hẹn')
+prescription_parser.add_argument('note', type=str, required=False, help='Ghi chú toa thuốc')
+
+''' PRESCRIPTION DETAILS '''
+prescription_detail_parser = reqparse.RequestParser()
+prescription_detail_parser.add_argument('medicine_id', type=int, required=True, help='ID thuốc trong toa')
+prescription_detail_parser.add_argument('dosage', type=int, required=True, help='Liều lượng dùng mỗi lần')
+prescription_detail_parser.add_argument('unit', type=str, required=True, help='Đơn vị liều lượng (viên, ml, g...)')
+prescription_detail_parser.add_argument('duration_days', type=int, required=True, help='Số ngày dùng thuốc')
+prescription_detail_parser.add_argument('note', type=str, required=False, help='Ghi chú thêm (nếu có)')
+prescription_detail_parser.add_argument('price', type=float, required=True, help='Giá thuốc trong toa')
