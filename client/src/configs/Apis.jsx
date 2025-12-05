@@ -23,13 +23,26 @@ export const endpoints = {
   },
   appointment: {
     create: "appointments/",
-    get_by_dentist_id: (dentistId) => `users/${dentistId}/appointments`,
+    get_by_dentist_id: (dentistId) => `appointments/dentist/${dentistId}`,
+    get_by_id: (apt_id) => `appointments/${apt_id}`,
+    update: (apt_id) => `appointments/${apt_id}`,
   },
   custom_schedule: {
     get_by_dentist_id: (dentistId) => `dentist_custom_schedules/${dentistId}`,
     create: "dentist_custom_schedules/",
     delete_by_date: (dentist_id, custom_date) =>
       `dentist_custom_schedules/${dentist_id}/${custom_date}`,
+  },
+  service: {
+    list: "services/",
+  },
+  treatment_record: {
+    create: "treatment_records/",
+    list_by_aptId: (apt_id) => `treatment_records/appointment/${apt_id}`,
+    delete_by_aptId: (apt_id) => `treatment_records/appointment/${apt_id}`,
+  },
+  post: {
+    get: "post/",
   },
 };
 

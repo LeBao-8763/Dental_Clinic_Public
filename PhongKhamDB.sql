@@ -111,7 +111,7 @@ CREATE TABLE appointments (
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     note VARCHAR(255),
-    status ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'),
+    status ENUM('PENDING', 'CONSULTING','PRESCRIPTION', 'CANCELLED', 'COMPLETED'),
     FOREIGN KEY (dentist_id) REFERENCES user(id),
     FOREIGN KEY (patient_id) REFERENCES user(id)
 );
@@ -138,23 +138,14 @@ CREATE TABLE treatment_record (
 -- Bảng toa thuốc
 CREATE TABLE prescriptions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id BIGINT NOT NULL,
-    note VARCHAR(255),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id)
-);
-
--- Bảng chi tiết toa thuốc
-CREATE TABLE prescription_details (
-    prescription_id BIGINT NOT NULL,
-    medicine_id BIGINT NOT NULL,
+    appointment_id BIGINT,
+    medicine_id BIGINT,
     dosage INT,
     unit VARCHAR(50),
     duration_days INT,
     note VARCHAR(255),
     price DECIMAL(10,2),
-    PRIMARY KEY (prescription_id, medicine_id),
-    FOREIGN KEY (prescription_id) REFERENCES prescriptions(id),
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id),
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
 
@@ -167,4 +158,14 @@ CREATE TABLE invoice (
     vat DECIMAL(10,2),
     total DECIMAL(10,2),
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+);
+
+-- Bảng các thông tin liên quan đến nha khoa
+CREATE TABLE post (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    img TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

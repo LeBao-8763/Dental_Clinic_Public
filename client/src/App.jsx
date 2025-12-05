@@ -11,6 +11,7 @@ import Appointment from "./pages/patient/Appointment";
 import DoctorDetail from "./pages/patient/DoctorDetail";
 import ScheduleArrange from "./pages/dentist/ScheduleArrange";
 import WorkingAppointment from "./pages/dentist/WorkingAppointment";
+import WorkingAppointmentDetail from "./pages/dentist/WorkingAppointmentDetail";
 import { ToastContainer } from "react-toastify";
 
 function App() {
@@ -58,6 +59,11 @@ function App() {
             element={<WorkingAppointment />}
           />
         </Route>
+
+        <Route
+          path="/dentist/working-appointment-detail"
+          element={<WorkingAppointmentDetail />}
+        />
       </Routes>
     </>
   );

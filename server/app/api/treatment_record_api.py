@@ -23,3 +23,38 @@ class UserList(Resource):
             return new_treatment_records, 201
 
         return 500
+
+@treatment_record_ns.route('/appointment/<int:appointment_id>')
+class TreatmentRecordByAppointment(Resource):
+    @treatment_record_ns.doc('get_treatment_record_by_aptId')
+    @treatment_record_ns.marshal_with(treatment_record_model, code=201)
+    def get(self, appointment_id):
+        '''Lấy các phương thức điều trị của một cuộc hẹn '''
+        treatment_records=dao_treatment_record.get_treatment_record_by_aptId(appointment_id)
+
+        if(treatment_records):
+            return treatment_records, 200
+
+        return 500
+
+    @treatment_record_ns.doc('delete_treatment_records_by_aptId')
+    @treatment_record_ns.response(200, 'Xóa thành công')
+    @treatment_record_ns.response(400, 'Xóa lỗi')
+    def delete(self, appointment_id):
+        """
+        Xóa tất cả bản ghi điều trị đã chọn
+        """
+        try:
+            deleted_count = dao_treatment_record.delete_treatment_records_by_aptId(appointment_id)
+            
+            
+            # Trả về 200 cho cả trường hợp không có lịch để xóa
+            return {
+                'message': f'Đã xóa {deleted_count} record' if deleted_count > 0 else 'Không có record nào để xóa',
+                'deleted_count': deleted_count
+            }, 200
+            
+        except ValueError as e:
+            return {'error': str(e)}, 400
+        except Exception as e:
+            return {'error': 'Lỗi server', 'detail': str(e)}, 500

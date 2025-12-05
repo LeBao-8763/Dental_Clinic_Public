@@ -29,6 +29,7 @@ dentist_custom_shedule_ns=api.namespace('dentist_custom_schedules', description=
 medicine_ns=api.namespace('medicines', description='Các thao tác liên quan đến thuốc')
 medicine_import_ns=api.namespace('medicines_import', description='Các thao tác liên quan đến nhập thuốc')
 prescription_ns=api.namespace('prescription', description='Các thao tác liên quan đến kê toa thuốc')
+post_ns=api.namespace('post',description='Các thao tác liên quan đến bài viết/blog của nha khoa')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -119,7 +120,6 @@ dentist_shedule_model = api.model('DentistSchedule', {
     'end_time': fields.String(description='Giờ kết thúc (HH:MM:SS)')
 })
 
-
 appointment_model = api.model('Appointment', {
     'id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
     'dentist_id': fields.Integer(description='ID bác sĩ'),
@@ -128,8 +128,28 @@ appointment_model = api.model('Appointment', {
     'start_time': fields.String(description='Thời gian bắt đầu HH:MM:SS'),
     'end_time': fields.String(description='Thời gian kết thúc HH:MM:SS'),
     'note': fields.String(description='Ghi chú'),
-    'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái')
+    'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
 })
+
+# Thêm model cho patient info trong appointment
+appointment_with_patient_model = api.model('AppointmentWithPatient', {
+    'id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
+    'dentist_id': fields.Integer(description='ID bác sĩ'),
+    'patient_id': fields.Integer(description='ID bệnh nhân'),
+    'appointment_date': fields.Date(description='Ngày hẹn'),
+    'start_time': fields.String(description='Thời gian bắt đầu HH:MM:SS'),
+    'end_time': fields.String(description='Thời gian kết thúc HH:MM:SS'),
+    'note': fields.String(description='Ghi chú'),
+    'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
+    'patient': fields.Nested(api.model('PatientBasicInfo', {
+        'id': fields.Integer(description='ID bệnh nhân'),
+        'firstname': fields.String(description='Tên'),
+        'lastname': fields.String(description='Họ'),
+        'gender': fields.String(description='Giới tính'),
+        'phone_number': fields.String(description='Số điện thoại')
+    }))
+})
+
 
 prescription_model = api.model('Prescription', {
     'id': fields.Integer(readOnly=True, description='ID toa thuốc'),
@@ -226,6 +246,14 @@ dentist_custom_schedule_model=api.model('DentistCustomSchedule',{
     'note': fields.String(description='Ghi chú'),
 })
 
+post_model = api.model('Post', {
+    'id': fields.Integer(readOnly=True, description='ID bài viết'),
+    'title': fields.String(required=True, description='Tiêu đề bài viết'),
+    'content': fields.String(description='Nội dung bài viết'),
+    'img': fields.String(description='URL ảnh'),
+    'created_at': fields.DateTime(description='Ngày tạo'),
+    'updated_at': fields.DateTime(description='Ngày cập nhật'),
+})
 
 # ------------------------------
 # --- Định nghĩa Parsers cho Swagger UI ---
@@ -257,6 +285,14 @@ appointment_creation_parser.add_argument('appointment_date', type=str, required=
 appointment_creation_parser.add_argument('start_time', type=str, required=True, help='Giờ bắt đầu (HH:MM:SS)')
 appointment_creation_parser.add_argument('end_time', type=str, required=True, help='Giờ kết thúc (HH:MM:SS)')
 appointment_creation_parser.add_argument('note', type=str, required=False, help='Ghi chú')
+
+''' APPOINTMENT UPDATE '''
+appointment_update_parser = reqparse.RequestParser()
+appointment_update_parser.add_argument('appointment_date', type=str, required=False, help='Ngày khám (YYYY-MM-DD)')
+appointment_update_parser.add_argument('start_time', type=str, required=False, help='Giờ bắt đầu (HH:MM:SS)')
+appointment_update_parser.add_argument('end_time', type=str, required=False, help='Giờ kết thúc (HH:MM:SS)')
+appointment_update_parser.add_argument('note', type=str, required=False, help='Ghi chú')
+appointment_update_parser.add_argument('status',type=str,required=False,help='Trạng thái')
 
 
 ''' CLINIC HOURS '''
@@ -326,3 +362,9 @@ prescription_detail_parser.add_argument('unit', type=str, required=True, help='�
 prescription_detail_parser.add_argument('duration_days', type=int, required=True, help='Số ngày dùng thuốc')
 prescription_detail_parser.add_argument('note', type=str, required=False, help='Ghi chú thêm (nếu có)')
 prescription_detail_parser.add_argument('price', type=float, required=True, help='Giá thuốc trong toa')
+
+''' POST CREATION PARSER '''
+post_creation_parser = reqparse.RequestParser()
+post_creation_parser.add_argument('title', type=str, required=True, help='Tiêu đề bài viết', location='form')
+post_creation_parser.add_argument('content', type=str, required=False, help='Nội dung bài viết', location='form')
+post_creation_parser.add_argument('img', type=FileStorage, required=True, action='append', location='files', help='Danh sách ảnh')

@@ -28,7 +28,8 @@ class MedicineTypeEnum(enum.Enum):
 
 class AppointmentStatusEnum(enum.Enum):
     PENDING = "PENDING"
-    CONFIRMED = "CONFIRMED"
+    CONSULTING = "CONSULTING"
+    PRESCRIPTION="PRESCRIPTION"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
 
@@ -216,6 +217,7 @@ class Appointment(db.Model):
     invoice = db.relationship('Invoice', back_populates='appointment', uselist=False)
 
 
+
 # ------------------------------
 # 🔹 Bảng dịch vụ
 # ------------------------------
@@ -290,3 +292,21 @@ class Invoice(db.Model):
     total = db.Column(db.Numeric(10, 2))
 
     appointment = db.relationship('Appointment', back_populates='invoice')
+
+
+# ------------------------------
+# 🔹 Bảng bài viết / blog nha khoa
+# ------------------------------
+class Post(db.Model):
+    __tablename__ = 'post'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text)
+    img = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )

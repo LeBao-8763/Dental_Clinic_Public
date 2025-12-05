@@ -58,3 +58,26 @@ def create_multiple_treatment_records(appointment_id, services_data):
     except Exception as e:
         db.session.rollback()
         raise e
+
+def get_treatment_record_by_aptId(appointment_id):
+
+    appointment = Appointment.query.filter_by(id=appointment_id).first()
+    
+    if not appointment:
+        raise ValueError("Cuộc hẹn không tồn tại!")
+
+    treatment_records=TreatmentRecord.query.filter_by(appointment_id=appointment_id).all()
+    return treatment_records
+
+def delete_treatment_records_by_aptId(appointment_id):
+    appointment = Appointment.query.filter_by(id=appointment_id).first()
+    
+    if not appointment:
+        raise ValueError("Cuộc hẹn không tồn tại!")
+
+    deleted_count=TreatmentRecord.query.filter_by(appointment_id=appointment_id).delete()
+
+    db.session.commit()
+    return deleted_count
+
+    

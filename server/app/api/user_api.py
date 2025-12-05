@@ -55,12 +55,4 @@ class UserResource(Resource):
             return user,200
         user_ns.abort(404, "User not found")
 
-@user_ns.route('/<int:user_id>/appointments')
-class UserAppointmentsResource(Resource):
-    @user_ns.doc('get_user_appointments')
-    @user_ns.marshal_list_with(appointment_model)  # Định nghĩa định dạng response cho Swagger UI
-    def get(self, user_id):
-        "Lấy danh sách lịch hẹn của bác sĩ theo ID"
-        appointments = dao_appointment.get_appointments_by_dentist(user_id)
-        return appointments, 200
 

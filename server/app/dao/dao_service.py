@@ -17,3 +17,6 @@ def create_service(name, price, description):
     db.session.add(service)
     db.session.commit()
     return service
+
+def get_list_service():
+    return Service.query.all()

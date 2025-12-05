@@ -2,6 +2,9 @@ from app import db
 from app.models import Appointment, User
 from app.models import GenderEnum, RoleEnum, StatusEnum
 from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
+
+
 
 
 def create_appointment(patient_id, dentist_id, appointment_date, start_time, end_time, note=None):
@@ -48,6 +51,47 @@ def create_appointment(patient_id, dentist_id, appointment_date, start_time, end
 
     return appointment
 
+
 def get_appointments_by_dentist(dentist_id):
-    appointments = Appointment.query.filter_by(dentist_id=dentist_id).all()
+    appointments = (
+        Appointment.query
+        .options(joinedload(Appointment.patient))
+        .filter_by(dentist_id=dentist_id)
+        .all()
+    )
     return appointments
+
+def get_appointments_by_id(appointment_id):
+    appointment=Appointment.query.filter_by(id=appointment_id).first();
+    return appointment
+
+def update_appointment(appointment_id, **kwargs):
+    appointment = Appointment.query.filter_by(id=appointment_id).first()
+    
+    if not appointment:
+        raise ValueError("Cuộc hẹn không tồn tại!")
+
+    allowed_fields = ["appointment_date", "start_time", "end_time", "note", "status"]
+
+    for field, value in kwargs.items():
+        if field in allowed_fields and value is not None:
+            setattr(appointment, field, value)
+
+    # Nếu cập nhật thời gian thì check trùng lịch
+    if "start_time" in kwargs or "end_time" in kwargs or "appointment_date" in kwargs:
+        overlapping = Appointment.query.filter(
+            Appointment.dentist_id == appointment.dentist_id,
+            Appointment.id != appointment.id,  # bỏ chính nó
+            Appointment.appointment_date == appointment.appointment_date,
+            Appointment.start_time < appointment.end_time,
+            Appointment.end_time > appointment.start_time
+        ).first()
+
+        if overlapping:
+            raise ValueError("Khung giờ cập nhật bị trùng với lịch khác của bác sĩ")
+
+    db.session.commit()
+
+    return appointment
+
+
