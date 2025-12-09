@@ -1,6 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, X, Menu, Calendar, Briefcase } from "lucide-react";
+import {
+  User,
+  X,
+  Menu,
+  Calendar,
+  Briefcase,
+  ClipboardList,
+  HandCoins,
+} from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../store/slices/authSlice";
 
@@ -11,14 +19,29 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const menuItems = [
-    { icon: Calendar, label: "Sắp xếp lịch", path: "/dentist/schedule" },
-    {
-      icon: Briefcase,
-      label: "Cuộc hẹn khám",
-      path: "/dentist/working-appointment",
-    },
-  ];
+  // Định nghĩa menu items dựa trên role
+  const menuItems = useMemo(() => {
+    if (user?.role === "RoleEnum.ROLE_DENTIST") {
+      return [
+        { icon: Calendar, label: "Sắp xếp lịch", path: "/dentist/schedule" },
+        {
+          icon: Briefcase,
+          label: "Cuộc hẹn khám",
+          path: "/dentist/working-appointment",
+        },
+      ];
+    } else if (user?.role === "RoleEnum.ROLE_STAFF") {
+      return [
+        { icon: HandCoins, label: "Thanh toán", path: "/staff/patients" },
+        {
+          icon: ClipboardList,
+          label: "Hỗ trợ đặt lịch",
+          path: "/staff/schedule-support",
+        },
+      ];
+    }
+    return [];
+  }, [user?.role]);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 

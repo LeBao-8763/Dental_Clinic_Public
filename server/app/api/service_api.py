@@ -2,6 +2,7 @@ from app.dao import dao_service
 from flask import Flask, request, jsonify
 from flask_restx import Resource
 from app.api_conf import service_model, service_parser, service_ns
+from flask_jwt_extended import jwt_required
 
 @service_ns.route('/')
 class Service(Resource):
@@ -22,7 +23,8 @@ class Service(Resource):
         return 500
 
     @service_ns.doc('get_list_service')
-    @service_ns.marshal_with(service_model, code=201) # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
+    @service_ns.marshal_with(service_model, code=201)
+    @jwt_required() # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
     def get(self):
         "Lấy danh sách các dịch vụ"
         return dao_service.get_list_service(),200

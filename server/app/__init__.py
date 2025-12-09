@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import Config
+from app.scheduler.scheduler import init_scheduler
 
 # Khởi tạo các extension (chỉ tạo, chưa gắn vào app)
 db = SQLAlchemy()
@@ -20,6 +21,11 @@ def create_app():
     CORS(app)
 
     # --------------------------
+    # Cấu hình scheduler
+    # --------------------------
+    init_scheduler(app)
+
+    # --------------------------
     # Gắn các extension vào ứng dụng
     # --------------------------
     db.init_app(app)
@@ -30,6 +36,7 @@ def create_app():
     # --------------------------
     from .api_conf import api_bp
     app.register_blueprint(api_bp)
+
 
     # --------------------------
     # Import các file API để kích hoạt route

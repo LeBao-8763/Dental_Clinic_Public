@@ -56,6 +56,8 @@ const Login = () => {
         }
         if (userRes.data.role === "RoleEnum.ROLE_DENTIST") {
           navigate("/dentist");
+        } else if (userRes.data.role === "RoleEnum.ROLE_STAFF") {
+          navigate("/staff");
         } else {
           navigate("/");
         }

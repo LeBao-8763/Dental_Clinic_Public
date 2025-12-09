@@ -6,12 +6,15 @@ import Home from "./pages/Home";
 import DentistHome from "./pages/dentist/DentistHome";
 import CustomerLayout from "./components/layouts/CustomerLayout";
 import DentistLayout from "./components/layouts/DentistLayout";
+import StaffLayout from "./components/layouts/StaffLayout";
 import DoctorBooking from "./pages/patient/DoctorBooking";
 import Appointment from "./pages/patient/Appointment";
 import DoctorDetail from "./pages/patient/DoctorDetail";
 import ScheduleArrange from "./pages/dentist/ScheduleArrange";
 import WorkingAppointment from "./pages/dentist/WorkingAppointment";
 import WorkingAppointmentDetail from "./pages/dentist/WorkingAppointmentDetail";
+import StaffHome from "./pages/staff/StaffHome";
+import ScheduleSupport from "./pages/staff/ScheduleSupport";
 import { ToastContainer } from "react-toastify";
 
 function App() {
@@ -58,6 +61,11 @@ function App() {
             path="/dentist/working-appointment"
             element={<WorkingAppointment />}
           />
+        </Route>
+
+        <Route element={<StaffLayout />}>
+          <Route path="/staff" element={<StaffHome />} />
+          <Route path="/staff/schedule-support" element={<ScheduleSupport />} />
         </Route>
 
         <Route

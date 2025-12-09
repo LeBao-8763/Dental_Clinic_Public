@@ -116,6 +116,18 @@ CREATE TABLE appointments (
     FOREIGN KEY (patient_id) REFERENCES user(id)
 );
 
+-- Bảng tracking việc hủy đặt lịch trên một ngày của khách hàng
+CREATE TABLE user_booking_stats(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    cancel_count_day INT DEFAULT 0, 
+    last_cancel_at DATETIME,
+    blocked_until DATETIME,
+    updated_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES user(id)
+);
+
+
 -- Bảng dịch vụ
 CREATE TABLE service (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

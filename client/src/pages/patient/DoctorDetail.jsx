@@ -102,7 +102,7 @@ const DoctorDetail = () => {
         )}?day_of_week=${dayOfWeek}`
       );
       // If there are custom schedules for the currently selected date, prefer them
-      const today = weekDays[selectedDate]?.fullDate;
+      const today = monthDays[selectedDate]?.fullDate;
       if (today) {
         const dateString = today.toISOString().split("T")[0];
         const customForDate = customSchedules.filter(
@@ -170,7 +170,7 @@ const DoctorDetail = () => {
 
       // If a date is already selected, and the selected date has custom entries,
       // override the displayed schedule accordingly.
-      const selectedDateObj = weekDays[selectedDate]?.fullDate;
+      const selectedDateObj = monthDays[selectedDate]?.fullDate;
       if (selectedDateObj) {
         const dateString = selectedDateObj.toISOString().split("T")[0];
         const customForDate = (res.data || []).filter(
@@ -216,7 +216,7 @@ const DoctorDetail = () => {
   };
 
   const handleSelectDay = (index) => {
-    const item = weekDays[index];
+    const item = monthDays[index];
     const date = item?.fullDate;
     if (!date) return;
 
@@ -261,7 +261,7 @@ const DoctorDetail = () => {
     }
 
     // Kiểm tra xem ngày đã chọn có kín lịch không
-    const selectedDateObj = weekDays[selectedDate]?.fullDate;
+    const selectedDateObj = monthDays[selectedDate]?.fullDate;
     if (isDisabledDate(selectedDateObj)) {
       toast.error("Ngày này đã kín lịch. Vui lòng chọn ngày khác");
       return;
@@ -277,7 +277,7 @@ const DoctorDetail = () => {
       return;
     }
 
-    const appointmentDate = weekDays[selectedDate].fullDate
+    const appointmentDate = monthDays[selectedDate].fullDate
       .toISOString()
       .split("T")[0]; // YYYY-MM-DD
 
@@ -299,7 +299,7 @@ const DoctorDetail = () => {
       await fetchDentistWorkingScheduleById(doctorId);
 
       // 2. Refresh schedule cho ngày hiện tại
-      const dayEnum = mapDayToEnum(weekDays[selectedDate].fullDate.getDay());
+      const dayEnum = mapDayToEnum(monthDays[selectedDate].fullDate.getDay());
       await fetchDentistSchedule(doctorId, dayEnum);
     } catch (error) {
       console.log("Lỗi khi tạo lịch hẹn", error);
@@ -315,7 +315,7 @@ const DoctorDetail = () => {
 
   const getSelectedDateString = () => {
     if (selectedDate !== null) {
-      return `${weekDays[selectedDate].day}, ${weekDays[selectedDate].date}`;
+      return `${monthDays[selectedDate].day}, ${monthDays[selectedDate].date}`;
     }
     return "";
   };
@@ -396,14 +396,14 @@ const DoctorDetail = () => {
     });
   };
 
-  // Generate week days dynamically (from today + 7 days)
-  const generateWeekDays = () => {
+  // Generate month days dynamically (from today + 29 days, total 30 days)
+  const generateMonthDays = () => {
     const days = [];
     const today = new Date();
     const dayNames = ["CN", "Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7"];
 
-    // Generate 7 days starting from today
-    for (let i = 0; i < 7; i++) {
+    // Generate 30 days starting from today
+    for (let i = 0; i < 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
 
@@ -421,7 +421,16 @@ const DoctorDetail = () => {
     return days;
   };
 
-  const weekDays = generateWeekDays();
+  const monthDays = generateMonthDays();
+
+  const isToday = (someDate) => {
+    const today = new Date();
+    return (
+      someDate.getDate() === today.getDate() &&
+      someDate.getMonth() === today.getMonth() &&
+      someDate.getFullYear() === today.getFullYear()
+    );
+  };
 
   // Show loading state
   if (loading && !dentist) {
@@ -476,9 +485,9 @@ const DoctorDetail = () => {
             Lịch khám
           </h2>
 
-          {/* Week Days */}
+          {/* Month Days */}
           <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
-            {weekDays.map((item, index) => {
+            {monthDays.map((item, index) => {
               const disabled = isDisabledDate(item.fullDate);
 
               return (
@@ -494,7 +503,7 @@ const DoctorDetail = () => {
                     }
                   }}
                   disabled={disabled}
-                  className={`shrink-0 flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 min-w-[130px] ${
+                  className={`shrink-0 flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 min-w-[110px] ${
                     disabled
                       ? "border-red-300 bg-red-50 cursor-not-allowed opacity-70"
                       : selectedDate === index
@@ -532,7 +541,7 @@ const DoctorDetail = () => {
               </div>
             ) : (
               (() => {
-                const selectedDateObj = weekDays[selectedDate]?.fullDate;
+                const selectedDateObj = monthDays[selectedDate]?.fullDate;
                 if (isDisabledDate(selectedDateObj)) {
                   return (
                     <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
@@ -551,47 +560,82 @@ const DoctorDetail = () => {
                 }
 
                 if (selectedDaySchedule.length > 0) {
-                  return (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {selectedDaySchedule.map((slot) => {
-                        const timeLabel = `${slot.start_time.slice(
-                          0,
-                          5
-                        )} - ${slot.end_time.slice(0, 5)}`;
-                        const isBooked = selectedDateObj
-                          ? isTimeSlotBooked(
-                              selectedDateObj,
-                              slot.start_time,
-                              slot.end_time
-                            )
-                          : false;
+                  let filteredSchedule = selectedDaySchedule;
+                  if (isToday(selectedDateObj)) {
+                    const now = new Date();
+                    const currentHours = now.getHours();
+                    const currentMinutes = now.getMinutes();
+                    filteredSchedule = selectedDaySchedule.filter((slot) => {
+                      const [h, m] = slot.start_time
+                        .slice(0, 5)
+                        .split(":")
+                        .map(Number);
+                      return (
+                        h > currentHours ||
+                        (h === currentHours && m > currentMinutes)
+                      );
+                    });
+                  }
 
-                        return (
-                          <button
-                            key={slot.id}
-                            onClick={() =>
-                              !isBooked && setSelectedTime(slot.id)
-                            }
-                            disabled={isBooked}
-                            className={`p-3 rounded-lg border-2 transition-all ${
-                              isBooked
-                                ? "border-red-200 bg-red-100 text-gray-700 cursor-not-allowed"
-                                : selectedTime === slot.id
-                                ? "border-teal-500 bg-teal-500 text-white shadow-md"
-                                : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50"
-                            }`}
-                          >
-                            <span className="text-sm font-medium">
-                              {timeLabel}
+                  if (filteredSchedule.length > 0) {
+                    return (
+                      <>
+                        {/* Grid of time slots */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {filteredSchedule.map((slot) => {
+                            const timeLabel = `${slot.start_time.slice(
+                              0,
+                              5
+                            )} - ${slot.end_time.slice(0, 5)}`;
+                            const isBooked = selectedDateObj
+                              ? isTimeSlotBooked(
+                                  selectedDateObj,
+                                  slot.start_time,
+                                  slot.end_time
+                                )
+                              : false;
+
+                            return (
+                              <button
+                                key={slot.id}
+                                onClick={() =>
+                                  !isBooked && setSelectedTime(slot.id)
+                                }
+                                disabled={isBooked}
+                                className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 min-w-[110px] text-sm leading-tight ${
+                                  isBooked
+                                    ? "border-red-200 bg-red-100 text-gray-700 cursor-not-allowed"
+                                    : selectedTime === slot.id
+                                    ? "border-teal-500 bg-teal-600 text-white shadow-md"
+                                    : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50 hover:scale-[1.02]"
+                                }`}
+                              >
+                                <span className="text-sm font-semibold">
+                                  {timeLabel}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Legend/Sample below */}
+                        <div className="mt-4 flex flex-wrap gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-red-100 border-2 border-red-200 rounded-lg"></div>
+                            <span className="text-sm text-gray-700">
+                              Đã đặt
                             </span>
-                            {isBooked && (
-                              <span className="block text-xs mt-1">Đã đặt</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-white border-2 border-gray-300 rounded-lg"></div>
+                            <span className="text-sm text-gray-700">
+                              Có thể đặt
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  }
                 }
 
                 return (
@@ -697,14 +741,14 @@ const DoctorDetail = () => {
         <div ref={buttonRef} className="mt-6">
           <button
             onClick={handleBookingClick}
-            disabled={isDisabledDate(weekDays[selectedDate]?.fullDate)}
+            disabled={isDisabledDate(monthDays[selectedDate]?.fullDate)}
             className={`w-full font-semibold py-3 px-6 rounded-lg shadow-md transition-all ${
-              isDisabledDate(weekDays[selectedDate]?.fullDate)
+              isDisabledDate(monthDays[selectedDate]?.fullDate)
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-[#009688] text-white hover:bg-[#00796B]"
             }`}
           >
-            {isDisabledDate(weekDays[selectedDate]?.fullDate)
+            {isDisabledDate(monthDays[selectedDate]?.fullDate)
               ? "Ngày này đã kín lịch"
               : "Đặt khám ngay"}
           </button>
@@ -716,14 +760,14 @@ const DoctorDetail = () => {
             <div className="max-w-6xl mx-auto">
               <button
                 onClick={handleBookingClick}
-                disabled={isDisabledDate(weekDays[selectedDate]?.fullDate)}
+                disabled={isDisabledDate(monthDays[selectedDate]?.fullDate)}
                 className={`w-full font-semibold py-3 px-6 rounded-lg shadow-lg transition-all ${
-                  isDisabledDate(weekDays[selectedDate]?.fullDate)
+                  isDisabledDate(monthDays[selectedDate]?.fullDate)
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-[#009688] text-white hover:bg-[#00796B]"
                 }`}
               >
-                {isDisabledDate(weekDays[selectedDate]?.fullDate)
+                {isDisabledDate(monthDays[selectedDate]?.fullDate)
                   ? "Ngày này đã kín lịch"
                   : "Đặt khám ngay"}
               </button>

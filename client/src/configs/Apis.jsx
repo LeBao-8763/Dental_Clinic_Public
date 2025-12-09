@@ -12,6 +12,9 @@ export const endpoints = {
   clinic_hour: {
     list: "clinic_hours/",
   },
+  users: {
+    list: "/users",
+  },
   dentist_profile: {
     get_profile: (dentistId) => `dentist_profiles/${dentistId}`,
   },

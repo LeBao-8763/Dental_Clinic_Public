@@ -83,6 +83,8 @@ class User(db.Model):
     dentist_schedules = db.relationship('DentistSchedule', back_populates='dentist', lazy=True)
     dentist_custom_schedules = db.relationship('DentistCustomSchedule', back_populates='dentist', lazy=True)
     dentist_profile = db.relationship('DentistProfile', back_populates='dentist', uselist=False)
+    booking_stats = db.relationship('UserBookingStats', back_populates='user', uselist=False)
+
 
 # ------------------------------
 # 🔹 Bảng hồ sơ bác sĩ
@@ -215,6 +217,29 @@ class Appointment(db.Model):
     treatments = db.relationship('TreatmentRecord', back_populates='appointment', lazy=True)
     prescriptions = db.relationship('Prescription', back_populates='appointment', lazy=True)
     invoice = db.relationship('Invoice', back_populates='appointment', uselist=False)
+
+
+# ------------------------------
+# 🔹 Bảng tracking việc hủy đơn của khách hàng
+# ------------------------------
+class UserBookingStats(db.Model):
+    __tablename__ = 'user_booking_stats'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
+
+    # số lần hủy trong ngày
+    cancel_count_day = db.Column(db.Integer, default=0)
+
+    # thời điểm hủy cuối cùng
+    last_cancel_at = db.Column(db.DateTime,nullable=True)
+
+    # nếu bị block → thời gian block theo giờ
+    blocked_until = db.Column(db.DateTime, nullable=True)
+
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship('User', back_populates='booking_stats')
 
 
 

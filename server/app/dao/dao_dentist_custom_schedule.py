@@ -5,6 +5,8 @@ from datetime import datetime
 from app import db
 from app.models import User, DentistCustomSchedule
 
+from datetime import timedelta,date
+
 def create_custom_schedule(dentist_id, custom_date, note=None, schedules_data=None):
     """
     Tạo custom schedule cho bác sĩ:
@@ -22,6 +24,8 @@ def create_custom_schedule(dentist_id, custom_date, note=None, schedules_data=No
         if User.query.get(dentist_id) is None:
             raise ValueError("Bác sĩ với ID đã cho không tồn tại")
 
+        if datetime.strptime(custom_date, "%Y-%m-%d").date()-date.today() <= timedelta(days=3):
+            raise ValueError("Không được thay đổi khi lịch cố định gần hơn 3 ngày!")
         # --------------------------
         # CASE 1: NGÀY NGHỈ
         # --------------------------
