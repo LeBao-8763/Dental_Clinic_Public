@@ -70,11 +70,3 @@ class PrescriptionDetailList(Resource):
         else:
             return {'success': False}, 400
 
-@prescription_ns.route('/<int:prescription_id>/details/<int:medicine_id>')
-class PrescriptionDetailItem(Resource):
-    #@jwt_required()
-    def delete(self, prescription_id, medicine_id):
-        success = dao_prescription.delete_detail(prescription_id, medicine_id)
-        if not success:
-            prescription_ns.abort(404, 'Không tìm thấy chi tiết toa thuốc')
-        return {'message': 'Đã xóa thuốc khỏi toa'}, 200

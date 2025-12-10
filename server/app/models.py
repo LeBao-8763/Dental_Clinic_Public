@@ -42,6 +42,10 @@ class DayOfWeekEnum(enum.Enum):
     SATURDAY = "SATURDAY"
     SUNDAY = "SUNDAY"
 
+class PrescriptionStatusEnum(enum.Enum):
+    DRAFT = 'DRAFT'
+    CONFIRMED = 'CONFIRMED'
+    CANCELLED = 'CANCELLED'
 
 # ------------------------------
 # 🔹 Bảng chuyên ngành
@@ -117,12 +121,11 @@ class Medicine(db.Model):
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     name = db.Column(db.String(255))
-    production_date = db.Column(db.DateTime)
-    expiration_date = db.Column(db.DateTime)
-    stock_quantity = db.Column(db.Integer)
+    reserved_quantity = db.Column(db.Integer)
     type = db.Column(db.Enum(MedicineTypeEnum))
     amount_per_unit = db.Column(db.Integer)
     retail_unit = db.Column(db.String(50))
+    selling_price = db.Column(db.Numeric(10, 2))
 
     imports = db.relationship('MedicineImport', back_populates='medicine', lazy=True)
     details = db.relationship('PrescriptionDetail', back_populates='medicine', lazy=True)
@@ -138,6 +141,8 @@ class MedicineImport(db.Model):
     user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
     medicine_id = db.Column(db.BigInteger, db.ForeignKey('medicine.id'))
     import_date = db.Column(db.DateTime, default=datetime.utcnow)
+    production_date = db.Column(db.DateTime)
+    expiration_date = db.Column(db.DateTime)
     quantity_imported = db.Column(db.Integer)
     price = db.Column(db.Numeric(10, 2))
     stock_quantity = db.Column(db.Integer)
@@ -284,6 +289,7 @@ class Prescription(db.Model):
     appointment_id = db.Column(db.BigInteger, db.ForeignKey('appointments.id'))
     note = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.Enum(PrescriptionStatusEnum), default=PrescriptionStatusEnum.DRAFT)
 
     details = db.relationship('PrescriptionDetail', back_populates='prescription')
     appointment = db.relationship('Appointment', back_populates='prescriptions')
