@@ -12,18 +12,19 @@ const Features = () => {
     setLoading(true);
     try {
       const res = await publicApi.get(endpoints.post.get);
-      setPosts(res.data);
+      const data = Array.isArray(res.data) ? res.data : [];
+
+      setPosts(data);
 
       // Initialize image indexes for each post
       const initialIndexes = {};
-      res.data.forEach((post) => {
+      data.forEach((post) => {
         initialIndexes[post.id] = 0;
       });
       setCurrentImageIndexes(initialIndexes);
-
-      console.log(res.data);
     } catch (err) {
-      console.log("Có lỗi xảy ra khi lấy dữ liệu post", err);
+      console.error("Có lỗi xảy ra khi lấy dữ liệu post", err);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -34,6 +35,8 @@ const Features = () => {
   }, []);
 
   useEffect(() => {
+    if (!posts || posts.length === 0) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -49,15 +52,21 @@ const Features = () => {
     );
 
     itemRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref);
+      if (ref && ref instanceof Element) observer.observe(ref);
     });
 
-    return () => observer.disconnect();
-  }, [posts]);
+    return () => {
+      observer.disconnect();
+    };
+  }, [posts, visibleItems]);
 
-  const parseImages = (imgString) => {
+  // Safe parse
+  const parseImages = (img) => {
+    if (!img) return [];
     try {
-      return JSON.parse(imgString);
+      if (Array.isArray(img)) return img;
+      if (typeof img === "object") return Object.values(img);
+      return JSON.parse(img);
     } catch (err) {
       console.error("Error parsing images:", err);
       return [];
@@ -114,8 +123,8 @@ const Features = () => {
       <div className="bg-white py-16 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto space-y-16">
           {posts.map((post, index) => {
-            const images = parseImages(post.img);
-            const currentImageIndex = currentImageIndexes[post.id] || 0;
+            const images = parseImages(post.img) || [];
+            const currentImageIndex = currentImageIndexes[post.id] ?? 0;
             const imagePosition = index % 2 === 0 ? "right" : "left";
 
             return (

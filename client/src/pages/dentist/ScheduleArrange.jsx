@@ -72,6 +72,7 @@ const ScheduleArrange = () => {
       const res = await publicApi.get(
         endpoints.dentist_schedule.get_schedule(dentistId)
       );
+      console.log("Lịch làm việc của bác sĩ", res.data);
       setDentistScheduleData(res.data);
     } catch (err) {
       console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
@@ -196,11 +197,6 @@ const ScheduleArrange = () => {
       // dayEnum extraction (works only for numeric dayId like 2..8)
       const dayEnum = dayEnums[dayId - 2];
       const dayEnumValue = dayEnum.split(".")[1];
-
-      // Xóa lịch cũ
-      await publicApi.delete(
-        endpoints.dentist_schedule.delete_by_day(user.id, dayEnumValue)
-      );
 
       // Thêm lịch mới nếu có
       const newSlots = tempSelectedSlots[dayId] || [];

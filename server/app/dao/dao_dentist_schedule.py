@@ -1,6 +1,6 @@
 from app import db
 from app.models import DentistSchedule, DayOfWeekEnum, ClinicHours
-from datetime import datetime, time
+from datetime import datetime, date, timedelta
 
 def create_dentist_schedule(dentist_id, day_of_week, start_time, end_time):
     try:
@@ -46,6 +46,17 @@ def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
         if not clinic_hour:
             raise ValueError(f"Chưa có giờ hoạt động cho ngày {day_of_week}")
 
+        #Check xem có tôn tại lịch trước đó chưa
+        existing_count = DentistSchedule.query.filter_by(
+            dentist_id=dentist_id,
+            day_of_week=day_enum
+        ).count()
+
+        if existing_count==0:
+            effective_from = date.today()
+        else:
+            effective_from = date.today() + timedelta(days=7)
+
         for schedule_data in schedules_data:
 
             start_time=datetime.strptime(schedule_data['start_time'], "%H:%M:%S").time()
@@ -61,7 +72,8 @@ def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
                 dentist_id=dentist_id,
                 day_of_week=day_enum,
                 start_time=schedule_data['start_time'],
-                end_time=schedule_data['end_time']
+                end_time=schedule_data['end_time'],
+                effective_from=effective_from
             )
             db.session.add(schedule)
             schedule_list.append(schedule)

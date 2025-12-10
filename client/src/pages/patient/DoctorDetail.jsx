@@ -16,6 +16,15 @@ import { useSelector } from "react-redux";
 import Loading from "../../components/common/Loading";
 
 const DoctorDetail = () => {
+  // Helper: format date as local YYYY-MM-DD to avoid timezone shifts
+  const formatDateLocal = (date) => {
+    if (!date) return null;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`; // YYYY-MM-DD (local)
+  };
+
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [isButtonSticky, setIsButtonSticky] = useState(false);
@@ -104,7 +113,7 @@ const DoctorDetail = () => {
       // If there are custom schedules for the currently selected date, prefer them
       const today = monthDays[selectedDate]?.fullDate;
       if (today) {
-        const dateString = today.toISOString().split("T")[0];
+        const dateString = formatDateLocal(today);
         const customForDate = customSchedules.filter(
           (cs) => cs.custom_date === dateString
         );
@@ -172,7 +181,7 @@ const DoctorDetail = () => {
       // override the displayed schedule accordingly.
       const selectedDateObj = monthDays[selectedDate]?.fullDate;
       if (selectedDateObj) {
-        const dateString = selectedDateObj.toISOString().split("T")[0];
+        const dateString = formatDateLocal(selectedDateObj);
         const customForDate = (res.data || []).filter(
           (cs) => cs.custom_date === dateString
         );
@@ -202,7 +211,7 @@ const DoctorDetail = () => {
   // Helpers for custom schedule
   const getCustomForDate = (date) => {
     if (!date) return [];
-    const dateString = date.toISOString().split("T")[0];
+    const dateString = formatDateLocal(date);
     return customSchedules.filter((cs) => cs.custom_date === dateString);
   };
 
@@ -231,7 +240,7 @@ const DoctorDetail = () => {
     // If custom slots exist for this date, use them
     const customForDate = getCustomForDate(date).filter((c) => !c.is_day_off);
     if (customForDate.length > 0) {
-      const dateString = date.toISOString().split("T")[0];
+      const dateString = formatDateLocal(date);
       const mapped = customForDate
         .filter((c) => c.start_time && c.end_time)
         .map((c, idx) => ({
@@ -277,9 +286,7 @@ const DoctorDetail = () => {
       return;
     }
 
-    const appointmentDate = monthDays[selectedDate].fullDate
-      .toISOString()
-      .split("T")[0]; // YYYY-MM-DD
+    const appointmentDate = formatDateLocal(monthDays[selectedDate].fullDate); // YYYY-MM-DD (local)
 
     setLoading(true);
     try {
@@ -333,7 +340,7 @@ const DoctorDetail = () => {
   // Kiểm tra ngày đã đủ 5 appointment chưa
   const isDayFullyBooked = (date) => {
     if (!date) return false;
-    const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD
+    const dateString = formatDateLocal(date); // use local format
     const count = appointments.filter(
       (apt) => apt.appointment_date === dateString
     ).length;
@@ -383,9 +390,25 @@ const DoctorDetail = () => {
       .map((line) => line.trim());
   };
 
-  // Check if a time slot is booked
+  // Get Monday of the week for a given date
+  const getMonday = (date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return new Date(d.setHours(0, 0, 0, 0));
+  };
+
+  // Check if two dates are in the same week
+  const isSameWeek = (date1, date2) => {
+    const mon1 = getMonday(date1);
+    const mon2 = getMonday(date2);
+    return mon1.getTime() === mon2.getTime();
+  };
+
+  // Check if a time slot is booked by anyone
   const isTimeSlotBooked = (date, startTime, endTime) => {
-    const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD
+    const dateString = formatDateLocal(date); // use local format
 
     return appointments.some((apt) => {
       return (
@@ -396,14 +419,37 @@ const DoctorDetail = () => {
     });
   };
 
-  // Generate month days dynamically (from today + 29 days, total 30 days)
+  // Check if a time slot is booked by the current user
+  const isUserTimeSlotBooked = (date, startTime, endTime) => {
+    const dateString = formatDateLocal(date); // use local format
+
+    return appointments.some((apt) => {
+      return (
+        apt.appointment_date === dateString &&
+        apt.start_time === startTime &&
+        apt.end_time === endTime &&
+        apt.patient_id === patient?.id
+      );
+    });
+  };
+
+  // Check if user has pending appointment in the same week
+  const hasUserPendingInWeek = (date) => {
+    return userAppointments.some(
+      (apt) =>
+        apt.status === "AppointmentStatusEnum.PENDING" &&
+        isSameWeek(new Date(apt.appointment_date), date)
+    );
+  };
+
+  // Generate next 7 days (from today to same day next week, total 8 days to include the end day)
   const generateMonthDays = () => {
     const days = [];
     const today = new Date();
     const dayNames = ["CN", "Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7"];
 
-    // Generate 30 days starting from today
-    for (let i = 0; i < 30; i++) {
+    // Generate 8 days starting from today (today + 7 days ahead)
+    for (let i = 0; i < 8; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
 
@@ -431,6 +477,11 @@ const DoctorDetail = () => {
       someDate.getFullYear() === today.getFullYear()
     );
   };
+
+  // Lọc lịch hẹn của user hiện tại
+  const userAppointments = appointments.filter(
+    (apt) => apt.patient_id === patient?.id
+  );
 
   // Show loading state
   if (loading && !dentist) {
@@ -480,6 +531,23 @@ const DoctorDetail = () => {
 
         {/* Schedule Section */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
+          {userAppointments.length > 0 && (
+            <p className="text-teal-600 font-semibold mb-4">
+              Bạn có lịch vào những khung giờ:{" "}
+              {userAppointments
+                .map(
+                  (apt) =>
+                    `${apt.start_time.slice(0, 5)} - ${apt.end_time.slice(
+                      0,
+                      5
+                    )} ngày ${apt.appointment_date
+                      .split("-")
+                      .reverse()
+                      .join("/")}`
+                )
+                .join(", ")}
+            </p>
+          )}
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <Calendar className="text-teal-600" size={28} />
             Lịch khám
@@ -577,6 +645,9 @@ const DoctorDetail = () => {
                     });
                   }
 
+                  const hasPendingInWeek =
+                    hasUserPendingInWeek(selectedDateObj);
+
                   if (filteredSchedule.length > 0) {
                     return (
                       <>
@@ -594,21 +665,42 @@ const DoctorDetail = () => {
                                   slot.end_time
                                 )
                               : false;
+                            const isUserBooked = selectedDateObj
+                              ? isUserTimeSlotBooked(
+                                  selectedDateObj,
+                                  slot.start_time,
+                                  slot.end_time
+                                )
+                              : false;
+                            const isDisabledForWeek =
+                              hasPendingInWeek && !isUserBooked;
+
+                            const slotClass = isUserBooked
+                              ? "border-green-500 bg-green-100 text-green-700 cursor-not-allowed"
+                              : isBooked || isDisabledForWeek
+                              ? "border-red-200 bg-red-100 text-gray-700 cursor-not-allowed"
+                              : selectedTime === slot.id
+                              ? "border-teal-500 bg-teal-600 text-white shadow-md"
+                              : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50 hover:scale-[1.02]";
+
+                            const slotTitle = isUserBooked
+                              ? "Lịch của bạn"
+                              : isBooked
+                              ? "Đã được đặt bởi người khác"
+                              : isDisabledForWeek
+                              ? "Bạn đã có lịch chưa hoàn thành trong tuần này"
+                              : "";
 
                             return (
                               <button
                                 key={slot.id}
                                 onClick={() =>
-                                  !isBooked && setSelectedTime(slot.id)
+                                  !(isBooked || isDisabledForWeek) &&
+                                  setSelectedTime(slot.id)
                                 }
-                                disabled={isBooked}
-                                className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 min-w-[110px] text-sm leading-tight ${
-                                  isBooked
-                                    ? "border-red-200 bg-red-100 text-gray-700 cursor-not-allowed"
-                                    : selectedTime === slot.id
-                                    ? "border-teal-500 bg-teal-600 text-white shadow-md"
-                                    : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50 hover:scale-[1.02]"
-                                }`}
+                                disabled={isBooked || isDisabledForWeek}
+                                className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 min-w-[110px] text-sm leading-tight ${slotClass}`}
+                                title={slotTitle}
                               >
                                 <span className="text-sm font-semibold">
                                   {timeLabel}
@@ -623,7 +715,13 @@ const DoctorDetail = () => {
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 bg-red-100 border-2 border-red-200 rounded-lg"></div>
                             <span className="text-sm text-gray-700">
-                              Đã đặt
+                              Không thể đặt (đã đặt hoặc giới hạn)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-green-100 border-2 border-green-500 rounded-lg"></div>
+                            <span className="text-sm text-gray-700">
+                              Lịch của bạn
                             </span>
                           </div>
                           <div className="flex items-center gap-2">

@@ -87,6 +87,10 @@ CREATE TABLE dentist_schedule (
     ) NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
+    
+    effective_from DATE, -- ngày bắt đầu áp dụng
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
     FOREIGN KEY (dentist_id) REFERENCES user(id)
 );
 

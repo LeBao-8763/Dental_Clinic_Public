@@ -399,13 +399,14 @@ const Login = () => {
         {/* Overlay Content */}
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <h2 className="text-5xl font-bold mb-4 leading-tight">
-            Harness
+            Nụ cười của bạn
             <br />
-            Collective Potential.
+            Sứ mệnh của chúng tôi
           </h2>
           <p className="text-lg text-gray-300 max-w-md">
-            CoLab effortlessly by assigning tasks, tracking progress, and
-            achieving milestones together.
+            Dịch vụ nha khoa hiện đại, an toàn và tận tâm dành cho mọi khách
+            hàng. Chúng tôi mang đến trải nghiệm thoải mái và một nụ cười khỏe
+            mạnh dài lâu.
           </p>
         </div>
 

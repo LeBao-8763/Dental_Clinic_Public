@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Search, User, Clock, FileText, Calendar } from "lucide-react";
+import {
+  Search,
+  User,
+  Clock,
+  FileText,
+  Calendar,
+  X,
+  AlertCircle,
+} from "lucide-react";
 import { endpoints, publicApi } from "../../configs/Apis";
 import Loading from "../../components/common/Loading";
+import { toast } from "react-toastify";
 
 const ScheduleSupport = () => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -14,10 +23,24 @@ const ScheduleSupport = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [notes, setNotes] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date(2025, 11)); // December 2025
-  const today = 9; // Current date is December 9, 2025
+  const today = 10; // Current date is December 10, 2025
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState([]);
   const [dentists, setDentists] = useState([]);
+  const [schedules, setSchedule] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [customeSchedule, setCustomSchedule] = useState([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Thêm state cho bệnh nhân mới
+  const [newPatient, setNewPatient] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    dob: "",
+    gender: "",
+    address: "",
+  });
 
   const fetchPatient = async () => {
     setLoading(true);
@@ -52,10 +75,67 @@ const ScheduleSupport = () => {
     }
   };
 
+  const fetchDentistSchedule = async (dentist_id) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.dentist_schedule.get_schedule(dentist_id)
+      );
+      setSchedule(res.data);
+      console.log("Lịch làm việc của bác sĩ", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDentistAppointment = async (dentist_id) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.appointment.get_by_dentist_id(dentist_id)
+      );
+      setAppointments(res.data);
+      console.log("Lịch cuộc hẹn của bác sĩ", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomSchedule = async (dentist_id) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.custom_schedule.get_by_dentist_id(dentist_id)
+      );
+      setCustomSchedule(res.data);
+      console.log("Lịch lịch custom của bác sĩ", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPatient();
     fetchDentist();
   }, []);
+
+  useEffect(() => {
+    if (!selectedDoctor) return;
+    fetchDentistSchedule(selectedDoctor.id);
+    fetchDentistAppointment(selectedDoctor.id);
+    fetchCustomSchedule(selectedDoctor.id);
+    setSelectedDate(null);
+    setSelectedTime(null);
+  }, [selectedDoctor]);
 
   const quickNotes = [
     "+ Tái khám theo lịch hẹn",
@@ -123,40 +203,60 @@ const ScheduleSupport = () => {
     );
   };
 
-  const hasSchedule = (day) => {
-    // Mock logic: only dates 9 and 19 have schedules
-    return day === 9 || day === 19;
+  const dayMap = {
+    1: "DayOfWeekEnum.MONDAY",
+    2: "DayOfWeekEnum.TUESDAY",
+    3: "DayOfWeekEnum.WEDNESDAY",
+    4: "DayOfWeekEnum.THURSDAY",
+    5: "DayOfWeekEnum.FRIDAY",
+    6: "DayOfWeekEnum.SATURDAY",
+    0: "DayOfWeekEnum.SUNDAY",
   };
 
-  const morningSlots = [
-    "08:00",
-    "08:30",
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-  ];
+  const getLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
-  const afternoonSlots = [
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-  ];
+  const getDaySchedules = (date) => {
+    const formattedDate = getLocalDateString(date);
+    const customForDate = customeSchedule.filter(
+      (s) => s.custom_date === formattedDate
+    );
+    if (customForDate.length > 0) {
+      const isDayOff = customForDate.some((s) => s.is_day_off);
+      if (isDayOff) {
+        return [];
+      } else {
+        return customForDate
+          .filter((s) => !s.is_day_off)
+          .sort((a, b) => a.start_time.localeCompare(b.start_time));
+      }
+    } else {
+      const dow = date.getDay();
+      const enumDay = dayMap[dow];
+      return schedules
+        .filter((s) => s.day_of_week === enumDay)
+        .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    }
+  };
 
-  const isTimeSlotAvailable = (time) => {
-    // Mock logic: some slots are booked
-    const bookedSlots = ["08:00"];
-    return !bookedSlots.includes(time);
+  const isTimeSlotAvailable = (time, date) => {
+    const formattedDate = getLocalDateString(date);
+    return !appointments.some(
+      (appt) =>
+        appt.appointment_date === formattedDate &&
+        appt.start_time === time + ":00"
+    );
   };
 
   // Compute step completion for header/progress
-  const step1 = selectedPatient || isNewPatient;
+  const step1Complete = isNewPatient
+    ? newPatient.fullName && newPatient.phone // Kiểm tra required fields
+    : !!selectedPatient;
+  const step1 = step1Complete;
   const step2 = !!selectedDoctor;
   const step3 = !!(selectedDate && selectedTime);
   const step4 = notes && notes.trim().length > 0;
@@ -173,6 +273,107 @@ const ScheduleSupport = () => {
     const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
     const dateStr = dt.toLocaleDateString("vi-VN");
     return `${weekdayCap}, ${dateStr}`;
+  };
+
+  // Hàm confirmAppointment tương tự như trong DoctorDetail
+  const confirmAppointment = async () => {
+    if (!selectedDoctor || !selectedTime || !selectedDate) {
+      toast.error("Vui lòng chọn bác sĩ, ngày và giờ khám");
+      return;
+    }
+
+    let patientId = selectedPatient?.id;
+
+    setLoading(true);
+    try {
+      // Nếu là bệnh nhân mới, tạo bệnh nhân mới trước
+      if (isNewPatient) {
+        // Giả định endpoint tạo user là endpoints.users.create, và data phù hợp
+        // Parse fullName thành firstname và lastname (giả sử fullname = "First Last")
+        const [firstname, ...lastnameParts] = newPatient.fullName
+          .trim()
+          .split(/\s+/);
+        const lastname = lastnameParts.join(" ");
+        const createPatientData = {
+          firstname: firstname || "",
+          lastname: lastname || "",
+          phone_number: newPatient.phone,
+          username: newPatient.email, // Giả sử username là email
+          email: newPatient.email,
+          dob: newPatient.dob,
+          gender:
+            newPatient.gender === "male"
+              ? "MALE"
+              : newPatient.gender === "female"
+              ? "FEMALE"
+              : "OTHER", // Giả định enum
+          address: newPatient.address,
+          // Có thể cần thêm các field khác như password mặc định, nhưng giả định API xử lý
+        };
+
+        const createRes = await publicApi.post(
+          endpoints.users.create,
+          createPatientData
+        );
+        patientId = createRes.data.id; // Giả định response có id
+        toast.success("Tạo bệnh nhân mới thành công!");
+      }
+
+      if (!patientId) {
+        toast.error("Không tìm thấy thông tin bệnh nhân");
+        return;
+      }
+
+      const selectedFullDate = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        selectedDate
+      );
+      const appointmentDate = getLocalDateString(selectedFullDate);
+
+      // Post appointment (tương tự DoctorDetail, thêm notes nếu API hỗ trợ)
+      await publicApi.post(endpoints.appointment.create, {
+        dentist_id: selectedDoctor.id,
+        patient_id: patientId,
+        appointment_date: appointmentDate,
+        start_time: selectedTime.start + ":00", // Định dạng HH:MM:SS
+        end_time: selectedTime.end + ":00",
+        notes: notes || "", // Giả định API hỗ trợ notes, nếu không thì bỏ
+      });
+
+      toast.success("Đặt lịch thành công!");
+      // Refresh data
+      await fetchDentistAppointment(selectedDoctor.id);
+      // Reset selections nếu cần
+      setSelectedDate(null);
+      setSelectedTime(null);
+      setNotes("");
+      if (isNewPatient) {
+        setNewPatient({
+          fullName: "",
+          phone: "",
+          email: "",
+          dob: "",
+          gender: "",
+          address: "",
+        });
+        setIsNewPatient(false);
+      } else {
+        setSelectedPatient(null);
+        setSearchPatient("");
+      }
+      setShowConfirmDialog(false);
+    } catch (error) {
+      console.log("Lỗi khi tạo lịch hẹn", error);
+      toast.error("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hàm handle change cho new patient form
+  const handleNewPatientChange = (field, value) => {
+    setNewPatient((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -196,7 +397,6 @@ const ScheduleSupport = () => {
             Hỗ trợ đặt lịch nhanh chóng và tiện lợi cho khách hàng
           </p>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form Section */}
           <div className="lg:col-span-2 space-y-6">
@@ -250,7 +450,6 @@ const ScheduleSupport = () => {
                     <span className="text-gray-700">Khách hàng mới</span>
                   </label>
                 </div>
-
                 {!isNewPatient ? (
                   <>
                     <div className="relative">
@@ -356,6 +555,10 @@ const ScheduleSupport = () => {
                         <input
                           type="text"
                           placeholder="Nhập họ và tên"
+                          value={newPatient.fullName}
+                          onChange={(e) =>
+                            handleNewPatientChange("fullName", e.target.value)
+                          }
                           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                       </div>
@@ -366,6 +569,10 @@ const ScheduleSupport = () => {
                         <input
                           type="tel"
                           placeholder="Nhập số điện thoại"
+                          value={newPatient.phone}
+                          onChange={(e) =>
+                            handleNewPatientChange("phone", e.target.value)
+                          }
                           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                       </div>
@@ -378,6 +585,10 @@ const ScheduleSupport = () => {
                         <input
                           type="email"
                           placeholder="Nhập email"
+                          value={newPatient.email}
+                          onChange={(e) =>
+                            handleNewPatientChange("email", e.target.value)
+                          }
                           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                       </div>
@@ -388,6 +599,10 @@ const ScheduleSupport = () => {
                         <input
                           type="date"
                           placeholder="dd/mm/yyyy"
+                          value={newPatient.dob}
+                          onChange={(e) =>
+                            handleNewPatientChange("dob", e.target.value)
+                          }
                           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                       </div>
@@ -397,7 +612,13 @@ const ScheduleSupport = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Giới tính
                         </label>
-                        <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-gray-500">
+                        <select
+                          value={newPatient.gender}
+                          onChange={(e) =>
+                            handleNewPatientChange("gender", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-gray-500"
+                        >
                           <option value="">Chọn giới tính</option>
                           <option value="male">Nam</option>
                           <option value="female">Nữ</option>
@@ -411,6 +632,10 @@ const ScheduleSupport = () => {
                         <input
                           type="text"
                           placeholder="Nhập địa chỉ"
+                          value={newPatient.address}
+                          onChange={(e) =>
+                            handleNewPatientChange("address", e.target.value)
+                          }
                           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                       </div>
@@ -419,7 +644,6 @@ const ScheduleSupport = () => {
                 )}
               </div>
             </div>
-
             {/* Step 2: Chọn bác sĩ */}
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
@@ -482,7 +706,6 @@ const ScheduleSupport = () => {
                 </div>
               </div>
             </div>
-
             {/* Step 3: Chọn ngày và giờ khám */}
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
@@ -551,13 +774,15 @@ const ScheduleSupport = () => {
                           }
                           // Days of month
                           for (let day = 1; day <= daysInMonth; day++) {
-                            // availability/booked handled via mock helpers if needed
                             const isSelected = selectedDate === day;
                             const isToday = day === today;
                             days.push(
                               <button
                                 key={day}
-                                onClick={() => setSelectedDate(day)}
+                                onClick={() => {
+                                  setSelectedDate(day);
+                                  setSelectedTime(null);
+                                }}
                                 className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${
                                   isSelected
                                     ? "bg-teal-600 text-white"
@@ -574,7 +799,6 @@ const ScheduleSupport = () => {
                         })()}
                       </div>
                     </div>
-
                     {/* Time Slots */}
                     <div>
                       <div className="flex items-center gap-2 mb-4 text-gray-600">
@@ -586,31 +810,71 @@ const ScheduleSupport = () => {
                             : "__/__/____"}
                         </span>
                       </div>
-                      {selectedDate && !hasSchedule(selectedDate) ? (
-                        <div className="text-center py-12">
-                          <div className="text-gray-400 mb-2">
-                            <Calendar className="w-12 h-12 mx-auto mb-3" />
-                          </div>
-                          <p className="text-gray-600 font-medium">
-                            Hôm đó bác sĩ không có lịch
-                          </p>
-                        </div>
-                      ) : selectedDate ? (
-                        <>
-                          {/* Morning Slots */}
-                          <div className="mb-6">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                              Buổi sáng
-                            </h4>
-                            <div className="grid grid-cols-4 gap-2">
-                              {morningSlots.map((time) => {
-                                const available = isTimeSlotAvailable(time);
-                                const isSelected = selectedTime === time;
+                      {selectedDate ? (
+                        (() => {
+                          const selectedFullDate = new Date(
+                            currentMonth.getFullYear(),
+                            currentMonth.getMonth(),
+                            selectedDate
+                          );
+                          const formattedDate =
+                            getLocalDateString(selectedFullDate);
+                          const customForDate = customeSchedule.filter(
+                            (s) => s.custom_date === formattedDate
+                          );
+                          const isDayOff = customForDate.some(
+                            (s) => s.is_day_off
+                          );
+                          const daySchedules =
+                            getDaySchedules(selectedFullDate);
+                          if (isDayOff) {
+                            return (
+                              <div className="text-center py-12">
+                                <div className="text-gray-400 mb-2">
+                                  <Calendar className="w-12 h-12 mx-auto mb-3" />
+                                </div>
+                                <p className="text-gray-600 font-medium">
+                                  Hôm nay bác sĩ tạm nghỉ
+                                </p>
+                              </div>
+                            );
+                          } else if (daySchedules.length === 0) {
+                            return (
+                              <div className="text-center py-12">
+                                <div className="text-gray-400 mb-2">
+                                  <Calendar className="w-12 h-12 mx-auto mb-3" />
+                                </div>
+                                <p className="text-gray-600 font-medium">
+                                  Không có lịch hôm nay
+                                </p>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="grid grid-cols-3 gap-2">
+                              {daySchedules.map((slot) => {
+                                const startTime = slot.start_time.substring(
+                                  0,
+                                  5
+                                );
+                                const endTime = slot.end_time.substring(0, 5);
+                                const displayTime = `${startTime} - ${endTime}`;
+                                const available = isTimeSlotAvailable(
+                                  startTime,
+                                  selectedFullDate
+                                );
+                                const isSelected =
+                                  selectedTime &&
+                                  selectedTime.start === startTime;
                                 return (
                                   <button
-                                    key={time}
+                                    key={startTime}
                                     onClick={() =>
-                                      available && setSelectedTime(time)
+                                      available &&
+                                      setSelectedTime({
+                                        start: startTime,
+                                        end: endTime,
+                                      })
                                     }
                                     disabled={!available}
                                     className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
@@ -621,60 +885,13 @@ const ScheduleSupport = () => {
                                         : "bg-gray-100 text-gray-400 line-through cursor-not-allowed"
                                     }`}
                                   >
-                                    {time}
+                                    {displayTime}
                                   </button>
                                 );
                               })}
                             </div>
-                          </div>
-
-                          {/* Afternoon Slots */}
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                              Buổi chiều
-                            </h4>
-                            <div className="grid grid-cols-4 gap-2">
-                              {afternoonSlots.map((time) => {
-                                const available = isTimeSlotAvailable(time);
-                                const isSelected = selectedTime === time;
-                                return (
-                                  <button
-                                    key={time}
-                                    onClick={() =>
-                                      available && setSelectedTime(time)
-                                    }
-                                    disabled={!available}
-                                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                                      isSelected
-                                        ? "bg-teal-600 text-white"
-                                        : available
-                                        ? "bg-teal-50 text-gray-800 hover:bg-teal-100"
-                                        : "bg-gray-100 text-gray-400 line-through cursor-not-allowed"
-                                    }`}
-                                  >
-                                    {time}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Legend */}
-                          <div className="flex items-center gap-4 mt-6 text-xs text-gray-600">
-                            <div className="flex items-center gap-1">
-                              <div className="w-4 h-4 bg-gray-100 rounded"></div>
-                              <span>Còn trống</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-4 h-4 bg-gray-300 rounded"></div>
-                              <span>Đã đặt</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-4 h-4 bg-teal-600 rounded"></div>
-                              <span>Đã chọn</span>
-                            </div>
-                          </div>
-                        </>
+                          );
+                        })()
                       ) : (
                         <div className="text-center py-12">
                           <p className="text-gray-400">
@@ -682,12 +899,25 @@ const ScheduleSupport = () => {
                           </p>
                         </div>
                       )}
+                      <div className="flex items-center gap-4 mt-6 text-xs text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 bg-gray-100 rounded"></div>
+                          <span>Còn trống</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                          <span>Đã đặt</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 bg-teal-600 rounded"></div>
+                          <span>Đã chọn</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
-
             {/* Step 4: Ghi chú cuộc hẹn (textarea bound to notes) */}
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
@@ -733,7 +963,6 @@ const ScheduleSupport = () => {
               </div>
             </div>
           </div>
-
           {/* Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300 sticky top-6">
@@ -825,7 +1054,9 @@ const ScheduleSupport = () => {
                                 {formatSelectedDate()}
                               </p>
                               <p className="text-sm text-gray-600">
-                                {selectedTime}
+                                {selectedTime
+                                  ? `${selectedTime.start} - ${selectedTime.end}`
+                                  : ""}
                               </p>
                             </>
                           ) : (
@@ -864,7 +1095,11 @@ const ScheduleSupport = () => {
               </div>
               <div className="mt-4">
                 <button
-                  onClick={() => alert("Xác nhận đặt lịch (demo)")}
+                  onClick={() => {
+                    if (completed >= 4) {
+                      setShowConfirmDialog(true);
+                    }
+                  }}
                   disabled={completed < 4}
                   className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
                     completed >= 4
@@ -883,6 +1118,50 @@ const ScheduleSupport = () => {
           </div>
         </div>
       </div>
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+            {/* Icon */}
+            <AlertCircle className="w-12 h-12 text-teal-600 mx-auto mb-4" />
+            {/* Title */}
+            <h3 className="text-xl font-bold text-center mb-4">
+              Xác nhận đặt lịch
+            </h3>
+            {/* Content */}
+            <p className="text-center mb-6">
+              Bạn có chắc chắn muốn đặt lịch khám vào: <br />
+              {formatSelectedDate()} <br />
+              {selectedTime
+                ? `${selectedTime.start} - ${selectedTime.end}`
+                : ""}
+            </p>
+            {/* Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="flex-1 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                Không
+              </button>
+              <button
+                onClick={confirmAppointment}
+                disabled={loading}
+                className="flex-1 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+              >
+                {loading ? "Đang xử lý..." : "Có"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

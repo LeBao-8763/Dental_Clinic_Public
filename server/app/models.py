@@ -171,6 +171,8 @@ class DentistSchedule(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
 
+    effective_from = db.Column(db.Date,nullable=True)
+
     dentist = db.relationship('User', back_populates='dentist_schedules')
 
 
