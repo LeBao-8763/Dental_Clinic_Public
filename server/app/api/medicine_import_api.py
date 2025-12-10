@@ -24,6 +24,8 @@ class MedicineImportList(Resource):
             user_id=data['user_id'],
             medicine_id=data['medicine_id'],
             quantity=data['quantity_imported'],
+            production_date=data['production_date'],
+            expiration_date=data['expiration_date'],
             price=data['price']
         )
 

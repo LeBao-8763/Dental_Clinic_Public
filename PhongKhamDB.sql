@@ -44,12 +44,11 @@ CREATE TABLE dentist_profile (
 CREATE TABLE medicine (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
-    production_date DATETIME,
-    expiration_date DATETIME,
-    stock_quantity INT,
+    reserved_quantity INT, -- Trừ tạm khi kê đơn chưa thanh toán
     type ENUM('PILL', 'CREAM', 'LIQUID', 'OTHER'),
     amount_per_unit INT,
-    retail_unit VARCHAR(50)
+    retail_unit VARCHAR(50),
+    selling_price DECIMAL(10,2)
 );
 
 -- Bảng nhập thuốc
@@ -58,9 +57,11 @@ CREATE TABLE medicine_import (
     user_id BIGINT,
     medicine_id BIGINT,
     import_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+	production_date DATETIME,
+    expiration_date DATETIME,
     quantity_imported INT,
     price DECIMAL(10,2),
-    stock_quantity INT,
+    stock_quantity INT, -- số lượng còn lại trong lô này
     FOREIGN KEY (user_id) REFERENCES user(id),
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
@@ -154,14 +155,24 @@ CREATE TABLE treatment_record (
 -- Bảng toa thuốc
 CREATE TABLE prescriptions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id BIGINT,
-    medicine_id BIGINT,
+    appointment_id BIGINT NOT NULL,
+    note VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('DRAFT', 'CONFIRMED', 'CANCELLED'),
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+);
+
+-- Bảng chi tiết toa thuốc
+CREATE TABLE prescription_details (
+    prescription_id BIGINT NOT NULL,
+    medicine_id BIGINT NOT NULL,
     dosage INT,
     unit VARCHAR(50),
     duration_days INT,
     note VARCHAR(255),
     price DECIMAL(10,2),
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+    PRIMARY KEY (prescription_id, medicine_id),
+    FOREIGN KEY (prescription_id) REFERENCES prescriptions(id),
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
 

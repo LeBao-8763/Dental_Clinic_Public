@@ -3,7 +3,7 @@ from app.models import Medicine, MedicineImport
 from datetime import datetime
 
 # Nhập thuốc vào kho
-def import_medicine(user_id, medicine_id, quantity, price):
+def import_medicine(user_id, medicine_id, production_date, expiration_date, quantity, price):
     med = Medicine.query.get(medicine_id)
     if not med:
         return None
@@ -14,13 +14,12 @@ def import_medicine(user_id, medicine_id, quantity, price):
         medicine_id=medicine_id,
         import_date=datetime.utcnow(),
         quantity_imported=quantity,
+        production_date=production_date,
+        expiration_date=expiration_date,
         price=price,
-        stock_quantity=med.stock_quantity + quantity
+        stock_quantity=quantity
     )
     db.session.add(import_record)
-
-    # Cập nhật tồn kho
-    med.stock_quantity += quantity
     db.session.commit()
     return import_record
 

@@ -1,3 +1,5 @@
+from alembic.util import status
+
 from app import db
 from app.models import Prescription, PrescriptionDetail, Medicine
 
@@ -46,28 +48,68 @@ def get_details_by_prescription(prescription_id):
         })
     return result
 
-def add_detail(data):
-    detail = PrescriptionDetail(
-        prescription_id=data['prescription_id'],
-        medicine_id=data['medicine_id'],
-        dosage=data['dosage'],
-        unit=data['unit'],
-        duration_days=data['duration_days'],
-        note=data.get('note'),
-        price=data['price']
-    )
-    db.session.add(detail)
-    db.session.commit()
-    return True  # chỉ trả về True khi thêm thành công
+def add_details(data):
+    prescription_id = data['prescription_id']
+    new_details = data['details']
 
+    # 1️⃣ Lấy tất cả chi tiết hiện có trong DB
+    existing_details = PrescriptionDetail.query.filter_by(prescription_id=prescription_id).all()
+    existing_map = {d.medicine_id: d for d in existing_details}
 
-def delete_detail(prescription_id, medicine_id):
-    detail = PrescriptionDetail.query.filter_by(
-        prescription_id=prescription_id,
-        medicine_id=medicine_id
-    ).first()
-    if not detail:
-        return False
-    db.session.delete(detail)
+    # 2️⃣ Tạo danh sách ID thuốc mới
+    new_ids = [item['medicine_id'] for item in new_details]
+
+    # 3️⃣ Xử lý thêm hoặc cập nhật
+    for item in new_details:
+        medicine_id = item['medicine_id']
+        dosage = item['dosage']
+        duration_days = item['duration_days']
+        total_quantity = dosage * duration_days
+
+        medicine = Medicine.query.get(medicine_id)
+
+        if medicine_id in existing_map:
+            # Đã tồn tại → kiểm tra thay đổi
+            old_detail = existing_map[medicine_id]
+            old_total = old_detail.dosage * old_detail.duration_days
+            diff = total_quantity - old_total  # dương: tăng, âm: giảm
+
+            # Cập nhật toa
+            old_detail.dosage = dosage
+            old_detail.unit = item['unit']
+            old_detail.duration_days = duration_days
+            old_detail.note = item.get('note')
+            old_detail.price = item['price']
+
+            # Cập nhật kho tạm
+            if medicine:
+                medicine.reserved_quantity += diff
+
+        else:
+            # Thuốc mới → thêm mới
+            new_detail = PrescriptionDetail(
+                prescription_id=prescription_id,
+                medicine_id=medicine_id,
+                dosage=dosage,
+                unit=item['unit'],
+                duration_days=duration_days,
+                note=item.get('note'),
+                price=item['price']
+            )
+            db.session.add(new_detail)
+            if medicine:
+                medicine.reserved_quantity += total_quantity
+
+    # 4️⃣ Xóa thuốc bị gỡ khỏi toa
+    for old_medicine_id, old_detail in existing_map.items():
+        if old_medicine_id not in new_ids:
+            # Thuốc bị xóa khỏi toa
+            old_total = old_detail.dosage * old_detail.duration_days
+            medicine = Medicine.query.get(old_medicine_id)
+            if medicine:
+                medicine.reserved_quantity -= old_total
+            db.session.delete(old_detail)
+
     db.session.commit()
     return True
+

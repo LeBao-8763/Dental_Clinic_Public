@@ -2,7 +2,7 @@ from flask import Blueprint
 from flask_restx import Api, fields, reqparse
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from werkzeug.datastructures import FileStorage
-from app.models import GenderEnum, RoleEnum, StatusEnum, MedicineTypeEnum, AppointmentStatusEnum
+from app.models import GenderEnum, RoleEnum, StatusEnum, MedicineTypeEnum, AppointmentStatusEnum, PrescriptionStatusEnum
 
 # Tạo một Blueprint cho API. Blueprint này sẽ được đăng ký với ứng dụng Flask chính.
 # url_prefix='/api' có nghĩa là tất cả các endpoint trong Blueprint này sẽ có tiền tố /api.
@@ -70,12 +70,11 @@ dentist_model = api.model('Dentist', {
 medicine_model = api.model('Medicine', {
     'id': fields.Integer(readOnly=True, description='ID thuốc'),
     'name': fields.String(required=True, description='Tên thuốc'),
-    'production_date': fields.DateTime(description='Ngày sản xuất'),
-    'expiration_date': fields.DateTime(description='Hạn sử dụng'),
-    'stock_quantity': fields.Integer(description='Số lượng tồn kho'),
+    'reserved_quantity': fields.Integer(description='Số lượng trừ tạm'),
     'type': fields.String(enum=[e.value for e in MedicineTypeEnum], description='Loại thuốc'),
     'amount_per_unit': fields.Integer(description='Số lượng trên 1 đơn vị'),
-    'retail_unit': fields.String(description='Đơn vị bán lẻ')
+    'retail_unit': fields.String(description='Đơn vị bán lẻ'),
+    'selling_price': fields.Float(required=True, description='Giá bán')
 })
 
 medicine_import_model = api.model('MedicineImport', {
@@ -83,6 +82,8 @@ medicine_import_model = api.model('MedicineImport', {
     'user_id': fields.Integer(required=True, description='ID nhân viên nhập thuốc'),
     'medicine_id': fields.Integer(required=True, description='ID thuốc được nhập'),
     'import_date': fields.DateTime(description='Ngày nhập thuốc'),
+    'production_date': fields.DateTime(description='Ngày sản xuất'),
+    'expiration_date': fields.DateTime(description='Hạn sử dụng'),
     'quantity_imported': fields.Integer(required=True, description='Số lượng nhập'),
     'price': fields.Float(required=True, description='Giá nhập lô thuốc'),
     'stock_quantity': fields.Integer(description='Tồn kho sau khi nhập')
@@ -155,7 +156,8 @@ prescription_model = api.model('Prescription', {
     'id': fields.Integer(readOnly=True, description='ID toa thuốc'),
     'appointment_id': fields.Integer(description='ID lịch hẹn'),
     'note': fields.String(description='Ghi chú toa thuốc'),
-    'created_at': fields.DateTime(description='Ngày tạo toa thuốc')
+    'created_at': fields.DateTime(description='Ngày tạo toa thuốc'),
+    'status': fields.String(enum=[e.value for e in PrescriptionStatusEnum], description='Trạng thái')
 })
 
 prescription_detail_model = api.model('PrescriptionDetail', {
@@ -333,12 +335,10 @@ dentist_custom_schedule_parser.add_argument('note', type=str, required=False, he
 ''' MEDICINE '''
 medicine_parser = reqparse.RequestParser()
 medicine_parser.add_argument('name', type=str, required=True, help='Tên thuốc')
-medicine_parser.add_argument('production_date', type=str, required=True, help='Ngày sản xuất (YYYY-MM-DD)')
-medicine_parser.add_argument('expiration_date', type=str, required=True, help='Hạn sử dụng (YYYY-MM-DD)')
-medicine_parser.add_argument('stock_quantity', type=int, required=True, help='Số lượng tồn kho')
 medicine_parser.add_argument('type', type=str, required=True, choices=['PILL', 'CREAM', 'LIQUID', 'OTHER'], help='Loại thuốc')
 medicine_parser.add_argument('amount_per_unit', type=int, required=True, help='Số lượng trên 1 đơn vị')
 medicine_parser.add_argument('retail_unit', type=str, required=True, help='Đơn vị bán lẻ')
+medicine_parser.add_argument('selling_price', type=int, required=True, help='Giá bán')
 
 ''' MEDICINE IMPORT '''
 medicine_import_parser = reqparse.RequestParser()
@@ -346,13 +346,15 @@ medicine_import_parser.add_argument('user_id', type=int, required=True, help='ID
 medicine_import_parser.add_argument('medicine_id', type=int, required=True, help='ID thuốc được nhập')
 medicine_import_parser.add_argument('quantity_imported', type=int, required=True, help='Số lượng nhập')
 medicine_import_parser.add_argument('import_date', type=str, required=False, help='Ngày nhập')
+medicine_import_parser.add_argument('production_date', type=str, required=True, help='Ngày sản xuất (YYYY-MM-DD)')
+medicine_import_parser.add_argument('expiration_date', type=str, required=True, help='Hạn sử dụng (YYYY-MM-DD)')
 medicine_import_parser.add_argument('price', type=float, required=True, help='Giá nhập lô thuốc')
-medicine_import_parser.add_argument('stock_quantity', type=int, required=True, help='Số lượng tồn sau nhập')
 
 ''' PRESCRIPTION '''
 prescription_parser = reqparse.RequestParser()
 prescription_parser.add_argument('appointment_id', type=int, required=True, help='ID cuộc hẹn')
 prescription_parser.add_argument('note', type=str, required=False, help='Ghi chú toa thuốc')
+prescription_parser.add_argument('status', type=str, required=True, help='Trạng thái toa thuốc')
 
 ''' PRESCRIPTION DETAILS '''
 prescription_detail_parser = reqparse.RequestParser()

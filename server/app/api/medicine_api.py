@@ -21,11 +21,10 @@ class MedicineList(Resource):
 
         new_medicine = dao_medicine.create_medicine(
             name=data['name'],
-            production_date=data['production_date'],
-            expiration_date=data['expiration_date'],
             type=data['type'],
             amount_per_unit=data['amount_per_unit'],
-            retail_unit=data['retail_unit']
+            retail_unit=data['retail_unit'],
+            selling_price=data['selling_price'],
         )
 
         if new_medicine:
