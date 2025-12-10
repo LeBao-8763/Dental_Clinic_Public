@@ -90,6 +90,22 @@ def update_appointment(appointment_id, **kwargs):
         if overlapping:
             raise ValueError("Khung giờ cập nhật bị trùng với lịch khác của bác sĩ")
 
+#huy-dev
+def get_all_appointments():
+    return Appointment.query.options(
+        joinedload(Appointment.patient),
+        joinedload(Appointment.dentist)
+    ).all()
+
+def delete_appointment(appointment_id):
+    appointment = Appointment.query.get(appointment_id)
+    if not appointment:
+        return False
+    db.session.delete(appointment)
+    db.session.commit()
+    return True
+
+
     db.session.commit()
 
     return appointment

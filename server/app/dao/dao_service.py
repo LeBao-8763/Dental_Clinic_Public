@@ -20,3 +20,22 @@ def create_service(name, price, description):
 
 def get_list_service():
     return Service.query.all()
+
+#huy-dev
+def update_service(service_id, name=None, price=None, description=None):
+    service = Service.query.get(service_id)
+    if not service:
+        return None
+    if name: service.name = name
+    if price: service.price = price
+    if description: service.description = description
+    db.session.commit()
+    return service
+
+def delete_service(service_id):
+    service = Service.query.get(service_id)
+    if not service:
+        return False
+    db.session.delete(service)
+    db.session.commit()
+    return True

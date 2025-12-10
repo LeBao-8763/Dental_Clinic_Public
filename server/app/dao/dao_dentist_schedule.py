@@ -100,5 +100,16 @@ def delete_dentist_schedules_by_day(dentist_id, day_of_week):
     db.session.commit()
     return deleted_count
 
+#huy-dev
+def get_all_dentist_schedules():
+    return DentistSchedule.query.all()
 
-   
+def update_dentist_schedule(schedule_id, day_of_week=None, start_time=None, end_time=None):
+    schedule = DentistSchedule.query.get(schedule_id)
+    if not schedule:
+        return None
+    if day_of_week: schedule.day_of_week = day_of_week
+    if start_time: schedule.start_time = start_time
+    if end_time: schedule.end_time = end_time
+    db.session.commit()
+    return schedule

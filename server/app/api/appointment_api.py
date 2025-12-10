@@ -55,4 +55,35 @@ class AppointmentByDentistResource(Resource):
         appointments = dao_appointment.get_appointments_by_dentist(dentist_id)
         return appointments, 200
 
-    
+#huy-dev 
+#Lấy tất cả lịch hẹn không giới hạn bác sĩ
+@appointment_ns.route('/all')
+class AllAppointments(Resource):
+    @appointment_ns.marshal_list_with(appointment_with_patient_model)
+    def get(self):
+        """Admin lấy tất cả lịch hẹn"""
+        appointments = dao_appointment.get_all_appointments()
+        return appointments, 200
+
+#Xóa lịch hẹn theo ID
+@appointment_ns.route('/<int:appointment_id>/delete')
+class DeleteAppointment(Resource):
+    def delete(self, appointment_id):
+        """Admin xóa lịch hẹn theo ID"""
+        success = dao_appointment.delete_appointment(appointment_id)
+        if success:
+            return {"message": "Đã xóa lịch hẹn"}, 200
+        return {"message": "Không tìm thấy lịch hẹn"}, 404
+
+#Thống kê số lượng lịch hẹn theo ngày
+@appointment_ns.route('/stats/by-date')
+class AppointmentStats(Resource):
+    def get(self):
+        """Admin thống kê số lượng lịch hẹn theo ngày"""
+        from sqlalchemy import func
+        stats = db.session.query(
+            Appointment.appointment_date,
+            func.count(Appointment.id)
+        ).group_by(Appointment.appointment_date).all()
+
+        return [{"date": str(date), "count": count} for date, count in stats], 200

@@ -32,3 +32,37 @@ class MedicineList(Resource):
             return new_medicine, 201
 
         return {'message': 'Server Error'}, 500
+
+#huy-dev
+#Cập nhật thông tin thuốc
+@medicine_ns.route('/<int:medicine_id>')
+class MedicineResource(Resource):
+    @medicine_ns.expect(medicine_parser, validate=True)
+    @medicine_ns.marshal_with(medicine_model, code=200)
+    #@jwt_required()
+    def patch(self, medicine_id):
+        """Admin cập nhật thông tin thuốc"""
+        data = medicine_parser.parse_args()
+        updated_medicine = dao_medicine.update_medicine(
+            medicine_id,
+            name=data.get('name'),
+            production_date=data.get('production_date'),
+            expiration_date=data.get('expiration_date'),
+            type=data.get('type'),
+            amount_per_unit=data.get('amount_per_unit'),
+            retail_unit=data.get('retail_unit')
+        )
+        if updated_medicine:
+            return updated_medicine, 200
+        return {"msg": "Không tìm thấy thuốc"}, 404
+
+#Xóa thuốc khỏi danh mục
+@medicine_ns.route('/<int:medicine_id>/delete')
+class DeleteMedicine(Resource):
+    #@jwt_required()
+    def delete(self, medicine_id):
+        """Admin xóa thuốc theo ID"""
+        success = dao_medicine.delete_medicine(medicine_id)
+        if success:
+            return {"msg": "Đã xóa thuốc"}, 200
+        return {"msg": "Không tìm thấy thuốc"}, 404

@@ -80,4 +80,15 @@ def delete_treatment_records_by_aptId(appointment_id):
     db.session.commit()
     return deleted_count
 
-    
+#huy-dev
+def get_all_treatment_records():
+    return TreatmentRecord.query.all()
+
+def update_treatment_record(record_id, service_id=None, note=None):
+    record = TreatmentRecord.query.get(record_id)
+    if not record:
+        return None
+    if service_id: record.service_id = service_id
+    if note: record.note = note
+    db.session.commit()
+    return record

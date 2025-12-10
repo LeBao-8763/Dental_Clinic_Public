@@ -37,3 +37,25 @@ def create_post(title,content,img_list):
 
 def get_all_post():
     return Post.query.all()
+
+#huy-dev
+def get_post_by_id(post_id):
+    return Post.query.get(post_id)
+
+def update_post(post_id, title=None, content=None, img_list=None):
+    post = Post.query.get(post_id)
+    if not post:
+        return None
+    if title: post.title = title
+    if content: post.content = content
+    if img_list is not None: post.img_list = img_list
+    db.session.commit()
+    return post
+
+def delete_post(post_id):
+    post = Post.query.get(post_id)
+    if not post:
+        return False
+    db.session.delete(post)
+    db.session.commit()
+    return True

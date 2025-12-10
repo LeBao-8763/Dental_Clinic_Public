@@ -68,3 +68,45 @@ class DentistScheduleByDay(Resource):
         except Exception as e:
             return {'error': 'Lỗi server', 'detail': str(e)}, 500
 
+#huy-dev
+#Lấy tất cả lịch làm việc của tất cả nha sĩ
+@dentist_shedule_ns.route('/all')
+class AllDentistSchedules(Resource):
+    @dentist_shedule_ns.doc('get_all_dentist_schedules')
+    @dentist_shedule_ns.marshal_list_with(dentist_shedule_model)
+    def get(self):
+        """Admin lấy tất cả lịch làm việc của mọi nha sĩ"""
+        schedules = dao_dentist_schedule.get_all_dentist_schedules()
+        return schedules, 200
+
+#Cập nhật lịch làm việc theo ID
+@dentist_shedule_ns.route('/update/<int:schedule_id>')
+class UpdateDentistSchedule(Resource):
+    @dentist_shedule_ns.doc('update_dentist_schedule')
+    @dentist_shedule_ns.expect(dentist_shedule_parser, validate=True)
+    @dentist_shedule_ns.marshal_with(dentist_shedule_model, code=200)
+    def patch(self, schedule_id):
+        """Admin cập nhật lịch làm việc theo ID"""
+        args = dentist_shedule_parser.parse_args()
+        updated_schedule = dao_dentist_schedule.update_dentist_schedule(
+            schedule_id,
+            day_of_week=args.get('day_of_week'),
+            start_time=args.get('start_time'),
+            end_time=args.get('end_time')
+        )
+        if updated_schedule:
+            return updated_schedule, 200
+        return {"msg": "Không tìm thấy lịch làm việc"}, 404
+
+#Thống kê số lượng lịch làm việc theo nha sĩ
+@dentist_shedule_ns.route('/stats')
+class DentistScheduleStats(Resource):
+    def get(self):
+        """Admin thống kê số lượng lịch làm việc theo nha sĩ"""
+        from sqlalchemy import func
+        stats = db.session.query(
+            DentistSchedule.dentist_id,
+            func.count(DentistSchedule.id)
+        ).group_by(DentistSchedule.dentist_id).all()
+
+        return [{"dentist_id": dentist_id, "count": count} for dentist_id, count in stats], 200

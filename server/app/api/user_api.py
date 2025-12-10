@@ -55,4 +55,47 @@ class UserResource(Resource):
             return user,200
         user_ns.abort(404, "User not found")
 
+#huy-dev
+#Lấy danh sách tất cả người dùng
+@user_ns.route('/all')
+class AllUsers(Resource):
+    @user_ns.doc('get_all_users')
+    @user_ns.marshal_list_with(user_model)
+    def get(self):
+        """Admin lấy danh sách tất cả người dùng"""
+        users = dao_user.get_all_users()
+        return users, 200
 
+#Cập nhật thông tin người dùng
+@user_ns.route('/<int:user_id>/update')
+class UpdateUser(Resource):
+    @user_ns.doc('update_user')
+    @user_ns.expect(user_creation_parser, validate=True)
+    @user_ns.marshal_with(user_model, code=200)
+    def patch(self, user_id):
+        """Admin cập nhật thông tin người dùng"""
+        args = user_creation_parser.parse_args()
+        updated_user = dao_user.update_user(
+            user_id,
+            username=args.get('username'),
+            phone_number=args.get('phonenumber'),
+            firstname=args.get('firstname'),
+            lastname=args.get('lastname'),
+            role=args.get('role'),
+            gender=args.get('gender'),
+            password=args.get('password')
+        )
+        if updated_user:
+            return updated_user, 200
+        return {"msg": "Không tìm thấy người dùng"}, 404
+
+#Xóa người dùng
+@user_ns.route('/<int:user_id>/delete')
+class DeleteUser(Resource):
+    @user_ns.doc('delete_user')
+    def delete(self, user_id):
+        """Admin xóa người dùng theo ID"""
+        success = dao_user.delete_user(user_id)
+        if success:
+            return {"msg": "Đã xóa người dùng"}, 200
+        return {"msg": "Không tìm thấy người dùng"}, 404
