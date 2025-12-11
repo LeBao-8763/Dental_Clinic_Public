@@ -143,6 +143,22 @@ def update_appointment(appointment_id, **kwargs):
         dao_user_booking_stats.update_user_booking_stats(appointment.patient_id)
 
 
+#huy-dev
+def get_all_appointments():
+    return Appointment.query.options(
+        joinedload(Appointment.patient),
+        joinedload(Appointment.dentist)
+    ).all()
+
+def delete_appointment(appointment_id):
+    appointment = Appointment.query.get(appointment_id)
+    if not appointment:
+        return False
+    db.session.delete(appointment)
+    db.session.commit()
+    return True
+
+
     db.session.commit()
 
     return appointment

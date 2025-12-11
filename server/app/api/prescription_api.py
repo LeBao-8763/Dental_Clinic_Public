@@ -70,3 +70,52 @@ class PrescriptionDetailList(Resource):
         else:
             return {'success': False}, 400
 
+@prescription_ns.route('/<int:prescription_id>/details/<int:medicine_id>')
+class PrescriptionDetailItem(Resource):
+    #@jwt_required()
+    def delete(self, prescription_id, medicine_id):
+        success = dao_prescription.delete_detail(prescription_id, medicine_id)
+        if not success:
+            prescription_ns.abort(404, 'Không tìm thấy chi tiết toa thuốc')
+        return {'message': 'Đã xóa thuốc khỏi toa'}, 200
+
+#huy-dev
+#Cập nhật toa thuốc
+@prescription_ns.route('/<int:id>/update')
+class UpdatePrescription(Resource):
+    @prescription_ns.doc('update_prescription')
+    @prescription_ns.expect(prescription_parser, validate=True)
+    @prescription_ns.marshal_with(prescription_model, code=200)
+    def patch(self, id):
+        """Admin cập nhật toa thuốc theo ID"""
+        args = prescription_parser.parse_args()
+        updated_prescription = dao_prescription.update_prescription(id, args)
+        if updated_prescription:
+            return updated_prescription, 200
+        return {"msg": "Không tìm thấy toa thuốc"}, 404
+
+#Cập nhật chi tiết toa thuốc
+@prescription_ns.route('/<int:prescription_id>/details/<int:medicine_id>/update')
+class UpdatePrescriptionDetail(Resource):
+    @prescription_ns.doc('update_prescription_detail')
+    @prescription_ns.expect(prescription_detail_parser, validate=True)
+    def patch(self, prescription_id, medicine_id):
+        """Admin cập nhật chi tiết toa thuốc"""
+        args = prescription_detail_parser.parse_args()
+        success = dao_prescription.update_detail(prescription_id, medicine_id, args)
+        if success:
+            return {"msg": "Cập nhật chi tiết toa thuốc thành công"}, 200
+        return {"msg": "Không tìm thấy chi tiết toa thuốc"}, 404
+
+#Thống kê số lượng toa thuốc theo bác sĩ
+@prescription_ns.route('/stats/by-dentist')
+class PrescriptionStatsByDentist(Resource):
+    def get(self):
+        """Admin thống kê số lượng toa thuốc theo bác sĩ"""
+        from sqlalchemy import func
+        stats = db.session.query(
+            Prescription.dentist_id,
+            func.count(Prescription.id)
+        ).group_by(Prescription.dentist_id).all()
+
+        return [{"dentist_id": dentist_id, "count": count} for dentist_id, count in stats], 200

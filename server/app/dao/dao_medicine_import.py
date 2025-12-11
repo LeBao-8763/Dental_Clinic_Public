@@ -26,3 +26,26 @@ def import_medicine(user_id, medicine_id, production_date, expiration_date, quan
 # Lấy danh sách nhập thuốc
 def get_medicine_import_list():
     return MedicineImport.query.all()
+
+#huy-dev
+def get_import_by_id(import_id):
+    return MedicineImport.query.get(import_id)
+
+def update_import(import_id, user_id=None, medicine_id=None, quantity=None, price=None):
+    import_record = MedicineImport.query.get(import_id)
+    if not import_record:
+        return None
+    if user_id: import_record.user_id = user_id
+    if medicine_id: import_record.medicine_id = medicine_id
+    if quantity: import_record.quantity_imported = quantity
+    if price: import_record.price = price
+    db.session.commit()
+    return import_record
+
+def delete_import(import_id):
+    import_record = MedicineImport.query.get(import_id)
+    if not import_record:
+        return False
+    db.session.delete(import_record)
+    db.session.commit()
+    return True

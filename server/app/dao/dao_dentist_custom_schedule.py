@@ -87,3 +87,16 @@ def delete_custom_schedule_by_date(dentist_id,custom_date):
     db.session.commit()
     return deleted_count
 
+#huy-dev
+def get_all_custom_schedules():
+    return DentistCustomSchedule.query.all()
+
+def update_custom_schedule(schedule_id, custom_date=None, note=None, schedules_data=None):
+    schedule = DentistCustomSchedule.query.get(schedule_id)
+    if not schedule:
+        return None
+    if custom_date: schedule.custom_date = custom_date
+    if note: schedule.note = note
+    if schedules_data is not None: schedule.schedules = schedules_data
+    db.session.commit()
+    return schedule

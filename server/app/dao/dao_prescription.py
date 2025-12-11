@@ -113,3 +113,27 @@ def add_details(data):
     db.session.commit()
     return True
 
+
+#huy-dev
+def update_prescription(prescription_id, args):
+    prescription = Prescription.query.get(prescription_id)
+    if not prescription:
+        return None
+    if 'patient_id' in args: prescription.patient_id = args['patient_id']
+    if 'dentist_id' in args: prescription.dentist_id = args['dentist_id']
+    if 'note' in args: prescription.note = args['note']
+    db.session.commit()
+    return prescription
+
+def update_detail(prescription_id, medicine_id, args):
+    detail = PrescriptionDetail.query.filter_by(
+        prescription_id=prescription_id,
+        medicine_id=medicine_id
+    ).first()
+    if not detail:
+        return False
+    if 'quantity' in args: detail.quantity = args['quantity']
+    if 'note' in args: detail.note = args['note']
+    db.session.commit()
+    return True
+

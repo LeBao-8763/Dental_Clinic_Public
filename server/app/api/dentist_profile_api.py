@@ -16,7 +16,8 @@ class Service(Resource):
             education=args.get('education'),
             experience=args.get('experience')
         )
-        if new_service:
+        # if new_service:
+        if new_dentist_profile:
             return new_dentist_profile, 201
 
         return 500
@@ -31,3 +32,34 @@ class DentistProfileResource(Resource):
         if profile:
             return profile,201
         dentist_profile_ns.abort(404, f"Hồ sơ bác sĩ với ID {dentist_id} không tồn tại")
+
+#huy-dev
+#Cập nhật hồ sơ bác sĩ
+@dentist_profile_ns.route('/<int:dentist_id>/update')
+class UpdateDentistProfile(Resource):
+    @dentist_profile_ns.doc('update_dentist_profile')
+    @dentist_profile_ns.expect(dentist_profile_parser, validate=True)
+    @dentist_profile_ns.marshal_with(dentist_profile_model, code=200)
+    def patch(self, dentist_id):
+        """Admin cập nhật hồ sơ bác sĩ"""
+        args = dentist_profile_parser.parse_args()
+        updated_profile = dao_dentist_profile.update_dentist_profile(
+            dentist_id=dentist_id,
+            introduction=args.get('introduction'),
+            education=args.get('education'),
+            experience=args.get('experience')
+        )
+        if updated_profile:
+            return updated_profile, 200
+        return {"msg": "Không tìm thấy hồ sơ bác sĩ"}, 404
+
+#Xóa hồ sơ bác sĩ
+@dentist_profile_ns.route('/<int:dentist_id>/delete')
+class DeleteDentistProfile(Resource):
+    @dentist_profile_ns.doc('delete_dentist_profile')
+    def delete(self, dentist_id):
+        """Admin xóa hồ sơ bác sĩ"""
+        success = dao_dentist_profile.delete_dentist_profile(dentist_id)
+        if success:
+            return {"msg": "Đã xóa hồ sơ bác sĩ"}, 200
+        return {"msg": "Không tìm thấy hồ sơ bác sĩ"}, 404

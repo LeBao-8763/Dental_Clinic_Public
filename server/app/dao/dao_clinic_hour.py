@@ -24,4 +24,23 @@ def create_default_week_hours(default_open, default_close):
 
 def get_all_clinic_hours():
     return ClinicHours.query.all()
-   
+
+#huy-dev
+def update_clinic_hour(clinic_hour_id, day_of_week=None, open_time=None, close_time=None, slot_duration_minutes=None):
+    clinic_hour = ClinicHour.query.get(clinic_hour_id)
+    if not clinic_hour:
+        return None
+    if day_of_week: clinic_hour.day_of_week = day_of_week
+    if open_time: clinic_hour.open_time = open_time
+    if close_time: clinic_hour.close_time = close_time
+    if slot_duration_minutes: clinic_hour.slot_duration_minutes = slot_duration_minutes
+    db.session.commit()
+    return clinic_hour
+
+def delete_clinic_hour(clinic_hour_id):
+    clinic_hour = ClinicHour.query.get(clinic_hour_id)
+    if not clinic_hour:
+        return False
+    db.session.delete(clinic_hour)
+    db.session.commit()
+    return True

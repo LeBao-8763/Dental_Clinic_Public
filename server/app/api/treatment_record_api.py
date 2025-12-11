@@ -58,3 +58,45 @@ class TreatmentRecordByAppointment(Resource):
             return {'error': str(e)}, 400
         except Exception as e:
             return {'error': 'Lỗi server', 'detail': str(e)}, 500
+
+#huy-dev
+#Lấy tất cả hồ sơ điều trị
+@treatment_record_ns.route('/all')
+class AllTreatmentRecords(Resource):
+    @treatment_record_ns.doc('get_all_treatment_records')
+    @treatment_record_ns.marshal_list_with(treatment_record_model)
+    def get(self):
+        """Admin lấy tất cả hồ sơ điều trị"""
+        records = dao_treatment_record.get_all_treatment_records()
+        return records, 200
+
+#Cập nhật hồ sơ điều trị theo ID
+@treatment_record_ns.route('/<int:record_id>/update')
+class UpdateTreatmentRecord(Resource):
+    @treatment_record_ns.doc('update_treatment_record')
+    @treatment_record_ns.expect(treatment_record_input_model, validate=True)
+    @treatment_record_ns.marshal_with(treatment_record_model, code=200)
+    def patch(self, record_id):
+        """Admin cập nhật hồ sơ điều trị theo ID"""
+        data = request.get_json()
+        updated_record = dao_treatment_record.update_treatment_record(
+            record_id,
+            service_id=data.get('service_id'),
+            note=data.get('note')
+        )
+        if updated_record:
+            return updated_record, 200
+        return {"msg": "Không tìm thấy hồ sơ điều trị"}, 404
+
+#Thống kê hồ sơ điều trị theo dịch vụ
+@treatment_record_ns.route('/stats/by-service')
+class TreatmentRecordStats(Resource):
+    def get(self):
+        """Admin thống kê số lượng hồ sơ điều trị theo dịch vụ"""
+        from sqlalchemy import func
+        stats = db.session.query(
+            TreatmentRecord.service_id,
+            func.count(TreatmentRecord.id)
+        ).group_by(TreatmentRecord.service_id).all()
+
+        return [{"service_id": service_id, "count": count} for service_id, count in stats], 200
