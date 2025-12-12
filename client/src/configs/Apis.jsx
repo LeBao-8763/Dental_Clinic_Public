@@ -47,6 +47,14 @@ export const endpoints = {
   post: {
     get: "post/",
   },
+  medicine: {
+    list: "medicines/",
+  },
+  prescription: {
+    create: "prescription/",
+    get_by_aptId: (apt_id) => `prescription/by-appointment/${apt_id}`,
+    add_details: (prescriptionId) => `prescription/${prescriptionId}/details`,
+  },
 };
 
 export const publicApi = axios.create({

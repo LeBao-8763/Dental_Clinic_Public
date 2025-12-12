@@ -48,6 +48,48 @@ def get_details_by_prescription(prescription_id):
         })
     return result
 
+def get_prescription_by_appointment(appointment_id):
+    """Lấy toa thuốc và chi tiết thuốc theo appointment_id"""
+    prescription = (
+        db.session.query(Prescription)
+        .filter(Prescription.appointment_id == appointment_id)
+        .first()
+    )
+
+    if not prescription:
+        return None
+
+    # Lấy chi tiết thuốc + thông tin thuốc
+    details = (
+        db.session.query(PrescriptionDetail, Medicine)
+        .join(Medicine, PrescriptionDetail.medicine_id == Medicine.id)
+        .filter(PrescriptionDetail.prescription_id == prescription.id)
+        .all()
+    )
+
+    # Đóng gói dữ liệu trả về
+    result = {
+        "id": prescription.id,
+        "appointment_id": prescription.appointment_id,
+        "note": prescription.note,
+        "created_at": prescription.created_at.strftime("%Y-%m-%d %H:%M:%S") if prescription.created_at else None,
+        "status": prescription.status.name if prescription.status else None,
+        "details": [
+            {
+                "medicine_id": med.id,
+                "medicine_name": med.name,
+                "dosage": detail.dosage,
+                "unit": detail.unit,
+                "duration_days": detail.duration_days,
+                "note": detail.note,
+                "price": float(detail.price),
+            }
+            for detail, med in details
+        ],
+    }
+
+    return result
+
 def add_details(data):
     prescription_id = data['prescription_id']
     new_details = data['details']
@@ -61,10 +103,14 @@ def add_details(data):
 
     # 3️⃣ Xử lý thêm hoặc cập nhật
     for item in new_details:
-        medicine_id = item['medicine_id']
-        dosage = item['dosage']
-        duration_days = item['duration_days']
+        medicine_id = int(item['medicine_id'])
+        dosage = int(item['dosage'])
+        duration_days = int(item['duration_days'])
         total_quantity = dosage * duration_days
+
+        unit = item.get('unit')
+        price = float(item.get('price', 0))
+        note = item.get('note')
 
         medicine = Medicine.query.get(medicine_id)
 

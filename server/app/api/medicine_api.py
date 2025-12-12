@@ -4,12 +4,27 @@ from app.api_conf import api, medicine_ns, medicine_model, medicine_parser
 from app.dao import dao_medicine
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
+from app.dao.dao_medicine import get_medicine_list
+
+
 @medicine_ns.route('/')
 class MedicineList(Resource):
     @medicine_ns.marshal_list_with(medicine_model)
     def get(self):
         "Lấy danh sách thuốc"
-        return dao_medicine.get_medicine_list()
+        data = []
+        for med, total_stock in get_medicine_list():
+            data.append({
+                "id": med.id,
+                "name": med.name,
+                "type": med.type.name if med.type else None,
+                "selling_price": float(med.selling_price),
+                "reserved_quantity": med.reserved_quantity,
+                "amount_per_unit": med.amount_per_unit,
+                "retail_unit": med.retail_unit,
+                "total_stock": total_stock
+            })
+        return data, 200
 
     @medicine_ns.expect(medicine_parser, validate=True)
     @medicine_ns.marshal_with(medicine_model, code=201)

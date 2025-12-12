@@ -1,5 +1,8 @@
+from sqlalchemy import func
+
 from app import db
-from app.models import Medicine
+from app.models import Medicine, MedicineImport
+
 
 # Thêm loại thuốc mới vào danh mục
 def create_medicine(name, type, amount_per_unit, retail_unit, selling_price):
@@ -21,7 +24,16 @@ def create_medicine(name, type, amount_per_unit, retail_unit, selling_price):
 
 # Lấy danh sách thuốc
 def get_medicine_list():
-    return Medicine.query.all()
+    query = (
+        db.session.query(
+            Medicine,
+            func.coalesce(func.sum(MedicineImport.stock_quantity), 0).label('total_stock')
+        )
+        .outerjoin(MedicineImport, Medicine.id == MedicineImport.medicine_id)
+        .group_by(Medicine.id)
+    )
+
+    return query.all()
 
 #huy-dev
 def update_medicine(medicine_id, name=None, production_date=None, expiration_date=None,
