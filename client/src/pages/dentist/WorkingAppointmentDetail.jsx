@@ -19,11 +19,13 @@ const WorkingAppointmentDetail = () => {
   const [nextStep, setNextStep] = useState(null);
   const [treatmentRecord, setTreatmentRecord] = useState([]);
   // Medicine prescription states
+  const [prescription, setPrescription] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [dosage, setDosage] = useState("");
   const [unit, setUnit] = useState("Viên/ngày");
   const [days, setDays] = useState("");
+  const [price, setPrice] = useState(0);
   const [prescribedMedicines, setPrescribedMedicines] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -205,6 +207,30 @@ const WorkingAppointmentDetail = () => {
       if (currentStep === 0 && hasServiceChanges()) {
         await handleSaveAndUpdate(currentStep);
       }
+
+      // 🟢 Nếu đang ở bước kê thuốc (step 1)
+    if (currentStep === 1) {
+      try {
+        let prescriptionId;
+        if (prescription) {
+          console.log("Đang cập nhật toa thuốc hiện có:", prescription.id);
+          // Đã có toa thuốc -> chỉ thêm thuốc mới vào
+          prescriptionId = prescription.id;
+          await addPrescriptionDetails(prescriptionId);
+        } else {
+          // Chưa có toa -> tạo mới, rồi thêm thuốc
+          prescriptionId = await createPrescription();
+          await addPrescriptionDetails(prescriptionId);
+          setPrescription({ id: prescriptionId });
+        }
+        console.log("có chạy đây không");
+        await updateAppointment(currentStep); // chuyển trạng thái -> PRESCRIPTION
+        toast.success("Đã lưu toa thuốc thành công!");
+      } catch (err) {
+        console.error("Lỗi khi lưu toa thuốc:", err);
+        toast.error("Có lỗi khi lưu toa thuốc!");
+      }
+    }
       // Chuyển bước
       setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1));
       //Đóng diglog
@@ -221,53 +247,152 @@ const WorkingAppointmentDetail = () => {
     setShowConfirmDialog(false);
     setNextStep(null);
   };
+
+  // Mapping giữa loại thuốc và đơn vị gợi ý
+const unitOptionsByType = {
+  PILL: ["Viên/ngày", "Viên/lần"],
+  CREAM: ["Tuýp/ngày", "Lần/ngày"],
+  LIQUID: ["ml/ngày", "ml/lần"],
+  TUBE: ["Ống/ngày", "Ống/lần"],
+  SYRUP: ["Thìa/ngày", "Thìa/lần"],
+  DEFAULT: ["Đơn vị/ngày"],
+};
+
   // Medicine prescription functions
-  const handleSelectMedicine = (medicine) => {
-    setSelectedMedicine(medicine);
-  };
+const handleSelectMedicine = (medicine) => {
+  setSelectedMedicine(medicine);
+
+  // Nếu type có trong mapping, lấy đơn vị đầu tiên làm mặc định
+  const options = unitOptionsByType[medicine.type] || unitOptionsByType.DEFAULT;
+  setUnit(options[0]);
+};
+
   const handleAddMedicine = () => {
-    if (!selectedMedicine) {
-      toast.error("Vui lòng chọn thuốc!");
-      return;
-    }
-    if (!dosage || !days) {
-      toast.error("Vui lòng nhập đầy đủ thông tin!");
-      return;
-    }
-    const newPrescription = {
-      id: Date.now(),
-      medicine: selectedMedicine,
-      dosage,
-      unit,
-      days,
-    };
-    setPrescribedMedicines([...prescribedMedicines, newPrescription]);
-    // Reset form
-    setSelectedMedicine(null);
-    setDosage("");
-    setDays("");
-    setUnit("Viên/ngày");
-    toast.success("Đã thêm thuốc vào đơn!");
+  if (!selectedMedicine) {
+    toast.error("Vui lòng chọn thuốc!");
+    return;
+  }
+  if (!dosage || !days) {
+    toast.error("Vui lòng nhập đầy đủ thông tin!");
+    return;
+  }
+
+  const newPrescription = {
+    medicine_id: selectedMedicine.id,
+    medicine_name: selectedMedicine.name,
+    dosage: Number(dosage),
+    unit,
+    duration_days: Number(days),
+    note: null,
+    price: selectedMedicine.selling_price ?? 0,
   };
+
+  setPrescribedMedicines((prev) => {
+    // 🔹 Kiểm tra xem thuốc đã có trong danh sách chưa
+    const existingIndex = prev.findIndex(
+      (m) => m.medicine_id === selectedMedicine.id
+    );
+
+    if (existingIndex !== -1) {
+      // 🔸 Nếu có, cập nhật liều, ngày, đơn vị, giá mới
+      const updated = [...prev];
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        ...newPrescription, // ghi đè thông tin mới
+      };
+      toast.info(`Đã cập nhật thuốc ${selectedMedicine.name}`);
+      return updated;
+    } else {
+      // 🔸 Nếu chưa có, thêm mới
+      toast.success(`Đã thêm thuốc ${selectedMedicine.name} vào toa!`);
+      return [...prev, newPrescription];
+    }
+  });
+
+  // Reset form
+  setSelectedMedicine(null);
+  setDosage("");
+  setDays("");
+  setUnit("Viên/ngày");
+  toast.success("Đã thêm thuốc vào đơn!");
+};
+
   const handleRemoveMedicine = (id) => {
-    setPrescribedMedicines(prescribedMedicines.filter((med) => med.id !== id));
+    console.log("trước khi xóa",prescribedMedicines)
+    setPrescribedMedicines(prescribedMedicines.filter((med) => med.medicine_id !== id));
+    console.log("sau khi xóa",prescribedMedicines)
     toast.success("Đã xóa thuốc khỏi đơn!");
   };
+
+  // Tạo toa thuốc mới
+const createPrescription = async () => {
+  const payload = {
+    appointment_id: appointmentId,
+    note: diagnosis || "Không có chẩn đoán",
+  };
+  const res = await publicApi.post(endpoints.prescription.create, payload);
+  return res.data.id; // giả sử server trả về { id: ... }
+};
+
+// Thêm thuốc vào toa
+const addPrescriptionDetails = async (prescriptionId) => {
+  console.log("Thêm chi tiết toa thuốc cho ID:", prescribedMedicines);
+  const payload = {
+    details: prescribedMedicines.map((m) => ({
+      medicine_id: m.medicine_id,
+      dosage: m.dosage,
+      unit: m.unit,
+      duration_days: m.duration_days,
+      note: m.note,
+      price: m.price,
+    })),
+  };
+  await publicApi.post(endpoints.prescription.add_details(prescriptionId), payload);
+  toast.success("Đã lưu thuốc vào toa!");
+};
+
+const fetchMedicines = async () => {
+  try {
+    const res = await publicApi.get(endpoints.medicine.list);
+    setMedicines(res.data);
+  } catch (err) {
+    console.error("Lỗi lấy danh sách thuốc:", err);
+  }
+};
+
+  useEffect(() => {
+  const fetchPrescription = async () => {
+    if (currentStep === 1 && appointmentId) {
+      try {
+        const res = await publicApi.get(
+          endpoints.prescription.get_by_aptId(appointmentId)
+        );
+        if (res.data) {
+          setPrescription(res.data);
+          setPrescribedMedicines(res.data.details || []);
+          console.log("Toa thuốc cũ:", res.data);
+        } else {
+          setPrescription(null);
+          setPrescribedMedicines([]);
+        }
+      } catch (err) {
+        console.log("Không tìm thấy toa thuốc cho cuộc hẹn này:", err);
+        setPrescription(null);
+        setPrescribedMedicines([]);
+      }
+    }
+  };
+  fetchPrescription();
+}, [currentStep, appointmentId]);
+
   useEffect(() => {
     if (appointmentId) {
       fetchAppointmentById(appointmentId);
       fetchTreatmentRecord(appointmentId);
     }
     fetchServices();
-    // Mock medicine data - replace with API call
-    setMedicines([
-      { id: 1, name: "Paracetamol 500mg", stock: 250 },
-      { id: 2, name: "Amoxicillin 500mg", stock: 250 },
-      { id: 3, name: "Ibuprofen 400mg", stock: 250 },
-      { id: 4, name: "Metformin 500mg", stock: 250 },
-      { id: 5, name: "Lisinopril 10mg", stock: 250 },
-      { id: 6, name: "Atorvastatin 20mg", stock: 200 },
-    ]);
+    fetchMedicines();
+
   }, [appointmentId]);
   // Đây là hàm đánh dấu lại những cái dịch vụ nào đã được chọn (nếu đã qua bước 1)
   useEffect(() => {
@@ -806,7 +931,7 @@ const WorkingAppointmentDetail = () => {
                           <p className="text-sm text-gray-600">
                             Tồn kho:{" "}
                             <span className="font-semibold">
-                              {medicine.stock} viên
+                              {medicine.total_stock - medicine.reserved_quantity} viên
                             </span>
                           </p>
                         </div>
@@ -871,21 +996,34 @@ const WorkingAppointmentDetail = () => {
                   />
                 </div>
                 {/* Unit Selection */}
-                <div className="mb-6">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Đơn Vị
-                  </label>
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm appearance-none cursor-pointer"
-                  >
-                    <option>Viên/ngày</option>
-                    <option>Gói/ngày</option>
-                    <option>ml/ngày</option>
-                    <option>Ống/ngày</option>
-                  </select>
-                </div>
+                {/* Unit Selection */}
+<div className="mb-6">
+  <label className="text-sm font-medium text-gray-700 mb-2 block">
+    Đơn Vị
+  </label>
+
+  <select
+    value={unit}
+    onChange={(e) => setUnit(e.target.value)}
+    className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm appearance-none cursor-pointer"
+  >
+    {(unitOptionsByType[selectedMedicine?.type] ||
+      unitOptionsByType.DEFAULT
+    ).map((opt) => (
+      <option key={opt} value={opt}>
+        {opt}
+      </option>
+    ))}
+  </select>
+
+  {/* Gợi ý hiển thị loại thuốc */}
+  {selectedMedicine && (
+    <p className="text-xs text-gray-500 mt-1">
+      Loại thuốc: <span className="font-semibold">{selectedMedicine.type}</span>
+    </p>
+  )}
+</div>
+
                 {/* Days Input */}
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -972,25 +1110,25 @@ const WorkingAppointmentDetail = () => {
                     <tbody>
                       {prescribedMedicines.map((prescription) => (
                         <tr
-                          key={prescription.id}
+                          key={prescription?.medicine_id}
                           className="border-b border-gray-100 hover:bg-[#FAFAFA] transition-colors"
                         >
                           <td className="px-6 py-4 text-gray-900 font-medium">
-                            {prescription.medicine.name}
+                            {prescription?.medicine_name || prescription?.medicine.name}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
-                            {prescription.dosage}
+                            {prescription?.dosage}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
-                            {prescription.unit}
+                            {prescription?.unit}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
-                            {prescription.days} ngày
+                            {prescription?.duration_days} ngày
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() =>
-                                handleRemoveMedicine(prescription.id)
+                                handleRemoveMedicine(prescription?.medicine_id)
                               }
                               className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
                             >
@@ -1248,16 +1386,16 @@ const WorkingAppointmentDetail = () => {
                           className="border-b border-gray-100 hover:bg-[#FAFAFA] transition-colors"
                         >
                           <td className="px-6 py-4 text-gray-900 font-medium">
-                            {prescription.medicine.name}
+                            {prescription.medicine?.name}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
-                            {prescription.dosage}
+                            {prescription?.dosage}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
-                            {prescription.unit}
+                            {prescription?.unit}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
-                            {prescription.days} ngày
+                            {prescription?.duration_days} ngày
                           </td>
                         </tr>
                       ))}

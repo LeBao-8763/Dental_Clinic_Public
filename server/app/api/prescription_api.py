@@ -1,8 +1,12 @@
 from flask import request
 from flask_restx import Resource
+
+from app import db
 from app.api_conf import api, prescription_ns, prescription_model, prescription_parser, prescription_detail_parser
 from app.dao import dao_prescription
 from flask_jwt_extended import jwt_required
+
+from app.models import Prescription
 
 
 # ------------------------------
@@ -21,9 +25,18 @@ class PrescriptionList(Resource):
     @prescription_ns.marshal_with(prescription_model, code=201)
     #@jwt_required()
     def post(self):
-        """Tạo toa thuốc mới."""
-        args = prescription_parser.parse_args()
-        return dao_prescription.create_prescription(args), 201
+        data = request.get_json()
+        if not data or 'appointment_id' not in data:
+            return {'message': 'Thiếu appointment_id'}, 400
+
+        data['status'] = data.get('status', 'DRAFT')
+        prescription = dao_prescription.create_prescription(data)
+        return {
+            'id': prescription.id,
+            'appointment_id': prescription.appointment_id,
+            'note': prescription.note,
+            'status': prescription.status.name
+        }, 201
 
 
 @prescription_ns.route('/<int:id>')
@@ -62,13 +75,18 @@ class PrescriptionDetailList(Resource):
     @prescription_ns.expect(prescription_detail_parser)
     #@jwt_required()
     def post(self, prescription_id):
-        args = prescription_detail_parser.parse_args()
-        args['prescription_id'] = prescription_id
-        success = dao_prescription.add_detail(args)
+        """Thêm hoặc cập nhật danh sách thuốc trong toa"""
+        data = request.get_json()
+
+        if not data or 'details' not in data:
+            return {'message': 'Thiếu danh sách thuốc (details)'}, 400
+
+        data['prescription_id'] = prescription_id
+        success = dao_prescription.add_details(data)
+
         if success:
-            return {'success': True}, 201
-        else:
-            return {'success': False}, 400
+            return {'success': True, 'message': 'Cập nhật toa thuốc thành công'}, 201
+        return {'success': False, 'message': 'Có lỗi khi lưu toa thuốc'}, 400
 
 @prescription_ns.route('/<int:prescription_id>/details/<int:medicine_id>')
 class PrescriptionDetailItem(Resource):
@@ -78,6 +96,16 @@ class PrescriptionDetailItem(Resource):
         if not success:
             prescription_ns.abort(404, 'Không tìm thấy chi tiết toa thuốc')
         return {'message': 'Đã xóa thuốc khỏi toa'}, 200
+
+@prescription_ns.route('/by-appointment/<int:appointment_id>')
+class PrescriptionByAppointment(Resource):
+    def get(self, appointment_id):
+        """Lấy toa thuốc theo cuộc hẹn"""
+        prescription = dao_prescription.get_prescription_by_appointment(appointment_id)
+        if not prescription:
+            return {'message': 'Chưa có toa thuốc cho cuộc hẹn này'}, 404
+        return prescription, 200
+
 
 #huy-dev
 #Cập nhật toa thuốc

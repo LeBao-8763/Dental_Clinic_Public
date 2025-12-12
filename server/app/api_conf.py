@@ -74,7 +74,8 @@ medicine_model = api.model('Medicine', {
     'type': fields.String(enum=[e.value for e in MedicineTypeEnum], description='Loại thuốc'),
     'amount_per_unit': fields.Integer(description='Số lượng trên 1 đơn vị'),
     'retail_unit': fields.String(description='Đơn vị bán lẻ'),
-    'selling_price': fields.Float(required=True, description='Giá bán')
+    'selling_price': fields.Float(required=True, description='Giá bán'),
+    'total_stock': fields.Integer,
 })
 
 medicine_import_model = api.model('MedicineImport', {
@@ -352,8 +353,8 @@ medicine_import_parser.add_argument('price', type=float, required=True, help='Gi
 
 ''' PRESCRIPTION '''
 prescription_parser = reqparse.RequestParser()
-prescription_parser.add_argument('appointment_id', type=int, required=True, help='ID cuộc hẹn')
-prescription_parser.add_argument('note', type=str, required=False, help='Ghi chú toa thuốc')
+prescription_parser.add_argument('appointment_id', type=int, required=True, location='json', help='Appointment ID')
+prescription_parser.add_argument('note', type=str, required=False, location='json')
 prescription_parser.add_argument('status', type=str, required=True, help='Trạng thái toa thuốc')
 
 ''' PRESCRIPTION DETAILS '''

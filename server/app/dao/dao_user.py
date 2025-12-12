@@ -68,22 +68,24 @@ def get_user_list(role):
         raise ValueError("Invalid role")
 
     return User.query.filter_by(role=role_enum, status=StatusEnum.ACTIVE).all()
-=======
+
 def get_dentist_list():
     return User.query.filter_by(role=RoleEnum.ROLE_DENTIST, status=StatusEnum.ACTIVE).all()
 
 #huy-dev
-def get_user_by_id(user_id):
-    return User.query.get(user_id)
+# def get_user_by_id(user_id):
+#     return User.query.get(user_id)
 
 def get_all_users():
     return User.query.all()
 
-def create_user(username, password, role):
-    user = User(username=username, password=hash_password(password), role=RoleEnum[role])
-    db.session.add(user)
-    db.session.commit()
-    return user
+# def create_user(username, password, role):
+#     user = User(username=username,
+#                 #password=hash_password(password),
+#                 role=RoleEnum[role])
+#     db.session.add(user)
+#     db.session.commit()
+#     return user
 
 def update_user_role(user_id, new_role):
     user = User.query.get(user_id)
@@ -93,8 +95,8 @@ def update_user_role(user_id, new_role):
     db.session.commit()
     return user
 
-def get_all_users():
-    return User.query.all()
+# def get_all_users():
+#     return User.query.all()
 
 def update_user(user_id, username=None, phone_number=None, firstname=None, lastname=None, role=None, gender=None, password=None):
     user = User.query.get(user_id)
@@ -106,7 +108,7 @@ def update_user(user_id, username=None, phone_number=None, firstname=None, lastn
     if lastname: user.lastname = lastname
     if role: user.role = role
     if gender: user.gender = gender
-    if password: user.password = hash_password(password)  # nếu có hàm hash
+    #if password: user.password = hash_password(password)  # nếu có hàm hash
     db.session.commit()
     return user
 
