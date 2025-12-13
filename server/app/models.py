@@ -217,13 +217,18 @@ class Appointment(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
     note = db.Column(db.String(255))
-    status = db.Column(db.Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.PENDING)
+    diagnosis = db.Column(db.Text)  
+    status = db.Column(
+        db.Enum(AppointmentStatusEnum),
+        default=AppointmentStatusEnum.PENDING
+    )
 
     dentist = db.relationship('User', foreign_keys=[dentist_id], back_populates='dentist_appointments')
     patient = db.relationship('User', foreign_keys=[patient_id], back_populates='patient_appointments')
     treatments = db.relationship('TreatmentRecord', back_populates='appointment', lazy=True)
     prescriptions = db.relationship('Prescription', back_populates='appointment', lazy=True)
     invoice = db.relationship('Invoice', back_populates='appointment', uselist=False)
+
 
 
 # ------------------------------

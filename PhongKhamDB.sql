@@ -116,6 +116,7 @@ CREATE TABLE appointments (
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     note VARCHAR(255),
+    diagnosis TEXT,
     status ENUM('PENDING', 'CONSULTING','PRESCRIPTION', 'CANCELLED', 'COMPLETED'),
     FOREIGN KEY (dentist_id) REFERENCES user(id),
     FOREIGN KEY (patient_id) REFERENCES user(id)

@@ -32,7 +32,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       ];
     } else if (user?.role === "RoleEnum.ROLE_STAFF") {
       return [
-        { icon: HandCoins, label: "Thanh toán", path: "/staff/patients" },
+        { icon: HandCoins, label: "Thanh toán", path: "/staff/payment" },
         {
           icon: ClipboardList,
           label: "Hỗ trợ đặt lịch",

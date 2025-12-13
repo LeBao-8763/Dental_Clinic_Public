@@ -119,7 +119,8 @@ dentist_shedule_model = api.model('DentistSchedule', {
     'dentist_id': fields.Integer(description='ID bác sĩ'),
     'day_of_week': fields.String(description='Ngày trong tuần'),
     'start_time': fields.String(description='Giờ bắt đầu (HH:MM:SS)'),
-    'end_time': fields.String(description='Giờ kết thúc (HH:MM:SS)')
+    'end_time': fields.String(description='Giờ kết thúc (HH:MM:SS)'),
+    'effective_from':fields.String(description='Ngày hiệu lực')
 })
 
 appointment_model = api.model('Appointment', {
@@ -130,6 +131,7 @@ appointment_model = api.model('Appointment', {
     'start_time': fields.String(description='Thời gian bắt đầu HH:MM:SS'),
     'end_time': fields.String(description='Thời gian kết thúc HH:MM:SS'),
     'note': fields.String(description='Ghi chú'),
+    'diagnosis':fields.String(description='Chuẩn đoán'),
     'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
 })
 
@@ -142,6 +144,7 @@ appointment_with_patient_model = api.model('AppointmentWithPatient', {
     'start_time': fields.String(description='Thời gian bắt đầu HH:MM:SS'),
     'end_time': fields.String(description='Thời gian kết thúc HH:MM:SS'),
     'note': fields.String(description='Ghi chú'),
+    'diagnosis':fields.String(description='Chuẩn đoán'),
     'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
     'patient': fields.Nested(api.model('PatientBasicInfo', {
         'id': fields.Integer(description='ID bệnh nhân'),
@@ -296,6 +299,7 @@ appointment_update_parser.add_argument('start_time', type=str, required=False, h
 appointment_update_parser.add_argument('end_time', type=str, required=False, help='Giờ kết thúc (HH:MM:SS)')
 appointment_update_parser.add_argument('note', type=str, required=False, help='Ghi chú')
 appointment_update_parser.add_argument('status',type=str,required=False,help='Trạng thái')
+appointment_update_parser.add_argument('diagnosis',type=str,required=False,help='Chuẩn đoán bác sĩ')
 
 
 ''' CLINIC HOURS '''

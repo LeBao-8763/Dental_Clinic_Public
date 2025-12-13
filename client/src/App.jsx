@@ -14,6 +14,8 @@ import ScheduleArrange from "./pages/dentist/ScheduleArrange";
 import WorkingAppointment from "./pages/dentist/WorkingAppointment";
 import WorkingAppointmentDetail from "./pages/dentist/WorkingAppointmentDetail";
 import StaffHome from "./pages/staff/StaffHome";
+import PaymentPage from "./pages/staff/PaymentPage";
+import PaymentDetail from "./pages/staff/PaymentDetail";
 import ScheduleSupport from "./pages/staff/ScheduleSupport";
 import { ToastContainer } from "react-toastify";
 
@@ -66,8 +68,10 @@ function App() {
         <Route element={<StaffLayout />}>
           <Route path="/staff" element={<StaffHome />} />
           <Route path="/staff/schedule-support" element={<ScheduleSupport />} />
+          <Route path="/staff/payment" element={<PaymentPage />} />
         </Route>
 
+        <Route path="/staff/payment-detail" element={<PaymentDetail />} />
         <Route
           path="/dentist/working-appointment-detail"
           element={<WorkingAppointmentDetail />}

@@ -106,7 +106,7 @@ def update_appointment(appointment_id, **kwargs):
     if not appointment:
         raise ValueError("Cuộc hẹn không tồn tại!")
 
-    allowed_fields = ["appointment_date", "start_time", "end_time", "note", "status"]
+    allowed_fields = ["appointment_date", "start_time", "end_time", "note", "status","diagnosis"]
 
     for field, value in kwargs.items():
         if field in allowed_fields and value is not None:
@@ -141,6 +141,10 @@ def update_appointment(appointment_id, **kwargs):
             raise ValueError("Không thể hủy lịch khi còn dưới 12 giờ trước giờ khám!")
 
         dao_user_booking_stats.update_user_booking_stats(appointment.patient_id)
+
+    db.session.commit()
+    return appointment
+
 
 
 #huy-dev

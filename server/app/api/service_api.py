@@ -24,7 +24,7 @@ class Service(Resource):
 
     @service_ns.doc('get_list_service')
     @service_ns.marshal_with(service_model, code=201)
-    @jwt_required() # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
+    # @jwt_required() # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
     def get(self):
         "Lấy danh sách các dịch vụ"
         return dao_service.get_list_service(),200
