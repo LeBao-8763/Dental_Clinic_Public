@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify
 from flask_restx import Resource
 from app.api_conf import service_model, service_parser, service_ns
 from flask_jwt_extended import jwt_required
+from app.utils.check_role import role_required
+from app.models import RoleEnum
 
 @service_ns.route('/')
 class Service(Resource):
@@ -24,10 +26,13 @@ class Service(Resource):
 
     @service_ns.doc('get_list_service')
     @service_ns.marshal_with(service_model, code=201)
-    # @jwt_required() # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
+    @jwt_required() # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def get(self):
         "Lấy danh sách các dịch vụ"
         return dao_service.get_list_service(),200
+
+
 
 #huy-dev
 #Xem chi tiết dịch vụ theo ID

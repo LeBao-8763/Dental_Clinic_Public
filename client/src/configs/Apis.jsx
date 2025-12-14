@@ -27,6 +27,7 @@ export const endpoints = {
   appointment: {
     create: "appointments/",
     get_by_dentist_id: (dentistId) => `appointments/dentist/${dentistId}`,
+    all: "appointments/",
     get_by_id: (apt_id) => `appointments/${apt_id}`,
     update: (apt_id) => `appointments/${apt_id}`,
   },
@@ -38,6 +39,7 @@ export const endpoints = {
   },
   service: {
     list: "services/",
+    get_by_Id: (id) => `services/${id}`,
   },
   treatment_record: {
     create: "treatment_records/",

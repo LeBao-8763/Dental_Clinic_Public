@@ -2,6 +2,8 @@ from flask import request
 from flask_restx import Resource
 from app.api_conf import appointment_ns, appointment_model, appointment_creation_parser,appointment_with_patient_model,appointment_update_parser
 from app.dao import dao_appointment
+from datetime import datetime
+
 
 @appointment_ns.route('/')
 class AppointmentCreateResource(Resource):
@@ -24,6 +26,23 @@ class AppointmentCreateResource(Resource):
             return new_appointment, 201
         
         return {"message": "Server Error"}, 500
+
+    @appointment_ns.marshal_list_with(appointment_with_patient_model)
+    def get(self):
+        status = request.args.get('status')
+        date_str = request.args.get('date')
+
+        appointment_date = None
+        if date_str:
+            appointment_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+        appointments = dao_appointment.get_all_appointment_with_filter(
+            status=status,
+            appointment_date=appointment_date
+        )
+
+        return appointments, 200
+        
 
 @appointment_ns.route('/<int:appointment_id>')
 class AppointmentById(Resource):
@@ -52,7 +71,20 @@ class AppointmentByDentistResource(Resource):
     @appointment_ns.marshal_list_with(appointment_with_patient_model)
     def get(self, dentist_id):
         """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân"""
-        appointments = dao_appointment.get_appointments_by_dentist(dentist_id)
+
+        status = request.args.get('status')
+        date_str = request.args.get('date')
+
+        appointment_date = None
+        if date_str:
+            appointment_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+        appointments = dao_appointment.get_appointments_by_dentist(
+            dentist_id=dentist_id,
+            status=status,
+            appointment_date=appointment_date
+        )
+
         return appointments, 200
 
 #huy-dev 

@@ -25,6 +25,59 @@ const DoctorDetail = () => {
     return `${y}-${m}-${d}`; // YYYY-MM-DD (local)
   };
 
+  // --- NEW: parse YYYY-MM-DD into local Date (no timezone shift) ---
+  const parseYMD = (ymd) => {
+    if (!ymd) return null;
+    const parts = ymd.split("-");
+    if (parts.length < 3) return null;
+    const [y, m, d] = parts.map(Number);
+    if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null;
+    return new Date(y, m - 1, d);
+  };
+
+  // --- NEW: choose applicable schedules from a list by effective_from & refDate ---
+  // list: array of schedule items (may include effective_from)
+  // refDate: Date object
+  const pickSchedulesByEffectiveFrom = (list = [], refDate = new Date()) => {
+    if (!list || list.length === 0) return [];
+
+    // Normalize: ensure each has effective_from (fallback to 1970-01-01)
+    const mapped = list.map((s) => {
+      const eff = s.effective_from || "1970-01-01";
+      const _effDate = parseYMD(eff) || new Date(0);
+      return { ...s, effective_from: eff, _effDate };
+    });
+
+    // Group by effective_from
+    const groups = mapped.reduce((acc, s) => {
+      const key = s.effective_from;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(s);
+      return acc;
+    }, {});
+
+    const keys = Object.keys(groups);
+    // Find maximal effective_from <= refDate
+    let chosenKey = null;
+    let maxDate = null;
+    keys.forEach((k) => {
+      const d = parseYMD(k) || new Date(0);
+      if (d <= refDate) {
+        if (!maxDate || d.getTime() > maxDate.getTime()) {
+          maxDate = d;
+          chosenKey = k;
+        }
+      }
+    });
+
+    if (chosenKey) {
+      return groups[chosenKey].slice(); // return copy
+    }
+
+    // If none applies yet, return empty (no fallback to future)
+    return [];
+  };
+
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [isButtonSticky, setIsButtonSticky] = useState(false);
@@ -101,8 +154,17 @@ const DoctorDetail = () => {
     }
   };
 
-  //Lấy lịch làm việc của bác sĩ theo ngày trong tuần
-  const fetchDentistSchedule = async (id, dayOfWeek) => {
+  /**
+   * fetchDentistSchedule(id, dayOfWeek, refDate)
+   * - dayOfWeek: string enum like "MONDAY"
+   * - refDate: Date object (if provided) used to pick which effective_from group applies
+   *
+   * Behavior:
+   *  - call API to get schedules for that weekday (may return multiple records with different effective_from)
+   *  - if there is a custom schedule for selected date -> prefer custom (day off or custom slots)
+   *  - otherwise pick schedules by effective_from grouped logic using refDate
+   */
+  const fetchDentistSchedule = async (id, dayOfWeek, refDate = null) => {
     setLoading(true);
     try {
       const response = await publicApi.get(
@@ -110,39 +172,56 @@ const DoctorDetail = () => {
           id
         )}?day_of_week=${dayOfWeek}`
       );
-      // If there are custom schedules for the currently selected date, prefer them
-      const today = monthDays[selectedDate]?.fullDate;
-      if (today) {
-        const dateString = formatDateLocal(today);
-        const customForDate = customSchedules.filter(
-          (cs) => cs.custom_date === dateString
-        );
+      const apiList = response.data || [];
 
-        // If there's a custom day off for this date, clear schedule (will be shown as blocked)
+      // determine reference date: prefer provided refDate, otherwise if selectedDate exists get from monthDays, else today
+      const todayDate =
+        refDate ||
+        (monthDays[selectedDate]?.fullDate
+          ? monthDays[selectedDate].fullDate
+          : new Date());
+
+      const dateString = formatDateLocal(todayDate);
+
+      // First: check custom schedules for this exact date
+      const customForDate = customSchedules.filter(
+        (cs) => cs.custom_date === dateString
+      );
+
+      if (customForDate.length > 0) {
+        // If there's a day-off then clear schedule (blocked)
         if (customForDate.some((c) => c.is_day_off)) {
           setSelectedDaySchedule([]);
-        } else if (customForDate.length > 0) {
-          // Map custom entries to slot objects compatible with schedule API
-          const mapped = customForDate
-            .filter((c) => !c.is_day_off && c.start_time && c.end_time)
-            .map((c, idx) => ({
-              id: `custom-${dateString}-${idx}`,
-              start_time: c.start_time,
-              end_time: c.end_time,
-              is_custom: true,
-            }));
-
-          if (mapped.length > 0) {
-            setSelectedDaySchedule(mapped);
-          } else {
-            // fallback to regular schedule if custom entries are empty
-            setSelectedDaySchedule(response.data);
-          }
-        } else {
-          setSelectedDaySchedule(response.data);
+          setLoading(false);
+          return;
         }
+
+        // Map custom entries to schedule-like slots
+        const mapped = customForDate
+          .filter((c) => !c.is_day_off && c.start_time && c.end_time)
+          .map((c, idx) => ({
+            id: `custom-${dateString}-${idx}`,
+            start_time: c.start_time,
+            end_time: c.end_time,
+            is_custom: true,
+          }));
+
+        if (mapped.length > 0) {
+          setSelectedDaySchedule(mapped);
+          setLoading(false);
+          return;
+        }
+        // else fallthrough to API schedules
+      }
+
+      // No custom or no usable custom slots -> pick from API list using effective_from grouping
+      const applicable = pickSchedulesByEffectiveFrom(apiList, todayDate);
+
+      // If applicable empty (no group <= refDate) -> set empty (no schedule)
+      if (!applicable || applicable.length === 0) {
+        setSelectedDaySchedule([]);
       } else {
-        setSelectedDaySchedule(response.data);
+        setSelectedDaySchedule(applicable);
       }
     } catch (error) {
       console.log("Error fetching dentist schedule:", error);
@@ -159,7 +238,7 @@ const DoctorDetail = () => {
       const response = await publicApi.get(
         endpoints.appointment.get_by_dentist_id(dentistId)
       );
-      setAppointments(response.data);
+      setAppointments(response.data || []);
       console.log("Lịch làm việc bác sĩ theo id:", response.data);
     } catch (err) {
       console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
@@ -256,11 +335,11 @@ const DoctorDetail = () => {
       return;
     }
 
-    // Otherwise fetch regular weekly schedule
+    // Otherwise fetch regular weekly schedule and pass refDate = date to pick correct effective_from group
     setSelectedDate(index);
     setSelectedTime(null);
     const dayEnum = mapDayToEnum(date.getDay());
-    fetchDentistSchedule(doctorId, dayEnum);
+    fetchDentistSchedule(doctorId, dayEnum, date);
   };
 
   const handleBookingClick = () => {
@@ -305,9 +384,13 @@ const DoctorDetail = () => {
       // 1. Refresh appointments
       await fetchDentistWorkingScheduleById(doctorId);
 
-      // 2. Refresh schedule cho ngày hiện tại
+      // 2. Refresh schedule cho ngày hiện tại (use selected date's day enum)
       const dayEnum = mapDayToEnum(monthDays[selectedDate].fullDate.getDay());
-      await fetchDentistSchedule(doctorId, dayEnum);
+      await fetchDentistSchedule(
+        doctorId,
+        dayEnum,
+        monthDays[selectedDate].fullDate
+      );
     } catch (error) {
       console.log("Lỗi khi tạo lịch hẹn", error);
       toast.error("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
@@ -354,11 +437,12 @@ const DoctorDetail = () => {
       fetchDentistWorkingScheduleById(doctorId);
       fetchCustomSchedule(doctorId);
 
-      // Fetch schedule for today by default
+      // Fetch schedule for today by default, pass today's date as refDate
       const today = new Date();
       const todayEnum = mapDayToEnum(today.getDay());
-      fetchDentistSchedule(doctorId, todayEnum);
-      setSelectedDate(0); // Select today by default
+      // select today index in monthDays (generateMonthDays uses today as start)
+      setSelectedDate(0);
+      fetchDentistSchedule(doctorId, todayEnum, today);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctorId]);

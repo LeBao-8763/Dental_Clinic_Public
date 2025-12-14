@@ -21,6 +21,9 @@ def create_service(name, price, description):
 def get_list_service():
     return Service.query.all()
 
+def get_service_by_id(id):
+    return Service.query.filter_by(id=id).first()
+
 #huy-dev
 def update_service(service_id, name=None, price=None, description=None):
     service = Service.query.get(service_id)

@@ -50,7 +50,7 @@ const Login = () => {
           dispatch(
             loginSuccess({
               user: userRes.data,
-              accessToken: res.data.token,
+              accessToken: res.data.access_token,
             })
           );
         }

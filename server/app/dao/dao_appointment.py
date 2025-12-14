@@ -87,14 +87,34 @@ def create_appointment(patient_id, dentist_id, appointment_date, start_time, end
     return appointment
 
 
-def get_appointments_by_dentist(dentist_id):
-    appointments = (
+def get_appointments_by_dentist(dentist_id, status=None, appointment_date=None):
+    query = (
         Appointment.query
         .options(joinedload(Appointment.patient))
-        .filter_by(dentist_id=dentist_id)
-        .all()
+        .filter(Appointment.dentist_id == dentist_id)
     )
-    return appointments
+
+    if status:
+        query = query.filter(Appointment.status == status)
+
+    if appointment_date:
+        query = query.filter(Appointment.appointment_date == appointment_date)
+
+    return query.all()
+
+def get_all_appointment_with_filter(status=None, appointment_date=None):
+    query = (
+        Appointment.query
+        .options(joinedload(Appointment.patient))
+    )
+
+    if status:
+        query = query.filter(Appointment.status == status)
+
+    if appointment_date:
+        query = query.filter(Appointment.appointment_date == appointment_date)
+
+    return query.all()
 
 def get_appointments_by_id(appointment_id):
     appointment=Appointment.query.filter_by(id=appointment_id).first();

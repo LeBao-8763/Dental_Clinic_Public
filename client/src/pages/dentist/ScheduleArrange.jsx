@@ -58,6 +58,7 @@ const ScheduleArrange = () => {
     try {
       const res = await publicApi.get(endpoints.clinic_hour.list);
       setClinicHoursData(res.data);
+      console.log("Lịch làm việc của bệnh viện", res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu giờ làm việc phòng khám", err);
       toast.error("Không lấy được giờ làm việc phòng khám");
@@ -73,7 +74,7 @@ const ScheduleArrange = () => {
         endpoints.dentist_schedule.get_schedule(dentistId)
       );
       console.log("Lịch làm việc của bác sĩ", res.data);
-      setDentistScheduleData(res.data);
+      setDentistScheduleData(res.data || []);
     } catch (err) {
       console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
     } finally {
@@ -108,23 +109,7 @@ const ScheduleArrange = () => {
     }
   }, [user]);
 
-  // Chọn ngày đầu tiên có dữ liệu hợp lệ
-  const validDay = clinicHoursData.find(
-    (item) =>
-      item.open_time &&
-      item.close_time &&
-      item.slot_duration_minutes &&
-      item.slot_duration_minutes > 0
-  );
-
-  const timeSlots = validDay
-    ? generateTimeSlots(
-        validDay.open_time,
-        validDay.close_time,
-        validDay.slot_duration_minutes
-      )
-    : [];
-
+  // ---------- Time slot helpers ----------
   function generateTimeSlots(openTime, closeTime, slotDuration) {
     const slots = [];
     const [openHour, openMinute] = openTime.split(":").map(Number);
@@ -152,44 +137,160 @@ const ScheduleArrange = () => {
     return slots;
   }
 
-  function getSlotIndicesForSchedule(dayOfWeek) {
-    if (!validDay || timeSlots.length === 0) return [];
-
-    const schedulesForDay = dentistScheduleData.filter(
-      (schedule) => schedule.day_of_week === dayOfWeek
+  function getTimeSlotsForDayEnum(dayEnum) {
+    if (!clinicHoursData || clinicHoursData.length === 0) return [];
+    const dayData = clinicHoursData.find(
+      (item) => item.day_of_week === dayEnum
     );
+    if (
+      !dayData ||
+      !dayData.open_time ||
+      !dayData.close_time ||
+      !dayData.slot_duration_minutes
+    )
+      return [];
+    return generateTimeSlots(
+      dayData.open_time,
+      dayData.close_time,
+      dayData.slot_duration_minutes
+    );
+  }
+
+  function getTimeSlotsForDate(dateObj) {
+    if (!dateObj) return [];
+    const dayEnum = dayEnumForJSDate(dateObj);
+    return dayEnum ? getTimeSlotsForDayEnum(dayEnum) : [];
+  }
+
+  // parse YYYY-MM-DD thành Date (local)
+  const parseYMD = (ymd) => {
+    if (!ymd) return null;
+    const parts = ymd.split("-");
+    if (parts.length < 3) return null;
+    const [y, m, d] = parts.map(Number);
+    if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null;
+    return new Date(y, m - 1, d);
+  };
+
+  /**
+   * Trả về danh sách schedule (mảng) áp dụng cho dayOfWeek tại ngày tham chiếu refDate.
+   * Logic:
+   * - Lấy tất cả records có day_of_week === dayOfWeek
+   * - Nếu record không có effective_from -> coi như effective_from = 1970-01-01 (dùng làm fallback base)
+   * - Nhóm theo effective_from
+   * - Chọn nhóm có effective_from là lớn nhất nhưng <= refDate (nếu có).
+   * - Nếu không có nhóm <= refDate, fallback: chọn nhóm tương lai gần nhất (> refDate).
+   */
+  // Trả về danh sách schedule (mảng) áp dụng cho dayOfWeek tại ngày tham chiếu refDate.
+  // Logic:
+  // - Lấy tất cả records có day_of_week === dayOfWeek
+  // - Nếu record không có effective_from -> coi như effective_from = 1970-01-01 (dùng làm fallback base)
+  // - Nhóm theo effective_from
+  // - Chọn nhóm có effective_from là lớn nhất nhưng <= refDate (nếu có).
+  // - Nếu không có nhóm <= refDate, fallback: chọn nhóm tương lai gần nhất (> refDate).
+  //
+  // IMPORTANT: This function is used BOTH for weekly view (pass refDate = new Date())
+  // and for specific-date view (pass refDate = that specific date). That ensures
+  // when the user opens a weekday editor for a particular date, we select the
+  // effective_from group that applies to that exact date (e.g. Mondays from
+  // 2025-12-13 use the 13/12 group; Mondays from 2025-12-20 use the 20/12 group).
+  const getApplicableSchedulesForDay = (dayOfWeek, refDate = new Date()) => {
+    if (!dentistScheduleData || dentistScheduleData.length === 0) return [];
+
+    // Collect schedules for that day
+    const list = dentistScheduleData
+      .filter((s) => s.day_of_week === dayOfWeek)
+      .map((s) => {
+        const eff = s.effective_from || "1970-01-01"; // default base
+        const _effDate = parseYMD(eff) || new Date(0);
+        return { ...s, effective_from: eff, _effDate };
+      });
+
+    if (list.length === 0) return [];
+
+    // Group by effective_from string
+    const groups = list.reduce((acc, s) => {
+      const key = s.effective_from;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(s);
+      return acc;
+    }, {});
+
+    const keys = Object.keys(groups);
+
+    // find the group with _effDate <= refDate and maximal
+    let chosenKey = null;
+    let maxDate = null;
+    keys.forEach((k) => {
+      const d = parseYMD(k) || new Date(0);
+      if (d <= refDate) {
+        if (!maxDate || d.getTime() > maxDate.getTime()) {
+          maxDate = d;
+          chosenKey = k;
+        }
+      }
+    });
+
+    if (chosenKey) return groups[chosenKey];
+
+    // fallback: earliest future effective_from > refDate
+    let minFutureKey = null;
+    let minFutureDate = null;
+    keys.forEach((k) => {
+      const d = parseYMD(k) || new Date(0);
+      if (d > refDate) {
+        if (!minFutureDate || d.getTime() < minFutureDate.getTime()) {
+          minFutureDate = d;
+          minFutureKey = k;
+        }
+      }
+    });
+
+    if (minFutureKey) return groups[minFutureKey];
+
+    return [];
+  };
+
+  function getSlotIndicesForSchedule(dayOfWeek, refDate = new Date()) {
+    const slotsForDay = getTimeSlotsForDayEnum(dayOfWeek);
+    if (!slotsForDay || slotsForDay.length === 0) return [];
+
+    // Lấy schedule áp dụng cho ngày tham chiếu
+    const applicable = getApplicableSchedulesForDay(dayOfWeek, refDate);
+    if (!applicable || applicable.length === 0) return [];
 
     const indices = [];
 
-    schedulesForDay.forEach((schedule) => {
-      const startTime = schedule.start_time.slice(0, 5);
-      const endTime = schedule.end_time.slice(0, 5);
+    // applicable có thể chứa nhiều bản ghi (time ranges) từ cùng 1 effective_from
+    applicable.forEach((schedule) => {
+      const startTime = (schedule.start_time || "").slice(0, 5);
+      const endTime = (schedule.end_time || "").slice(0, 5);
 
-      timeSlots.forEach((slot, idx) => {
+      slotsForDay.forEach((slot, idx) => {
         const [slotStart, slotEnd] = slot.split("-");
         if (slotStart >= startTime && slotEnd <= endTime) {
-          if (!indices.includes(idx)) {
-            indices.push(idx);
-          }
+          if (!indices.includes(idx)) indices.push(idx);
         }
       });
     });
 
-    return indices;
+    return indices.sort((a, b) => a - b);
   }
 
-  function convertSlotsToTimeRanges(slotIndices) {
+  function convertSlotsToTimeRanges(slotIndices, slots) {
     if (!slotIndices || slotIndices.length === 0) return [];
-
+    if (!slots || slots.length === 0) return [];
     const sorted = [...slotIndices].sort((a, b) => a - b);
     return sorted.map((slotIndex) => {
-      const [start, end] = timeSlots[slotIndex].split("-");
+      const [start, end] = slots[slotIndex].split("-");
       return {
         start_time: start + ":00",
         end_time: end + ":00",
       };
     });
   }
+
+  // ---------- End time slot helpers ----------
 
   const handleConfirm = async (dayId) => {
     setLoading(true);
@@ -201,7 +302,8 @@ const ScheduleArrange = () => {
       // Thêm lịch mới nếu có
       const newSlots = tempSelectedSlots[dayId] || [];
       if (newSlots.length > 0) {
-        const schedules = convertSlotsToTimeRanges(newSlots);
+        const slotsForDay = getTimeSlotsForDayEnum(dayEnum);
+        const schedules = convertSlotsToTimeRanges(newSlots, slotsForDay);
 
         await publicApi.post(endpoints.dentist_schedule.create_multiple, {
           dentist_id: user.id,
@@ -256,12 +358,17 @@ const ScheduleArrange = () => {
   const days = dayEnums
     .map((dayEnum, index) => {
       const dayId = index + 2;
-      const scheduleSlotIndices = getSlotIndicesForSchedule(dayEnum);
+      const slotsForDay = getTimeSlotsForDayEnum(dayEnum);
+      // Use today's date to decide which effective_from group applies for weekly view
+      const scheduleSlotIndices = getSlotIndicesForSchedule(
+        dayEnum,
+        new Date()
+      );
       const currentSelectedSlots = selectedSlots[dayId] || [];
-      const allSlots = [
+      const allSlotsIdx = [
         ...new Set([...currentSelectedSlots, ...scheduleSlotIndices]),
-      ];
-      const hasSlots = allSlots.length > 0;
+      ].sort((a, b) => a - b);
+      const hasSlots = allSlotsIdx.length > 0;
 
       return {
         id: dayId,
@@ -269,9 +376,9 @@ const ScheduleArrange = () => {
         notSelected: !hasSlots,
         hasSlots: hasSlots,
         slots: hasSlots
-          ? allSlots.slice(0, 5).map((idx) => timeSlots[idx] || "")
+          ? allSlotsIdx.slice(0, 5).map((idx) => slotsForDay[idx] || "")
           : [],
-        totalSlots: hasSlots ? allSlots.length : 0,
+        totalSlots: hasSlots ? allSlotsIdx.length : 0,
       };
     })
     .filter((day) => {
@@ -317,7 +424,10 @@ const ScheduleArrange = () => {
       // Nếu là weekday (numeric), lấy existing slots từ schedule
       if (typeof dayId === "number") {
         const dayEnum = dayEnums[dayId - 2];
-        const existingSlotIndices = getSlotIndicesForSchedule(dayEnum);
+        const existingSlotIndices = getSlotIndicesForSchedule(
+          dayEnum,
+          new Date()
+        );
         const currentSlots = selectedSlots[dayId] || [];
         const mergedSlots = [
           ...new Set([...currentSlots, ...existingSlotIndices]),
@@ -343,7 +453,7 @@ const ScheduleArrange = () => {
             } else {
               const dayEnum = dayEnumForJSDate(dateObj);
               const weeklyIndices = dayEnum
-                ? getSlotIndicesForSchedule(dayEnum)
+                ? getSlotIndicesForSchedule(dayEnum, dateObj)
                 : [];
               setTempSelectedSlots({ [dayId]: [...new Set(weeklyIndices)] });
             }
@@ -354,8 +464,7 @@ const ScheduleArrange = () => {
   };
 
   const toggleSlot = (dayId, slotIndex) => {
-    if (!timeSlots || timeSlots.length === 0) return;
-
+    // dayId can be number or "date-YYYY-MM-DD"
     // Prevent toggling slots for a day-off custom date
     if (typeof dayId === "string" && dayId.startsWith("date-")) {
       const iso = dayId.replace("date-", "");
@@ -409,7 +518,9 @@ const ScheduleArrange = () => {
       // Restore weekly schedule slots to tempSelectedSlots
       const dateObj = new Date(selectedDate);
       const dayEnum = dayEnumForJSDate(dateObj);
-      const weeklyIndices = dayEnum ? getSlotIndicesForSchedule(dayEnum) : [];
+      const weeklyIndices = dayEnum
+        ? getSlotIndicesForSchedule(dayEnum, dateObj)
+        : [];
       setTempSelectedSlots({
         [`date-${selectedDate}`]: [...new Set(weeklyIndices)],
       });
@@ -494,7 +605,9 @@ const ScheduleArrange = () => {
         toast.info("Đã xóa lịch custom cho ngày này");
       } else {
         // Convert slot indices to time ranges
-        const schedules = convertSlotsToTimeRanges(slotIndices);
+        const dateObj = new Date(dateStr);
+        const slotsForDate = getTimeSlotsForDate(dateObj);
+        const schedules = convertSlotsToTimeRanges(slotIndices, slotsForDate);
 
         // First, delete any existing custom schedule for this date
         await publicApi.delete(
@@ -560,7 +673,10 @@ const ScheduleArrange = () => {
   };
 
   const getCustomSlotIndices = (dateObj) => {
-    if (!dateObj || !timeSlots || timeSlots.length === 0) return [];
+    if (!dateObj) return [];
+    const slotsForDate = getTimeSlotsForDate(dateObj);
+    if (!slotsForDate || slotsForDate.length === 0) return [];
+
     const list = getCustomForDate(dateObj).filter(
       (c) => !c.is_day_off && c.start_time && c.end_time
     );
@@ -569,7 +685,7 @@ const ScheduleArrange = () => {
     list.forEach((entry) => {
       const start = entry.start_time.slice(0, 5);
       const end = entry.end_time.slice(0, 5);
-      timeSlots.forEach((slot, idx) => {
+      slotsForDate.forEach((slot, idx) => {
         const [slotStart, slotEnd] = slot.split("-");
         if (slotStart >= start && slotEnd <= end) {
           if (!indices.includes(idx)) indices.push(idx);
@@ -656,7 +772,9 @@ const ScheduleArrange = () => {
       setTempSelectedSlots({ [`date-${iso}`]: [...new Set(customIndices)] });
     } else {
       const dayEnum = dayEnumForJSDate(dateObj);
-      const weeklyIndices = dayEnum ? getSlotIndicesForSchedule(dayEnum) : [];
+      const weeklyIndices = dayEnum
+        ? getSlotIndicesForSchedule(dayEnum, dateObj)
+        : [];
       const current = selectedSlots[`date-${iso}`] || [];
       const merged = [...new Set([...(current || []), ...weeklyIndices])];
       setTempSelectedSlots({ [`date-${iso}`]: merged });
@@ -848,42 +966,51 @@ const ScheduleArrange = () => {
                   </p>
 
                   <div className="grid grid-cols-6 gap-2 mb-4">
-                    {timeSlots.map((slot, idx) => {
-                      const isSelected = (
-                        tempSelectedSlots[day.id] || []
-                      ).includes(idx);
+                    {(() => {
                       const dayEnum = dayEnums[day.id - 2];
-                      const existingSlotIndices =
-                        getSlotIndicesForSchedule(dayEnum);
-                      const isFromSchedule = existingSlotIndices.includes(idx);
+                      const slotsForDay = getTimeSlotsForDayEnum(dayEnum);
+                      return slotsForDay.map((slot, idx) => {
+                        const isSelected = (
+                          tempSelectedSlots[day.id] || []
+                        ).includes(idx);
+                        const existingSlotIndices = getSlotIndicesForSchedule(
+                          dayEnum,
+                          new Date()
+                        );
+                        const isFromSchedule =
+                          existingSlotIndices.includes(idx);
 
-                      const btnClass = isSelected
-                        ? "text-white"
-                        : isFromSchedule
-                        ? "text-[#00695C]"
-                        : "bg-white text-gray-700 border-gray-300";
+                        const btnClass = isSelected
+                          ? "text-white"
+                          : isFromSchedule
+                          ? "text-[#00695C]"
+                          : "bg-white text-gray-700 border-gray-300";
 
-                      const btnStyle = isSelected
-                        ? { backgroundColor: "#009688", borderColor: "#00796B" }
-                        : isFromSchedule
-                        ? {
-                            backgroundColor: "#B2DFDB",
-                            borderColor: "#B2DFDB",
-                            color: "#00695C",
-                          }
-                        : {};
+                        const btnStyle = isSelected
+                          ? {
+                              backgroundColor: "#009688",
+                              borderColor: "#00796B",
+                            }
+                          : isFromSchedule
+                          ? {
+                              backgroundColor: "#B2DFDB",
+                              borderColor: "#B2DFDB",
+                              color: "#00695C",
+                            }
+                          : {};
 
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => toggleSlot(day.id, idx)}
-                          className={`py-2 px-3 rounded text-sm border transition-colors ${btnClass}`}
-                          style={btnStyle}
-                        >
-                          {slot}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => toggleSlot(day.id, idx)}
+                            className={`py-2 px-3 rounded text-sm border transition-colors ${btnClass}`}
+                            style={btnStyle}
+                          >
+                            {slot}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
 
                   <button
@@ -1095,8 +1222,9 @@ const ScheduleArrange = () => {
                       : [];
 
                     if (customIndices && customIndices.length > 0) {
+                      const slotsForDate = getTimeSlotsForDate(dateObj);
                       const customSlots = customIndices
-                        .map((i) => timeSlots[i])
+                        .map((i) => slotsForDate[i])
                         .filter(Boolean)
                         .slice(0, 5);
                       return (
@@ -1131,10 +1259,13 @@ const ScheduleArrange = () => {
                     // fallback to weekly slots when no custom exists
                     const dayEnum = dateObj ? dayEnumForJSDate(dateObj) : null;
                     const weeklyIndices = dayEnum
-                      ? getSlotIndicesForSchedule(dayEnum)
+                      ? getSlotIndicesForSchedule(dayEnum, dateObj)
+                      : [];
+                    const slotsForDay = dayEnum
+                      ? getTimeSlotsForDayEnum(dayEnum)
                       : [];
                     const weeklySlots = weeklyIndices
-                      .map((i) => timeSlots[i])
+                      .map((i) => slotsForDay[i])
                       .filter(Boolean)
                       .slice(0, 5);
                     return weeklySlots && weeklySlots.length > 0 ? (
@@ -1221,6 +1352,9 @@ const ScheduleArrange = () => {
                       const dateObj = selectedDate
                         ? new Date(selectedDate)
                         : null;
+                      const slotsForDate = dateObj
+                        ? getTimeSlotsForDate(dateObj)
+                        : [];
                       const customIndices = dateObj
                         ? getCustomSlotIndices(dateObj)
                         : [];
@@ -1228,7 +1362,7 @@ const ScheduleArrange = () => {
                         ? dayEnumForJSDate(dateObj)
                         : null;
                       const existingSlotIndices = dayEnum
-                        ? getSlotIndicesForSchedule(dayEnum)
+                        ? getSlotIndicesForSchedule(dayEnum, dateObj)
                         : [];
 
                       const hasCustom =
@@ -1241,7 +1375,7 @@ const ScheduleArrange = () => {
                       const isEditingWithTemp =
                         typeof tempForDate !== "undefined";
 
-                      return timeSlots.map((slot, idx) => {
+                      return slotsForDate.map((slot, idx) => {
                         const tempSelected = tempForDate || [];
                         const isSelected = tempSelected.includes(idx);
 

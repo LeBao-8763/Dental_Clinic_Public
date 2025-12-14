@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 import Loading from "../../components/common/Loading";
 import { toast } from "react-toastify";
 
@@ -84,10 +84,12 @@ const WorkingAppointmentDetail = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const response = await publicApi.get(endpoints.service.list);
+      const response = await privateApi.get(endpoints.service.list);
       setServices(response.data);
     } catch (err) {
-      console.log("Lấy danh sách dịch vụ lỗi:", err);
+      console.log("Lỗi chi tiết:", err.response); // Xem lỗi chi tiết từ backend
+      console.log("Status:", err.response?.status);
+      console.log("Message:", err.response?.data);
     } finally {
       setLoading(false);
     }

@@ -27,9 +27,9 @@ const ScheduleSupport = () => {
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState([]);
   const [dentists, setDentists] = useState([]);
-  const [schedules, setSchedule] = useState([]);
+  const [schedules, setSchedule] = useState([]); // weekly schedules from API
   const [appointments, setAppointments] = useState([]);
-  const [customeSchedule, setCustomSchedule] = useState([]);
+  const [customeSchedule, setCustomSchedule] = useState([]); // keep original name
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Thêm state cho bệnh nhân mới
@@ -81,7 +81,7 @@ const ScheduleSupport = () => {
       const res = await publicApi.get(
         endpoints.dentist_schedule.get_schedule(dentist_id)
       );
-      setSchedule(res.data);
+      setSchedule(res.data || []);
       console.log("Lịch làm việc của bác sĩ", res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
@@ -97,7 +97,7 @@ const ScheduleSupport = () => {
       const res = await publicApi.get(
         endpoints.appointment.get_by_dentist_id(dentist_id)
       );
-      setAppointments(res.data);
+      setAppointments(res.data || []);
       console.log("Lịch cuộc hẹn của bác sĩ", res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
@@ -113,7 +113,7 @@ const ScheduleSupport = () => {
       const res = await publicApi.get(
         endpoints.custom_schedule.get_by_dentist_id(dentist_id)
       );
-      setCustomSchedule(res.data);
+      setCustomSchedule(res.data || []);
       console.log("Lịch lịch custom của bác sĩ", res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
@@ -220,7 +220,75 @@ const ScheduleSupport = () => {
     return `${year}-${month}-${day}`;
   };
 
+  // --- NEW HELPERS for effective_from handling ---
+  // parse YYYY-MM-DD into local Date (no timezone shift)
+  const parseYMD = (ymd) => {
+    if (!ymd) return null;
+    const parts = ymd.split("-");
+    if (parts.length < 3) return null;
+    const [y, m, d] = parts.map(Number);
+    if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null;
+    return new Date(y, m - 1, d);
+  };
+
+  /**
+   * Return the schedules (array) for a given dayOfWeek that apply at refDate.
+   * Logic:
+   * - Group schedules by effective_from
+   * - Pick the group with effective_from <= refDate and the largest effective_from
+   * - If none such group -> return [] (no schedule applies before first effective date)
+   *
+   * Expected schedule items shape: { day_of_week, start_time, end_time, effective_from }
+   */
+  const getApplicableSchedulesForDay = (dayOfWeek, refDate) => {
+    if (!schedules || schedules.length === 0) return [];
+
+    const list = schedules
+      .filter((s) => s.day_of_week === dayOfWeek)
+      .map((s) => {
+        const eff = s.effective_from || "1970-01-01";
+        const _effDate = parseYMD(eff) || new Date(0);
+        return { ...s, effective_from: eff, _effDate };
+      });
+
+    if (list.length === 0) return [];
+
+    // group by effective_from
+    const groups = list.reduce((acc, s) => {
+      const key = s.effective_from;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(s);
+      return acc;
+    }, {});
+
+    const keys = Object.keys(groups);
+    // find maximal effective_from <= refDate
+    let chosenKey = null;
+    let maxDate = null;
+    keys.forEach((k) => {
+      const d = parseYMD(k) || new Date(0);
+      if (d <= refDate) {
+        if (!maxDate || d.getTime() > maxDate.getTime()) {
+          maxDate = d;
+          chosenKey = k;
+        }
+      }
+    });
+
+    if (chosenKey) {
+      // return group's schedules (keep original items)
+      return groups[chosenKey].slice();
+    }
+
+    // no group applies yet
+    return [];
+  };
+  // --- end new helpers ---
+
+  // Updated getDaySchedules: if there's a custom schedule for that date, use it.
+  // Otherwise, use getApplicableSchedulesForDay(enumDay, date)
   const getDaySchedules = (date) => {
+    if (!date) return [];
     const formattedDate = getLocalDateString(date);
     const customForDate = customeSchedule.filter(
       (s) => s.custom_date === formattedDate
@@ -237,9 +305,12 @@ const ScheduleSupport = () => {
     } else {
       const dow = date.getDay();
       const enumDay = dayMap[dow];
-      return schedules
-        .filter((s) => s.day_of_week === enumDay)
-        .sort((a, b) => a.start_time.localeCompare(b.start_time));
+      // Use effective_from grouping based on the selected date
+      const applicable = getApplicableSchedulesForDay(enumDay, date);
+      // sort by start_time
+      return applicable.sort((a, b) =>
+        a.start_time.localeCompare(b.start_time)
+      );
     }
   };
 
@@ -288,8 +359,6 @@ const ScheduleSupport = () => {
     try {
       // Nếu là bệnh nhân mới, tạo bệnh nhân mới trước
       if (isNewPatient) {
-        // Giả định endpoint tạo user là endpoints.users.create, và data phù hợp
-        // Parse fullName thành firstname và lastname (giả sử fullname = "First Last")
         const [firstname, ...lastnameParts] = newPatient.fullName
           .trim()
           .split(/\s+/);
@@ -298,7 +367,7 @@ const ScheduleSupport = () => {
           firstname: firstname || "",
           lastname: lastname || "",
           phone_number: newPatient.phone,
-          username: newPatient.email, // Giả sử username là email
+          username: newPatient.email,
           email: newPatient.email,
           dob: newPatient.dob,
           gender:
@@ -306,16 +375,15 @@ const ScheduleSupport = () => {
               ? "MALE"
               : newPatient.gender === "female"
               ? "FEMALE"
-              : "OTHER", // Giả định enum
+              : "OTHER",
           address: newPatient.address,
-          // Có thể cần thêm các field khác như password mặc định, nhưng giả định API xử lý
         };
 
         const createRes = await publicApi.post(
           endpoints.users.create,
           createPatientData
         );
-        patientId = createRes.data.id; // Giả định response có id
+        patientId = createRes.data.id;
         toast.success("Tạo bệnh nhân mới thành công!");
       }
 
@@ -331,20 +399,17 @@ const ScheduleSupport = () => {
       );
       const appointmentDate = getLocalDateString(selectedFullDate);
 
-      // Post appointment (tương tự DoctorDetail, thêm notes nếu API hỗ trợ)
       await publicApi.post(endpoints.appointment.create, {
         dentist_id: selectedDoctor.id,
         patient_id: patientId,
         appointment_date: appointmentDate,
-        start_time: selectedTime.start + ":00", // Định dạng HH:MM:SS
+        start_time: selectedTime.start + ":00",
         end_time: selectedTime.end + ":00",
-        notes: notes || "", // Giả định API hỗ trợ notes, nếu không thì bỏ
+        notes: notes || "",
       });
 
       toast.success("Đặt lịch thành công!");
-      // Refresh data
       await fetchDentistAppointment(selectedDoctor.id);
-      // Reset selections nếu cần
       setSelectedDate(null);
       setSelectedTime(null);
       setNotes("");
@@ -480,7 +545,7 @@ const ScheduleSupport = () => {
                           ✕
                         </button>
                       )}
-                      {/* Suggestions Dropdown (styled like the image) */}
+                      {/* Suggestions Dropdown */}
                       {showPatientSuggestions &&
                         filteredPatients.length > 0 &&
                         !selectedPatient && (

@@ -1,14 +1,18 @@
-import React, { useState } from "react";
-import { X, Trash2, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { endpoints, publicApi } from "../../configs/Apis";
 
 const PaymentDetail = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { appointmentId } = location.state || {};
 
-  const [services, setServices] = useState([
-    { id: 1, name: "Khám tổng quát", price: 200000 },
-    { id: 2, name: "Siêu âm", price: 300000 },
-  ]);
+  const [appointment, setAppointment] = useState(null);
+  const [dentist, setDentist] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [treatments, setTreatments] = useState([]);
+  const [servicesWithPrice, setServicesWithPrice] = useState([]);
 
   const [medications, setMedications] = useState([
     {
@@ -29,7 +33,85 @@ const PaymentDetail = () => {
     },
   ]);
 
-  const totalServicePrice = services.reduce(
+  const fetchDentistById = async (id) => {
+    try {
+      const res = await publicApi.get(endpoints.get_user_info(id));
+      console.log("Dữ liệu bác sĩ", res.data);
+      setDentist(res.data);
+    } catch (err) {
+      console.log("Đã có lỗi xảy ra khi lấy dữ liệu bác sĩ", err);
+    }
+  };
+
+  const fetchServiceById = async (id) => {
+    try {
+      const res = await publicApi.get(endpoints.service.get_by_Id(id));
+      console.log("Dữ liệu dịch vụ", res.data);
+      return res.data;
+    } catch (err) {
+      console.log("Đã có lỗi xảy ra khi lấy dữ liệu dịch vụ", err);
+      return null;
+    }
+  };
+
+  const fetchTreatmentRecordByAptId = async (appointmentId) => {
+    try {
+      const res = await publicApi.get(
+        endpoints.treatment_record.list_by_aptId(appointmentId)
+      );
+      console.log("Dữ liệu treatment records", res.data);
+      setTreatments(res.data);
+
+      // Lấy thông tin service cho từng treatment record
+      if (res.data && res.data.length > 0) {
+        const servicesData = await Promise.all(
+          res.data.map(async (treatment) => {
+            const serviceInfo = await fetchServiceById(treatment.service_id);
+            return {
+              id: treatment.id,
+              name: serviceInfo?.name || "Dịch vụ không xác định",
+              price: treatment.price, // Lấy giá từ treatment record
+              serviceId: treatment.service_id,
+              note: treatment.note,
+            };
+          })
+        );
+        console.log("Danh sách dịch vụ với giá", servicesData);
+        setServicesWithPrice(servicesData);
+      }
+    } catch (err) {
+      console.log("Đã có lỗi xảy ra khi lấy dữ liệu treatment records", err);
+    }
+  };
+
+  const fetchAppointmentById = async (appointmentId) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.appointment.get_by_id(appointmentId)
+      );
+      if (res.data) {
+        setAppointment(res.data);
+        if (res.data.dentist_id) {
+          fetchDentistById(res.data.dentist_id);
+          fetchTreatmentRecordByAptId(res.data.id);
+        }
+      }
+      console.log("Dữ liệu cuộc hẹn", res.data);
+    } catch (err) {
+      console.log("Đã có lỗi xảy ra khi lấy dữ liệu cuộc hẹn", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (appointmentId) {
+      fetchAppointmentById(appointmentId);
+    }
+  }, [appointmentId]);
+
+  const totalServicePrice = servicesWithPrice.reduce(
     (sum, service) => sum + service.price,
     0
   );
@@ -39,13 +121,36 @@ const PaymentDetail = () => {
   );
   const grandTotal = totalServicePrice + totalMedicationPrice;
 
-  const removeService = (id) => {
-    setServices(services.filter((service) => service.id !== id));
-  };
+  // Loading state
+  if (loading && !appointment) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải thông tin...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const removeMedication = (id) => {
-    setMedications(medications.filter((med) => med.id !== id));
-  };
+  // Error state - no appointment data
+  if (!appointment) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">
+            Không tìm thấy thông tin cuộc hẹn
+          </p>
+          <button
+            onClick={() => navigate(-1)}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg"
+          >
+            Quay lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -56,7 +161,10 @@ const PaymentDetail = () => {
         </button>
         <h1 className="text-lg font-medium text-gray-900">
           Thanh toán cho cuộc hẹn với bệnh nhân{" "}
-          <span className="text-blue-600">Nguyễn Văn A</span>
+          <span className="text-blue-600">
+            {appointment?.patient?.firstname || ""}{" "}
+            {appointment?.patient?.lastname || ""}
+          </span>
         </h1>
       </div>
 
@@ -77,17 +185,24 @@ const PaymentDetail = () => {
               <div>
                 <p className="text-xs text-blue-600 mb-1">Tên Bệnh Nhân</p>
                 <p className="text-base font-semibold text-gray-900">
-                  Nguyễn Văn A
+                  {appointment?.patient?.firstname || ""}{" "}
+                  {appointment?.patient?.lastname || ""}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-blue-600 mb-1">Tuổi</p>
-                <p className="text-base font-semibold text-gray-900">35 tuổi</p>
+                <p className="text-xs text-blue-600 mb-1">Giới tính</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {appointment?.patient?.gender === "GenderEnum.MALE"
+                    ? "Nam"
+                    : appointment?.patient?.gender === "GenderEnum.FEMALE"
+                    ? "Nữ"
+                    : "Chưa xác định"}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-blue-600 mb-1">Số Điện Thoại</p>
                 <p className="text-base font-semibold text-gray-900">
-                  0987654321
+                  {appointment?.patient?.phone_number || "Chưa có"}
                 </p>
               </div>
             </div>
@@ -107,19 +222,20 @@ const PaymentDetail = () => {
               <div>
                 <p className="text-xs text-teal-600 mb-1">Tên Bác Sĩ</p>
                 <p className="text-base font-semibold text-gray-900">
-                  Dr. Nguyễn Văn A
+                  {dentist?.firstname || ""}{" "}
+                  {dentist?.lastname || "Đang tải..."}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-teal-600 mb-1">Chuyên Khoa</p>
                 <p className="text-base font-semibold text-gray-900">
-                  Bác sĩ Nội Khoa
+                  {dentist?.specialization || "Bác sĩ Nội Khoa"}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-teal-600 mb-1">Khoa</p>
                 <p className="text-base font-semibold text-gray-900">
-                  Khoa Nội
+                  {dentist?.department || "Khoa Nội"}
                 </p>
               </div>
             </div>
@@ -135,37 +251,52 @@ const PaymentDetail = () => {
           </div>
 
           <div className="p-6">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-300">
-                  <th className="text-left pb-3 font-semibold text-gray-700">
-                    Tên Dịch Vụ
-                  </th>
-                  <th className="text-right pb-3 font-semibold text-gray-700">
-                    Giá
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((service) => (
-                  <tr key={service.id} className="border-b border-gray-200">
-                    <td className="py-4 text-gray-900">{service.name}</td>
-                    <td className="py-4 text-right text-gray-900 font-medium">
-                      {service.price.toLocaleString("vi-VN")} đ
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="flex justify-end mt-6 pt-4 border-t-2 border-gray-300">
-              <div className="text-right">
-                <p className="text-sm text-gray-600 mb-1">Tổng Dịch Vụ</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {totalServicePrice.toLocaleString("vi-VN")} đ
-                </p>
+            {servicesWithPrice.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Đang tải dịch vụ...
               </div>
-            </div>
+            ) : (
+              <>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-300">
+                      <th className="text-left pb-3 font-semibold text-gray-700">
+                        Tên Dịch Vụ
+                      </th>
+                      <th className="text-right pb-3 font-semibold text-gray-700">
+                        Giá
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {servicesWithPrice.map((service) => (
+                      <tr key={service.id} className="border-b border-gray-200">
+                        <td className="py-4 text-gray-900">
+                          {service.name}
+                          {service.note && (
+                            <span className="text-sm text-gray-500 ml-2">
+                              ({service.note})
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 text-right text-gray-900 font-medium">
+                          {service.price.toLocaleString("vi-VN")} đ
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex justify-end mt-6 pt-4 border-t-2 border-gray-300">
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600 mb-1">Tổng Dịch Vụ</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {totalServicePrice.toLocaleString("vi-VN")} đ
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
