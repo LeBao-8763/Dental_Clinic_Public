@@ -52,6 +52,8 @@ const WorkingAppointment = () => {
           ? "Đang khám"
           : item.status === "AppointmentStatusEnum.COMPLETED"
           ? "Đã khám"
+          : item.status === "AppointmentStatusEnum.PAID"
+          ? "Đã thanh toán"
           : "Hủy",
       note: item.note || "Không có ghi chú",
       date: item.appointment_date,

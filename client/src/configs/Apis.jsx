@@ -57,6 +57,10 @@ export const endpoints = {
     get_by_aptId: (apt_id) => `prescription/by-appointment/${apt_id}`,
     add_details: (prescriptionId) => `prescription/${prescriptionId}/details`,
   },
+  invoice: {
+    create: "invoice/",
+    get_by_aptId: (apt_id) => `invoice/by-appointment/${apt_id}`,
+  },
 };
 
 export const publicApi = axios.create({

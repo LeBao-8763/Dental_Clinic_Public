@@ -3,13 +3,18 @@ from decimal import Decimal
 from app import db
 from app.models import (
     Appointment, Prescription, PrescriptionDetail,
-    Medicine, MedicineImport, TreatmentRecord, Invoice, PrescriptionStatusEnum
+    Medicine, MedicineImport, TreatmentRecord, Invoice, PrescriptionStatusEnum, AppointmentStatusEnum
 )
 from sqlalchemy import func
 
 
 def create_invoice(appointment_id):
     try:
+        appointment = Appointment.query.get(appointment_id)
+        if (appointment.status != AppointmentStatusEnum.PAID
+                and appointment.status != AppointmentStatusEnum.CANCELLED):
+            appointment.status = AppointmentStatusEnum.PAID
+
         # 1️⃣ Lấy toa thuốc theo appointment_id (giả sử mỗi appointment chỉ có 1 prescription)
         prescription = Prescription.query.filter_by(appointment_id=appointment_id).first()
         if not prescription:
@@ -30,7 +35,7 @@ def create_invoice(appointment_id):
 
             total_medicine_fee += Decimal(d.price or 0) * Decimal(d.dosage or 0) * Decimal(d.duration_days or 1)
 
-            qty_to_deduct = d.dosage or 0
+            qty_to_deduct = (d.dosage or 0) * (d.duration_days or 1)
 
             # 🔹 Lấy các lô thuốc có cùng medicine_id, ưu tiên hạn sớm nhất (FEFO)
             imports = (
@@ -55,14 +60,14 @@ def create_invoice(appointment_id):
 
             # 🔹 Cập nhật lại reserved_quantity trong bảng medicine (trừ lượng đã xuất)
             reserved_now = medicine.reserved_quantity or 0
-            medicine.reserved_quantity = max(reserved_now - (d.dosage or 0), 0)
+            medicine.reserved_quantity = max(reserved_now - qty_to_deduct, 0)
 
         # 5️⃣ Tính tổng tiền dịch vụ
         total_service_fee = Decimal(
-    db.session.query(func.coalesce(func.sum(TreatmentRecord.price), 0))
-    .filter(TreatmentRecord.appointment_id == appointment_id)
-    .scalar()
-)
+            db.session.query(func.coalesce(func.sum(TreatmentRecord.price), 0))
+            .filter(TreatmentRecord.appointment_id == appointment_id)
+            .scalar()
+        )
 
         # 6️⃣ Tính VAT và tổng cộng
         vat = (total_service_fee + total_medicine_fee) * Decimal(0.1)
@@ -99,6 +104,7 @@ def create_invoice(appointment_id):
 
     except Exception as e:
         db.session.rollback()
+        print(e)
         return {"error": str(e)}, 500
 
 # if __name__ == "__main__":

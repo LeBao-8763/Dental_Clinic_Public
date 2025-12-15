@@ -1,7 +1,8 @@
 from alembic.util import status
 
 from app import db
-from app.models import Prescription, PrescriptionDetail, Medicine
+from app.models import Prescription, PrescriptionDetail, Medicine, PrescriptionStatusEnum
+
 
 # ------------------------------
 # 🔹 Toa thuốc
@@ -93,6 +94,15 @@ def get_prescription_by_appointment(appointment_id):
 def add_details(data):
     prescription_id = data['prescription_id']
     new_details = data['details']
+
+    # 🔹 0️⃣ Kiểm tra trạng thái toa thuốc
+    prescription = Prescription.query.get(prescription_id)
+    if not prescription:
+        return {"error": "Không tìm thấy toa thuốc."}, 404
+
+    # ✅ Nếu toa đã xác nhận → không cho chỉnh sửa
+    if prescription.status == PrescriptionStatusEnum.CONFIRMED:
+        return {"error": "Toa thuốc đã được xác nhận, không thể chỉnh sửa."}, 400
 
     # 1️⃣ Lấy tất cả chi tiết hiện có trong DB
     existing_details = PrescriptionDetail.query.filter_by(prescription_id=prescription_id).all()

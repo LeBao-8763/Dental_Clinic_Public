@@ -73,6 +73,10 @@ const PaymentPage = () => {
         label: "Đã Hoàn Thành",
         color: "bg-teal-100 text-teal-700",
       },
+      "AppointmentStatusEnum.PAID": {
+        label: "Đã Thanh Toán",
+        color: "bg-purple-100 text-purple-700",
+      },
       "AppointmentStatusEnum.CANCELLED": {
         label: "Đã Hủy",
         color: "bg-red-100 text-red-700",
@@ -248,18 +252,35 @@ const PaymentPage = () => {
                   </div>
 
                   {/* Card Footer */}
-                  <div className="px-6 py-4 border-t border-gray-200">
-                    <button
-                      onClick={() =>
-                        navigate("/staff/payment-detail", {
-                          state: { appointmentId: apt.id },
-                        })
-                      }
-                      className="w-full py-2.5 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors"
-                    >
-                      Thanh Toán
-                    </button>
-                  </div>
+<div className="px-6 py-4 border-t border-gray-200">
+  {apt.status === "AppointmentStatusEnum.PAID" ? (
+    // 🟩 Nếu đã thanh toán → Hiển thị nút "Chi tiết"
+    <button
+      onClick={() =>
+        navigate("/staff/payment-detail", {
+          state: { appointmentId: apt.id },
+        })
+      }
+      className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+    >
+      Chi tiết
+    </button>
+  ) : (
+    // 🟦 Nếu chưa thanh toán → Hiển thị nút "Thanh Toán"
+    <button
+      onClick={() =>
+        navigate("/staff/payment-detail", {
+          state: { appointmentId: apt.id },
+        })
+      }
+      className="w-full py-2.5 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors"
+    >
+      Thanh Toán
+    </button>
+  )}
+</div>
+
+
                 </div>
               );
             })}
