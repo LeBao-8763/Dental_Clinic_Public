@@ -30,6 +30,7 @@ medicine_ns=api.namespace('medicines', description='Các thao tác liên quan đ
 medicine_import_ns=api.namespace('medicines_import', description='Các thao tác liên quan đến nhập thuốc')
 prescription_ns=api.namespace('prescription', description='Các thao tác liên quan đến kê toa thuốc')
 post_ns=api.namespace('post',description='Các thao tác liên quan đến bài viết/blog của nha khoa')
+invoice_ns=api.namespace('invoice', description='Các thao tác liên quan đến hóa đơn')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -176,8 +177,7 @@ prescription_detail_model = api.model('PrescriptionDetail', {
 })
 
 invoice_model = api.model('Invoice', {
-    'id': fields.Integer(readOnly=True, description='ID hóa đơn'),
-    'appointment_id': fields.Integer(description='ID lịch hẹn'),
+    'appointment_id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
     'total_service_fee': fields.Float(description='Tổng phí dịch vụ'),
     'total_medicine_fee': fields.Float(description='Tổng phí thuốc'),
     'vat': fields.Float(description='VAT'),
@@ -375,3 +375,7 @@ post_creation_parser = reqparse.RequestParser()
 post_creation_parser.add_argument('title', type=str, required=True, help='Tiêu đề bài viết', location='form')
 post_creation_parser.add_argument('content', type=str, required=False, help='Nội dung bài viết', location='form')
 post_creation_parser.add_argument('img', type=FileStorage, required=True, action='append', location='files', help='Danh sách ảnh')
+
+''' INVOICE '''
+invoice_parser = reqparse.RequestParser()
+invoice_parser.add_argument('appointment_id', type=int, required=True, help='ID của lịch hẹn')

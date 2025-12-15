@@ -27,7 +27,7 @@ def get_all_clinic_hours():
 
 #huy-dev
 def update_clinic_hour(clinic_hour_id, day_of_week=None, open_time=None, close_time=None, slot_duration_minutes=None):
-    clinic_hour = ClinicHour.query.get(clinic_hour_id)
+    clinic_hour = ClinicHours.query.get(clinic_hour_id)
     if not clinic_hour:
         return None
     if day_of_week: clinic_hour.day_of_week = day_of_week
@@ -38,7 +38,7 @@ def update_clinic_hour(clinic_hour_id, day_of_week=None, open_time=None, close_t
     return clinic_hour
 
 def delete_clinic_hour(clinic_hour_id):
-    clinic_hour = ClinicHour.query.get(clinic_hour_id)
+    clinic_hour = ClinicHours.query.get(clinic_hour_id)
     if not clinic_hour:
         return False
     db.session.delete(clinic_hour)

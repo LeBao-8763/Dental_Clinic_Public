@@ -217,7 +217,7 @@ class Appointment(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
     note = db.Column(db.String(255))
-    diagnosis = db.Column(db.Text)  
+    # diagnosis = db.Column(db.Text)
     status = db.Column(
         db.Enum(AppointmentStatusEnum),
         default=AppointmentStatusEnum.PENDING
@@ -322,14 +322,14 @@ class PrescriptionDetail(db.Model):
 class Invoice(db.Model):
     __tablename__ = 'invoice'
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    appointment_id = db.Column(db.BigInteger, db.ForeignKey('appointments.id'))
-    total_service_fee = db.Column(db.Numeric(10, 2))
-    total_medicine_fee = db.Column(db.Numeric(10, 2))
-    vat = db.Column(db.Numeric(10, 2))
-    total = db.Column(db.Numeric(10, 2))
+    appointment_id = db.Column(db.BigInteger, db.ForeignKey('appointments.id'), primary_key=True)
+    total_service_fee = db.Column(db.Numeric(10, 2), default=0)
+    total_medicine_fee = db.Column(db.Numeric(10, 2), default=0)
+    vat = db.Column(db.Numeric(10, 2), default=0)
+    total = db.Column(db.Numeric(10, 2), default=0)
 
-    appointment = db.relationship('Appointment', back_populates='invoice')
+    # Quan hệ 1-1 với Appointment
+    appointment = db.relationship('Appointment', back_populates='invoice', uselist=False)
 
 
 # ------------------------------
