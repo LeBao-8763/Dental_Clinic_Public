@@ -55,7 +55,8 @@ def create_app():
         medicine_api,
         medicine_import_api,
         prescription_api,
-        post_api
+        post_api,
+        invoice_api
     )
 
     return app

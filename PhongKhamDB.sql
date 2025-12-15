@@ -179,12 +179,12 @@ CREATE TABLE prescription_details (
 
 -- Bảng hóa đơn
 CREATE TABLE invoice (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id BIGINT,
-    total_service_fee DECIMAL(10,2),
-    total_medicine_fee DECIMAL(10,2),
-    vat DECIMAL(10,2),
-    total DECIMAL(10,2),
+    appointment_id BIGINT PRIMARY KEY,  -- Khóa chính cũng là khóa ngoại
+    total_service_fee DECIMAL(10,2) DEFAULT 0,
+    total_medicine_fee DECIMAL(10,2) DEFAULT 0,
+    vat DECIMAL(10,2) DEFAULT 0,
+    total DECIMAL(10,2) DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
 );
 
