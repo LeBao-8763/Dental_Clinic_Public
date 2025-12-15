@@ -43,6 +43,37 @@ const PaymentDetail = () => {
     }
   };
 
+  const handlePayment = async () => {
+    if (!appointmentId) return;
+    setLoading(true);
+    try {
+      const res = await publicApi.post(endpoints.invoice.create, {
+        appointment_id: appointmentId,
+      });
+      toast.success("Đã thanh toán thành công!");
+      console.log("Invoice created:", res.data);
+
+    } catch (err) {
+      console.error("Lỗi khi tạo hóa đơn:", err);
+      toast.error("Có lỗi xảy ra khi thanh toán!");
+    }
+    setLoading(false);
+    navigate("/staff/payment");
+  };
+
+  const fetchPrescription = async (appointmentId) => {
+    setLoading(true);
+          try {
+            const res = await publicApi.get(
+              endpoints.prescription.get_by_aptId(appointmentId)
+            );
+            setMedications(res.data.details || []);
+          } catch (err) {
+            console.log("Không tìm thấy toa thuốc cho cuộc hẹn này:", err);
+          }
+    setLoading(false);
+      };
+
   const fetchServiceById = async (id) => {
     try {
       const res = await publicApi.get(endpoints.service.get_by_Id(id));
@@ -108,6 +139,7 @@ const PaymentDetail = () => {
   useEffect(() => {
     if (appointmentId) {
       fetchAppointmentById(appointmentId);
+      fetchPrescription(appointmentId);
     }
   }, [appointmentId]);
 
@@ -116,7 +148,7 @@ const PaymentDetail = () => {
     0
   );
   const totalMedicationPrice = medications.reduce(
-    (sum, med) => sum + med.price,
+    (sum, med) => sum + (med.dosage * med.duration_days * med.price || 0),
     0
   );
   const grandTotal = totalServicePrice + totalMedicationPrice;
@@ -331,7 +363,7 @@ const PaymentDetail = () => {
               <tbody>
                 {medications.map((medication) => (
                   <tr key={medication.id} className="border-b border-gray-200">
-                    <td className="py-4 text-gray-900">{medication.name}</td>
+                    <td className="py-4 text-gray-900">{medication.medicine_name}</td>
                     <td className="py-4 text-center text-gray-900">
                       {medication.dosage}
                     </td>
@@ -339,11 +371,11 @@ const PaymentDetail = () => {
                       {medication.unit}
                     </td>
                     <td className="py-4 text-center text-gray-900">
-                      {medication.days} ngày
+                      {medication.duration_days} ngày
                     </td>
-                    <td className="py-4 text-right text-gray-900 font-medium">
-                      {medication.price.toLocaleString("vi-VN")} đ
-                    </td>
+                    <td className="py-3 text-right font-medium text-gray-900">
+                        {(medication.dosage * medication.duration_days * medication.price).toLocaleString("vi-VN")} đ
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -373,9 +405,35 @@ const PaymentDetail = () => {
                 {grandTotal.toLocaleString("vi-VN")} đ
               </p>
             </div>
-            <button className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-md">
-              Xác Nhận Thanh Toán
-            </button>
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-5">
+  <div className="max-w-6xl mx-auto flex justify-between px-6">
+    <div>
+      <p className="text-sm text-gray-600">Tổng cộng</p>
+      <p className="text-2xl font-bold text-teal-700">
+        {grandTotal.toLocaleString("vi-VN")} đ
+      </p>
+    </div>
+
+    {appointment.status === "AppointmentStatusEnum.PAID" ? (
+      // ✅ Nếu đã thanh toán
+      <button
+        disabled
+        className="bg-gray-200 text-gray-500 px-8 py-3 rounded-lg font-semibold cursor-not-allowed shadow-inner"
+      >
+        Đã Thanh Toán
+      </button>
+    ) : (
+      // 💰 Nếu chưa thanh toán
+      <button
+        onClick={handlePayment}
+        className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-md"
+      >
+        Xác Nhận Thanh Toán
+      </button>
+    )}
+  </div>
+</div>
+
           </div>
         </div>
       </div>

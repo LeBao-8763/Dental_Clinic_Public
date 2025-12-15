@@ -25,6 +25,7 @@ const WorkingAppointmentDetail = () => {
   const [dosage, setDosage] = useState("");
   const [unit, setUnit] = useState("Viên/ngày");
   const [days, setDays] = useState("");
+  const [note, setNote] = useState("");
   const [prescribedMedicines, setPrescribedMedicines] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,6 +153,11 @@ const WorkingAppointmentDetail = () => {
         status = "PRESCRIPTION";
         payload = { status };
       }
+      // Nếu ở bước 2 (tóm tắt) thì cập nhật trạng thái thành COMPLETED
+      else if (step === 2) {
+        status = "COMPLETED";
+        payload = { status };
+      }
 
       await publicApi.patch(
         endpoints.appointment.update(appointmentId),
@@ -273,11 +279,15 @@ const WorkingAppointmentDetail = () => {
           }
           console.log("có chạy đây không");
           await updateAppointment(currentStep); // chuyển trạng thái -> PRESCRIPTION
-          toast.success("Đã lưu toa thuốc thành công!");
         } catch (err) {
           console.error("Lỗi khi lưu toa thuốc:", err);
           toast.error("Có lỗi khi lưu toa thuốc!");
         }
+      }
+      if (currentStep === 2) {
+        // Ở bước tóm tắt, khi nhấn hoàn thành, cập nhật trạng thái cuộc hẹn thành COMPLETED
+        await updateAppointment(currentStep);
+        return navigate("/dentist/working-appointment");
       }
       // Chuyển bước
       setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1));
@@ -332,7 +342,7 @@ const WorkingAppointmentDetail = () => {
       dosage: Number(dosage),
       unit,
       duration_days: Number(days),
-      note: null,
+      note: note,
       price: selectedMedicine.selling_price ?? 0,
     };
 
@@ -363,6 +373,7 @@ const WorkingAppointmentDetail = () => {
     setDosage("");
     setDays("");
     setUnit("Viên/ngày");
+    setNote("");
     toast.success("Đã thêm thuốc vào đơn!");
   };
 
@@ -416,7 +427,7 @@ const WorkingAppointmentDetail = () => {
 
   useEffect(() => {
     const fetchPrescription = async () => {
-      if (currentStep === 1 && appointmentId) {
+      if ((currentStep === 1 || currentStep === 2) && appointmentId) {
         try {
           const res = await publicApi.get(
             endpoints.prescription.get_by_aptId(appointmentId)
@@ -1103,6 +1114,20 @@ const WorkingAppointmentDetail = () => {
                     className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm"
                   />
                 </div>
+
+                {/* Medicine Note Input */}
+<div className="mb-6">
+  <label className="text-sm font-medium text-gray-700 mb-2 block">
+    Ghi chú về loại thuốc
+  </label>
+  <textarea
+    placeholder="Nhập ghi chú (ví dụ: uống sau bữa ăn, tránh lái xe...)"
+    value={note}
+    onChange={(e) => setNote(e.target.value)}
+    rows={3}
+    className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm resize-none"
+  />
+</div>
                 {/* Add Button */}
                 <button
                   onClick={handleAddMedicine}
@@ -1168,6 +1193,9 @@ const WorkingAppointmentDetail = () => {
                         <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">
                           Số Ngày
                         </th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">
+            Ghi chú
+          </th>
                         <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">
                           Xóa
                         </th>
@@ -1192,6 +1220,9 @@ const WorkingAppointmentDetail = () => {
                           <td className="px-6 py-4 text-center text-gray-700">
                             {prescription?.duration_days} ngày
                           </td>
+                          <td className="px-6 py-4 text-gray-700">
+              {prescription?.note || "—"}
+            </td>
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() =>
@@ -1444,16 +1475,20 @@ const WorkingAppointmentDetail = () => {
                         <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">
                           Số Ngày
                         </th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">
+                          Ghi chú
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {prescribedMedicines.map((prescription) => (
                         <tr
-                          key={prescription.id}
+                          key={prescription?.medicine_id}
                           className="border-b border-gray-100 hover:bg-[#FAFAFA] transition-colors"
                         >
                           <td className="px-6 py-4 text-gray-900 font-medium">
-                            {prescription.medicine?.name}
+                            {prescription?.medicine_name ||
+                              prescription?.medicine.name}
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
                             {prescription?.dosage}
@@ -1463,6 +1498,9 @@ const WorkingAppointmentDetail = () => {
                           </td>
                           <td className="px-6 py-4 text-center text-gray-700">
                             {prescription?.duration_days} ngày
+                          </td>
+                          <td className="px-6 py-4 text-gray-700">  
+                            {prescription?.note || "—"}
                           </td>
                         </tr>
                       ))}

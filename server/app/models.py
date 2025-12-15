@@ -32,6 +32,7 @@ class AppointmentStatusEnum(enum.Enum):
     PRESCRIPTION="PRESCRIPTION"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
+    PAID = "PAID"
 
 class DayOfWeekEnum(enum.Enum):
     MONDAY = "MONDAY"
