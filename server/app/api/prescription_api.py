@@ -6,7 +6,8 @@ from app.api_conf import api, prescription_ns, prescription_model, prescription_
 from app.dao import dao_prescription
 from flask_jwt_extended import jwt_required
 
-from app.models import Prescription
+from app.models import Prescription, RoleEnum
+from app.utils.check_role import role_required
 
 
 # ------------------------------
@@ -23,7 +24,8 @@ class PrescriptionList(Resource):
 
     @prescription_ns.expect(prescription_parser)
     @prescription_ns.marshal_with(prescription_model, code=201)
-    #@jwt_required()
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def post(self):
         data = request.get_json()
         if not data or 'appointment_id' not in data:
@@ -73,7 +75,8 @@ class PrescriptionDetailList(Resource):
         return dao_prescription.get_details_by_prescription(prescription_id)
 
     @prescription_ns.expect(prescription_detail_parser)
-    #@jwt_required()
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def post(self, prescription_id):
         """Thêm hoặc cập nhật danh sách thuốc trong toa"""
         data = request.get_json()
@@ -99,6 +102,8 @@ class PrescriptionDetailItem(Resource):
 
 @prescription_ns.route('/by-appointment/<int:appointment_id>')
 class PrescriptionByAppointment(Resource):
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value, RoleEnum.ROLE_STAFF.value])
     def get(self, appointment_id):
         """Lấy toa thuốc theo cuộc hẹn"""
         prescription = dao_prescription.get_prescription_by_appointment(appointment_id)

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 
 const PaymentDetail = () => {
   const navigate = useNavigate();
@@ -13,6 +13,10 @@ const PaymentDetail = () => {
   const [loading, setLoading] = useState(false);
   const [treatments, setTreatments] = useState([]);
   const [servicesWithPrice, setServicesWithPrice] = useState([]);
+  const [totalServiceFee, setTotalServiceFee] = useState(0);
+  const [totalMedicineFee, setTotalMedicineFee] = useState(0);
+
+  
 
   const [medications, setMedications] = useState([
     {
@@ -47,7 +51,7 @@ const PaymentDetail = () => {
     if (!appointmentId) return;
     setLoading(true);
     try {
-      const res = await publicApi.post(endpoints.invoice.create, {
+      const res = await privateApi.post(endpoints.invoice.create, {
         appointment_id: appointmentId,
       });
       toast.success("Đã thanh toán thành công!");
@@ -64,7 +68,7 @@ const PaymentDetail = () => {
   const fetchPrescription = async (appointmentId) => {
     setLoading(true);
           try {
-            const res = await publicApi.get(
+            const res = await privateApi.get(
               endpoints.prescription.get_by_aptId(appointmentId)
             );
             setMedications(res.data.details || []);
@@ -151,7 +155,11 @@ const PaymentDetail = () => {
     (sum, med) => sum + (med.dosage * med.duration_days * med.price || 0),
     0
   );
-  const grandTotal = totalServicePrice + totalMedicationPrice;
+ const vat = (Number(totalServicePrice) + Number(totalMedicationPrice)) * 0.1;
+
+
+  const grandTotal = totalServicePrice + totalMedicationPrice + vat;
+  
 
   // Loading state
   if (loading && !appointment) {
@@ -397,6 +405,7 @@ const PaymentDetail = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border border-gray-200 shadow-lg rounded-t-2xl">
         <div className="max-w-6xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
+            
             <div>
               <p className="text-sm text-gray-600 mb-1">
                 Tổng Tiền Phải Thanh Toán
@@ -408,6 +417,10 @@ const PaymentDetail = () => {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-5">
   <div className="max-w-6xl mx-auto flex justify-between px-6">
     <div>
+       <div className="flex justify-between text-gray-700 border-t border-dashed pt-2">
+      <span>VAT (10%):</span>
+      <span>{vat.toLocaleString("vi-VN")} đ</span>
+    </div>
       <p className="text-sm text-gray-600">Tổng cộng</p>
       <p className="text-2xl font-bold text-teal-700">
         {grandTotal.toLocaleString("vi-VN")} đ

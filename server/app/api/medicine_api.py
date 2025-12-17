@@ -5,11 +5,15 @@ from app.dao import dao_medicine
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.dao.dao_medicine import get_medicine_list
+from app.models import RoleEnum
+from app.utils.check_role import role_required
 
 
 @medicine_ns.route('/')
 class MedicineList(Resource):
     @medicine_ns.marshal_list_with(medicine_model)
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_ADMIN.value, RoleEnum.ROLE_DENTIST.value])
     def get(self):
         "Lấy danh sách thuốc"
         data = []
@@ -28,10 +32,10 @@ class MedicineList(Resource):
 
     @medicine_ns.expect(medicine_parser, validate=True)
     @medicine_ns.marshal_with(medicine_model, code=201)
-    #@jwt_required()  # chỉ admin/staff mới thao tác
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_ADMIN.value])
     def post(self):
         "Thêm thuốc mới vào danh mục"
-        #current_user = get_jwt_identity()  # có thể check role
         data = medicine_parser.parse_args()
 
         new_medicine = dao_medicine.create_medicine(

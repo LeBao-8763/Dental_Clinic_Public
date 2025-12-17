@@ -1,10 +1,11 @@
 from flask import request
+from flask_jwt_extended import jwt_required
 from flask_restx import Resource
 from app.api_conf import medicine_import_ns, medicine_import_model, medicine_import_parser
-from app.dao import dao_medicine_import, dao_medicine
+from app.dao import dao_medicine_import
+from app.models import RoleEnum
+from app.utils.check_role import role_required
 
-
-# from flask_jwt_extended import jwt_required, get_jwt_identity
 
 @medicine_import_ns.route('/')
 class MedicineImportList(Resource):
@@ -15,7 +16,8 @@ class MedicineImportList(Resource):
 
     @medicine_import_ns.expect(medicine_import_parser, validate=True)
     @medicine_import_ns.marshal_with(medicine_import_model, code=201)
-    #@jwt_required()  # nếu muốn chỉ admin/staff
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_ADMIN.value])
     def post(self):
         "Nhập thuốc vào kho"
         data = medicine_import_parser.parse_args()

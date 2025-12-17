@@ -61,6 +61,7 @@ def create_invoice(appointment_id):
             # 🔹 Cập nhật lại reserved_quantity trong bảng medicine (trừ lượng đã xuất)
             reserved_now = medicine.reserved_quantity or 0
             medicine.reserved_quantity = max(reserved_now - qty_to_deduct, 0)
+            db.session.add(medicine)
 
         # 5️⃣ Tính tổng tiền dịch vụ
         total_service_fee = Decimal(
