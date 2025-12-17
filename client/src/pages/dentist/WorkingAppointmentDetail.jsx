@@ -75,6 +75,9 @@ const WorkingAppointmentDetail = () => {
       ) {
         setCurrentStep(2);
       }
+      else if (response.data.status === "AppointmentStatusEnum.COMPLETED" || response.data.status === "AppointmentStatusEnum.PAID") {
+        setCurrentStep(2);
+      }
     } catch (err) {
       console.log("Lấy lịch làm việc bác sĩ theo id lỗi:", err);
     } finally {
@@ -158,7 +161,6 @@ const WorkingAppointmentDetail = () => {
         status = "COMPLETED";
         payload = { status };
       }
-
       await publicApi.patch(
         endpoints.appointment.update(appointmentId),
         payload
@@ -392,7 +394,7 @@ const WorkingAppointmentDetail = () => {
       appointment_id: appointmentId,
       note: diagnosis || "Không có chẩn đoán",
     };
-    const res = await publicApi.post(endpoints.prescription.create, payload);
+    const res = await privateApi.post(endpoints.prescription.create, payload);
     return res.data.id; // giả sử server trả về { id: ... }
   };
 
@@ -409,7 +411,7 @@ const WorkingAppointmentDetail = () => {
         price: m.price,
       })),
     };
-    await publicApi.post(
+    await privateApi.post(
       endpoints.prescription.add_details(prescriptionId),
       payload
     );
@@ -418,7 +420,7 @@ const WorkingAppointmentDetail = () => {
 
   const fetchMedicines = async () => {
     try {
-      const res = await publicApi.get(endpoints.medicine.list);
+      const res = await privateApi.get(endpoints.medicine.list);
       setMedicines(res.data);
     } catch (err) {
       console.error("Lỗi lấy danh sách thuốc:", err);
@@ -429,7 +431,7 @@ const WorkingAppointmentDetail = () => {
     const fetchPrescription = async () => {
       if ((currentStep === 1 || currentStep === 2) && appointmentId) {
         try {
-          const res = await publicApi.get(
+          const res = await privateApi.get(
             endpoints.prescription.get_by_aptId(appointmentId)
           );
           if (res.data) {
@@ -1555,46 +1557,50 @@ const WorkingAppointmentDetail = () => {
           </div>
         )}
         {/* Bottom Actions */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 shadow-2xl rounded-t-2xl p-6 mt-6">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <button
-              onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-              disabled={currentStep === 0}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                currentStep === 0
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-300 shadow-md"
-              }`}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Quay Lại
-            </button>
-            <button
-              onClick={handleNext}
-              className="px-8 py-3 bg-linear-to-r from-[#009688] to-[#00796B] text-white rounded-xl font-semibold hover:shadow-xl transition-all shadow-lg hover:scale-105"
-            >
-              {currentStep === steps.length - 1
-                ? "Hoàn Thành"
-                : currentStep === 0
-                ? hasChanges()
-                  ? "Lưu và tiếp tục"
-                  : "Tiếp tục"
-                : "Tiếp Tục"}
-            </button>
-          </div>
-        </div>
+{appointment.status !== "AppointmentStatusEnum.PAID" && (
+  <div className="sticky bottom-0 bg-white border-t border-gray-100 shadow-2xl rounded-t-2xl p-6 mt-6">
+    <div className="flex items-center justify-between max-w-7xl mx-auto">
+      <button
+        onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+        disabled={currentStep === 0}
+        className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+          currentStep === 0
+            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+            : "bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-300 shadow-md"
+        }`}
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        Quay Lại
+      </button>
+
+      <button
+        onClick={handleNext}
+        className="px-8 py-3 bg-linear-to-r from-[#009688] to-[#00796B] text-white rounded-xl font-semibold hover:shadow-xl transition-all shadow-lg hover:scale-105"
+      >
+        {currentStep === steps.length - 1
+          ? "Hoàn Thành"
+          : currentStep === 0
+          ? hasChanges()
+            ? "Lưu và tiếp tục"
+            : "Tiếp tục"
+          : "Tiếp Tục"}
+      </button>
+    </div>
+  </div>
+)}
+
       </div>
       {/* Confirmation Dialog */}
       {showConfirmDialog && (

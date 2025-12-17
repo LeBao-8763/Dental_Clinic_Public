@@ -59,7 +59,6 @@ export const endpoints = {
   },
   invoice: {
     create: "invoice/",
-    get_by_aptId: (apt_id) => `invoice/by-appointment/${apt_id}`,
   },
 };
 

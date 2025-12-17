@@ -1,3 +1,7 @@
+import re
+
+from werkzeug.exceptions import BadRequest
+
 from app.dao import dao_user, dao_appointment
 from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, dentist_model, appointment_model
 from flask_restx import Resource
@@ -14,6 +18,30 @@ class UserList(Resource):
         args=user_creation_parser.parse_args()
         avatar=args.get('avatar')
         avatar_url = None  # <-- khởi tạo mặc định
+
+        # ✅ Validate username
+        username = args.get('username')
+        if not username or len(username) < 3:
+            raise BadRequest("Tên người dùng phải có ít nhất 3 ký tự")
+
+        # ✅ Validate phone number
+        phone = args.get('phonenumber')
+        if not re.match(r"^(0)\d{9,10}$", phone or ""):
+            raise BadRequest("Số điện thoại không hợp lệ (phải bắt đầu bằng 0 hoặc +84)")
+
+        # ✅ Validate password
+        password = args.get('password')
+        if not password or len(password) < 8:
+            raise BadRequest("Mật khẩu phải có ít nhất 8 ký tự")
+
+        if not re.search(r"[A-Z]", password):
+            raise BadRequest("Mật khẩu phải chứa ít nhất một chữ hoa")
+        if not re.search(r"[a-z]", password):
+            raise BadRequest("Mật khẩu phải chứa ít nhất một chữ thường")
+        if not re.search(r"\d", password):
+            raise BadRequest("Mật khẩu phải chứa ít nhất một số")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            raise BadRequest("Mật khẩu phải chứa ít nhất một ký tự đặc biệt")
 
         if avatar:
             upload_result = uploader.upload(avatar)

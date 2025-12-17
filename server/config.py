@@ -11,7 +11,7 @@ class Config:
     
     # JWT
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'fallback-jwt-key')
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=2)
 
     # SQLAlchemy
     DB_USER = os.getenv("DB_USER")
