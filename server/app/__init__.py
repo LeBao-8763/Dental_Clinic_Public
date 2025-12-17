@@ -1,47 +1,27 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import Config
 from app.scheduler.scheduler import init_scheduler
-
-# Khởi tạo các extension (chỉ tạo, chưa gắn vào app)
-db = SQLAlchemy()
-jwt = JWTManager()
-
+from app.extensions import db, jwt, admin
+from app.admin_view import init_admin
 
 def create_app():
-    """Hàm khởi tạo ứng dụng Flask và cấu hình toàn bộ API."""
     app = Flask(__name__)
-
-    # --------------------------
-    # Cấu hình ứng dụng + bật CORS
-    # --------------------------
+    app.secret_key = "ifojaiwejfoijw%^^$@$@#fnjjkasd89432814FAfjwoif"
     app.config.from_object(Config)
     CORS(app)
 
-    # --------------------------
-    # Cấu hình scheduler
-    # --------------------------
-    init_scheduler(app)
-
-    # --------------------------
-    # Gắn các extension vào ứng dụng
-    # --------------------------
+    # Gắn extension
     db.init_app(app)
     jwt.init_app(app)
+    admin.init_app(app)
 
-    # --------------------------
-    # Đăng ký Blueprint chứa toàn bộ API
-    # --------------------------
+    init_scheduler(app)
+
     from .api_conf import api_bp
     app.register_blueprint(api_bp)
 
-
-    # --------------------------
-    # Import các file API để kích hoạt route
-    # (Lưu ý: chỉ cần import, không cần dùng trực tiếp)
-    # --------------------------
+    # Import routes
     from .api import (
         auth_api,
         user_api,
@@ -56,7 +36,11 @@ def create_app():
         medicine_import_api,
         prescription_api,
         post_api,
-        invoice_api
+        invoice_api,
     )
+
+    # Khởi tạo admin sau khi app và db sẵn sàng
+    with app.app_context():
+        init_admin(admin)
 
     return app
