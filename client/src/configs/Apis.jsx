@@ -61,6 +61,9 @@ export const endpoints = {
   invoice: {
     create: "invoice/",
   },
+  user_booking_stat: {
+    get_by_userId: (userId) => `user_booking_stat/${userId}`,
+  },
 };
 
 export const publicApi = axios.create({

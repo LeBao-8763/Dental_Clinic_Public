@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 import { toast } from "react-toastify";
 
-const PaymentDetail = () => {
+const AppointmentDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { appointmentId } = location.state || {};
@@ -27,23 +27,6 @@ const PaymentDetail = () => {
     } catch (err) {
       console.log("Đã có lỗi xảy ra khi lấy dữ liệu bác sĩ", err);
     }
-  };
-
-  const handlePayment = async () => {
-    if (!appointmentId) return;
-    setLoading(true);
-    try {
-      const res = await privateApi.post(endpoints.invoice.create, {
-        appointment_id: appointmentId,
-      });
-      toast.success("Đã thanh toán thành công!");
-      console.log("Invoice created:", res.data);
-    } catch (err) {
-      console.error("Lỗi khi tạo hóa đơn:", err);
-      toast.error("Có lỗi xảy ra khi thanh toán!");
-    }
-    setLoading(false);
-    navigate("/staff/payment");
   };
 
   const fetchPrescription = async (appointmentId) => {
@@ -177,6 +160,10 @@ const PaymentDetail = () => {
         appointment.user?.lastname || ""
       }`;
 
+  const doctorFullName = dentist
+    ? `${dentist.firstname || ""} ${dentist.lastname || ""}`
+    : "Đang tải...";
+
   const patientGender = appointment.is_guest
     ? appointment.gender
     : appointment.user?.gender;
@@ -193,8 +180,8 @@ const PaymentDetail = () => {
           <ArrowLeft className="w-6 h-6 text-gray-700" />
         </button>
         <h1 className="text-lg font-medium text-gray-900">
-          Thanh toán cho cuộc hẹn với bệnh nhân{" "}
-          <span className="text-blue-600">{patientFullName}</span>
+          Thông tin khám bệnh với bác sĩ{" "}
+          <span className="text-blue-600">{doctorFullName}</span>
         </h1>
       </div>
 
@@ -398,55 +385,19 @@ const PaymentDetail = () => {
       </div>
 
       {/* Footer - Total Payment */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg ${
-          appointment.status === "AppointmentStatusEnum.PAID" ? "py-3" : "py-5"
-        }`}
-      >
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-3">
         <div className="max-w-6xl mx-auto px-6">
-          {appointment.status === "AppointmentStatusEnum.PAID" ? (
-            // Khi đã thanh toán: chỉ hiển thị tổng giá đã trả, footer nhỏ hơn
-            <div className="flex justify-end items-center">
-              <div className="text-right">
-                <p className="text-lg font-bold text-gray-900">
-                  Đã thanh toán: {grandTotal.toLocaleString("vi-VN")} đ
-                </p>
-              </div>
+          <div className="flex justify-end items-center">
+            <div className="text-right">
+              <p className="text-lg font-bold text-gray-900">
+                Tổng số tiền: {grandTotal.toLocaleString("vi-VN")} đ
+              </p>
             </div>
-          ) : (
-            // Khi chưa thanh toán: hiển thị chi tiết và nút
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="flex justify-between gap-4 text-gray-700 mb-1">
-                  <span>Tổng dịch vụ:</span>
-                  <span>{totalServicePrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between gap-4 text-gray-700 mb-1">
-                  <span>Tổng thuốc:</span>
-                  <span>{totalMedicationPrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between gap-4 text-gray-700 border-t border-dashed pt-2 mb-1">
-                  <span>VAT (10%):</span>
-                  <span>{vat.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between gap-4 text-gray-900 font-bold">
-                  <span>Tổng cộng:</span>
-                  <span>{grandTotal.toLocaleString("vi-VN")} đ</span>
-                </div>
-              </div>
-              <button
-                onClick={handlePayment}
-                disabled={loading}
-                className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-md"
-              >
-                {loading ? "Đang xử lý..." : "Xác Nhận Thanh Toán"}
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default PaymentDetail;
+export default AppointmentDetail;

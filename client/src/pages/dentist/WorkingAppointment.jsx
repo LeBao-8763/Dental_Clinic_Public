@@ -4,8 +4,8 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 const WorkingAppointment = () => {
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [selectedDate, setSelectedDate] = React.useState("15/10/2025");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDate, setSelectedDate] = useState("15/10/2025");
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState("Tất cả");
   const [loading, setLoading] = useState(false);
@@ -37,28 +37,6 @@ const WorkingAppointment = () => {
       fetchDentistWorkingScheduleById(user.id);
     }
   }, [user]);
-
-  // Chuyển đổi dữ liệu API sang format hiển thị
-  const appointments =
-    appointment?.map((item) => ({
-      id: item.id,
-      doctor: `${item.patient.firstname} ${item.patient.lastname}`,
-      time: `${item.start_time.slice(0, 5)}-${item.end_time.slice(0, 5)}`,
-      gender: item.patient.gender === "GenderEnum.MALE" ? "Nam" : "Nữ",
-      status:
-        item.status === "AppointmentStatusEnum.PENDING"
-          ? "Chưa khám"
-          : item.status === "AppointmentStatusEnum.IN_PROGRESS"
-          ? "Đang khám"
-          : item.status === "AppointmentStatusEnum.COMPLETED"
-          ? "Đã khám"
-          : item.status === "AppointmentStatusEnum.PAID"
-          ? "Đã thanh toán"
-          : "Hủy",
-      note: item.note || "Không có ghi chú",
-      date: item.appointment_date,
-      phone: item.patient.phone_number,
-    })) || [];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -224,7 +202,7 @@ const WorkingAppointment = () => {
         )}
 
         {/* Empty State */}
-        {!loading && appointments.length === 0 && (
+        {!loading && (!appointment || appointment.length === 0) && (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
@@ -244,54 +222,50 @@ const WorkingAppointment = () => {
         )}
 
         {/* Appointments Grid */}
-        {!loading && appointments.length > 0 && (
+        {!loading && appointment && appointment.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {appointments.map((appointment) => (
-              <div
-                key={appointment.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-[#009688] hover:-translate-y-2 transition-all duration-300 cursor-pointer"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-[#009688] rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800 text-lg">
-                        {appointment.doctor}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+            {appointment.map((item) => {
+              // Xác định thông tin hiển thị dựa trên is_guest
+              const patientName = item.is_guest
+                ? item.patient_name
+                : `${item.user.firstname} ${item.user.lastname}`;
+
+              const patientGender = item.is_guest
+                ? item.gender === "GenderEnum.MALE"
+                  ? "Nam"
+                  : item.gender === "GenderEnum.FEMALE"
+                  ? "Nữ"
+                  : "Không xác định"
+                : item.user.gender === "GenderEnum.MALE"
+                ? "Nam"
+                : "Nữ";
+
+              const patientPhone = item.is_guest
+                ? item.patient_phone
+                : item.user.phone_number;
+
+              const appointmentStatus =
+                item.status === "AppointmentStatusEnum.PENDING"
+                  ? "Chưa khám"
+                  : item.status === "AppointmentStatusEnum.IN_PROGRESS"
+                  ? "Đang khám"
+                  : item.status === "AppointmentStatusEnum.COMPLETED"
+                  ? "Đã khám"
+                  : item.status === "AppointmentStatusEnum.PAID"
+                  ? "Đã thanh toán"
+                  : "Hủy";
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-[#009688] hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-[#009688] rounded-full flex items-center justify-center">
                         <svg
-                          className="w-4 h-4 text-[#009688]"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <span>{appointment.time}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                        <svg
-                          className="w-4 h-4 text-[#009688]"
+                          className="w-6 h-6 text-white"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -303,32 +277,119 @@ const WorkingAppointment = () => {
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                           />
                         </svg>
-                        <span>{appointment.gender}</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-800 text-lg">
+                          {patientName || "Không có tên"}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                          <svg
+                            className="w-4 h-4 text-[#009688]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span>{`${item.start_time.slice(
+                            0,
+                            5
+                          )}-${item.end_time.slice(0, 5)}`}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                          <svg
+                            className="w-4 h-4 text-[#009688]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                          <span>{patientGender}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                          <svg
+                            className="w-4 h-4 text-[#009688]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                            />
+                          </svg>
+                          <span>{patientPhone || "Không có SĐT"}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {appointment.status && (
                     <span
                       className={`px-3 py-1 text-xs font-medium rounded-full ${
-                        appointment.status === "Chưa khám"
+                        appointmentStatus === "Chưa khám"
                           ? "bg-blue-100 text-blue-700"
-                          : appointment.status === "Đang khám"
+                          : appointmentStatus === "Đang khám"
                           ? "bg-yellow-100 text-yellow-700"
-                          : appointment.status === "Đã khám"
+                          : appointmentStatus === "Đã khám" ||
+                            appointmentStatus === "Đã thanh toán"
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {appointment.status}
+                      {appointmentStatus}
                     </span>
-                  )}
-                </div>
+                  </div>
 
-                {/* Note Section */}
-                <div className="bg-[#E0F2F1] rounded-lg p-4 mb-4 border-l-4 border-[#009688]">
-                  <div className="flex items-start gap-2">
+                  {/* Note Section */}
+                  <div className="bg-[#E0F2F1] rounded-lg p-4 mb-4 border-l-4 border-[#009688]">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-5 h-5 text-[#009688] shrink-0 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div>
+                        <h4 className="font-semibold text-[#009688] mb-1">
+                          Ghi chú từ bệnh nhân
+                        </h4>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {item.note || "Không có ghi chú"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <button
+                    onClick={() =>
+                      navigate("/dentist/working-appointment-detail", {
+                        state: { appointmentId: item.id },
+                      })
+                    }
+                    className="w-full text-[#009688] hover:bg-[#009688] hover:text-white font-medium text-sm flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all duration-300 border border-[#009688]"
+                  >
+                    Xem chi tiết
                     <svg
-                      className="w-5 h-5 text-[#009688] shrink-0 mt-0.5"
+                      className="w-4 h-4"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -337,46 +398,13 @@ const WorkingAppointment = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        d="M9 5l7 7-7 7"
                       />
                     </svg>
-                    <div>
-                      <h4 className="font-semibold text-[#009688] mb-1">
-                        Ghi chú từ bệnh nhân
-                      </h4>
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {appointment.note}
-                      </p>
-                    </div>
-                  </div>
+                  </button>
                 </div>
-
-                {/* Action Button */}
-                <button
-                  onClick={() =>
-                    navigate("/dentist/working-appointment-detail", {
-                      state: { appointmentId: appointment.id },
-                    })
-                  }
-                  className="w-full text-[#009688] hover:bg-[#009688] hover:text-white font-medium text-sm flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all duration-300 border border-[#009688]"
-                >
-                  Xem chi tiết
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

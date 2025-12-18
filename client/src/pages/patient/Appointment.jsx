@@ -1,21 +1,23 @@
 import React, { useEffect, useState } from "react";
+import { Calendar, Clock, X, AlertCircle } from "lucide-react";
 import { endpoints, publicApi } from "../../configs/Apis";
 import { useSelector } from "react-redux";
 import Loading from "../../components/common/Loading";
-
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 const Appointment = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStartDate, setSelectedStartDate] = useState("");
   const [selectedEndDate, setSelectedEndDate] = useState("");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-
   // selectedStatus lưu ENUM (ví dụ: "", "PENDING", "IN_PROGRESS", "PAID", "CANCELED")
   const [selectedStatus, setSelectedStatus] = useState("");
-
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const user = useSelector((state) => state.auth.user);
+  const navigate = useNavigate();
 
   // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
   const STATUS_OPTIONS = [
@@ -25,19 +27,16 @@ const Appointment = () => {
     { label: "Đã khám", value: "PAID" },
     { label: "Hủy", value: "CANCELED" },
   ];
-
   // Map frontend key -> real backend statuses (dùng khi gửi params)
   const STATUS_FILTER_MAP = {
     IN_PROGRESS: ["CONSULTING", "PRESCRIPTION", "COMPLETED"],
   };
-
   // Helper: normalize status (hỗ trợ "AppointmentStatusEnum.PENDING" hoặc "PENDING")
   const normalizeStatus = (status) => {
     if (!status) return "";
     if (typeof status !== "string") return "";
     return status.includes(".") ? status.split(".").pop() : status;
   };
-
   // Map enum -> label hiển thị
   const STATUS_TEXT = {
     PENDING: "Chưa khám",
@@ -45,28 +44,24 @@ const Appointment = () => {
     PRESCRIPTION: "Đang khám",
     COMPLETED: "Đang khám",
     PAID: "Đã Khám",
-    CANCELED: "Đã Hủy",
+    CANCELLED: "Đã Hủy",
   };
-
   // Map enum -> css class
   const STATUS_CLASS = {
     PENDING: "bg-gray-100 text-gray-700",
     CONSULTING: "bg-blue-100 text-blue-700",
     PRESCRIPTION: "bg-blue-100 text-blue-700",
     COMPLETED: "bg-blue-100 text-blue-700",
-    CANCELED: "bg-red-100 text-red-700",
+    CANCELLED: "bg-red-100 text-red-700",
     PAID: "bg-green-100 text-green-700",
   };
-
   const fetchAppointment = async (patient_id) => {
     // nếu không có patient_id, cố lấy từ user
     const pid = patient_id || user?.id;
     if (!pid) return;
-
     setLoading(true);
     try {
       const params = {};
-
       // selectedStatus bây giờ có thể là key trung gian (IN_PROGRESS) hoặc enum thật
       if (selectedStatus) {
         if (STATUS_FILTER_MAP[selectedStatus]) {
@@ -76,27 +71,41 @@ const Appointment = () => {
           params.status = selectedStatus;
         }
       }
-
       if (selectedStartDate && selectedEndDate) {
         params.start_date = selectedStartDate;
         params.end_date = selectedEndDate;
       }
-
       if (searchTerm.trim()) {
         params.keyword = searchTerm.trim();
       }
-
       const res = await publicApi.get(
         endpoints.appointment.get_by_patient_id(pid),
         { params }
       );
-
       console.log("Dữ liệu cuộc hẹn", res.data);
       setAppointments(res.data || []);
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu cuộc hẹn", err);
     } finally {
       setLoading(false);
+    }
+  };
+  const cancelAppointment = async (appointmentId) => {
+    if (!appointmentId) return;
+    setLoading(true);
+    try {
+      // Gọi API hủy, ví dụ endpoint nhận PATCH /appointments/:id/cancel
+      await publicApi.patch(endpoints.appointment.update(appointmentId), {
+        status: "CANCELLED", // hoặc theo API backend của bạn
+      });
+      // Sau khi hủy xong, fetch lại danh sách appointments
+      if (user) fetchAppointment(user.id);
+      toast.success("Đã hủy lịch cuộc hẹn");
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi hủy lịch", err);
+      toast.error("Đã xảy ra lỗi khi hủy lịch cuộc hẹn");
+    } finally {
+      setLoading(false); // sửa lỗi typo setLodaing -> setLoading
     }
   };
 
@@ -113,35 +122,18 @@ const Appointment = () => {
     const timer = setTimeout(() => {
       if (user) fetchAppointment(user.id);
     }, 500);
-
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, user]);
-
   // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
   const getStatusText = (status) => {
     const s = normalizeStatus(status);
     return STATUS_TEXT[s] || "Không xác định";
   };
-
   const getStatusClass = (status) => {
     const s = normalizeStatus(status);
     return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
   };
-
-  // Nút hành động: dùng normalized enum
-  const getButtonConfig = (status) => {
-    const s = normalizeStatus(status);
-    if (s === "PAID" || s === "PRESCRIPTION") {
-      return { text: "Đặt lại", class: "bg-blue-500 hover:bg-blue-600" };
-    }
-    if (s === "CANCELED") {
-      return { text: "Đặt lại", class: "bg-blue-500 hover:bg-blue-600" };
-    }
-    // mặc định
-    return { text: "Hủy lịch", class: "bg-red-500 hover:bg-red-600" };
-  };
-
   const formatVietnameseDate = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -155,16 +147,13 @@ const Appointment = () => {
       .toLocaleDateString("vi-VN", options)
       .replace(/^\w/, (c) => c.toUpperCase());
   };
-
   const getLocation = (id) => {
     // Placeholder dựa trên ID để khớp với ảnh (có thể thay bằng dữ liệu thực tế sau)
     return id === 1 ? "Phòng khám 101, Tầng 2" : "Phòng khám 205, Tầng 3";
   };
-
   // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
   const selectedLabel =
     STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
-
   return (
     <div>
       {/* Loading overlay */}
@@ -173,7 +162,6 @@ const Appointment = () => {
           <Loading />
         </div>
       )}
-
       {/* Header Section with medical icons */}
       <section className="relative overflow-hidden bg-[#009688] py-16 px-4">
         <div className="max-w-6xl mx-auto text-center relative z-10">
@@ -186,7 +174,6 @@ const Appointment = () => {
             một cách dễ dàng và thuận tiện
           </p>
         </div>
-
         {/* Decorative medical icons - distributed across the banner */}
         {/* Top row */}
         <div className="absolute left-[5%] top-8 w-20 h-20 opacity-25 transform -rotate-15">
@@ -198,7 +185,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[15%] top-12 w-16 h-16 opacity-20 transform rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -219,7 +205,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[25%] top-6 w-18 h-18 opacity-22 transform -rotate-45">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -242,7 +227,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[25%] top-10 w-20 h-20 opacity-23 transform rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -252,7 +236,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[15%] top-14 w-22 h-22 opacity-24 transform -rotate-20">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <circle
@@ -285,7 +268,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[5%] top-8 w-24 h-24 opacity-26 transform rotate-30">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -295,7 +277,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         {/* Middle row - left side */}
         <div className="absolute left-[3%] top-[35%] w-18 h-18 opacity-21 transform rotate-45">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -317,7 +298,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[12%] top-[40%] w-22 h-22 opacity-25 transform -rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -327,7 +307,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[8%] top-[55%] w-20 h-20 opacity-23 transform rotate-10">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -350,7 +329,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         {/* Middle row - right side */}
         <div className="absolute right-[3%] top-[38%] w-26 h-26 opacity-27 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -384,7 +362,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[12%] top-[45%] w-20 h-20 opacity-24 transform rotate-20">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -394,7 +371,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[8%] top-[58%] w-18 h-18 opacity-22 transform -rotate-30">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -404,7 +380,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         {/* Bottom row */}
         <div className="absolute left-[7%] bottom-12 w-24 h-24 opacity-26 transform rotate-35">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -415,7 +390,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[18%] bottom-8 w-18 h-18 opacity-21 transform -rotate-40">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -436,7 +410,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[28%] bottom-14 w-20 h-20 opacity-24 transform rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -446,7 +419,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[28%] bottom-10 w-22 h-22 opacity-23 transform -rotate-20">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -469,7 +441,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[18%] bottom-16 w-20 h-20 opacity-25 transform rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <circle
@@ -502,7 +473,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[7%] bottom-12 w-18 h-18 opacity-22 transform -rotate-35">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -512,7 +482,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         {/* Additional scattered icons */}
         <div className="absolute left-[35%] top-[25%] w-16 h-16 opacity-20 transform rotate-50">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -534,7 +503,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[35%] top-[30%] w-14 h-14 opacity-19 transform -rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -544,7 +512,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[40%] bottom-[25%] w-16 h-16 opacity-21 transform rotate-10">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -567,7 +534,6 @@ const Appointment = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[40%] bottom-[28%] w-14 h-14 opacity-20 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -578,7 +544,6 @@ const Appointment = () => {
           </svg>
         </div>
       </section>
-
       {/* Main Content */}
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
@@ -587,7 +552,6 @@ const Appointment = () => {
             <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">
               Tìm kiếm và lọc
             </h2>
-
             <div className="flex flex-wrap gap-4">
               {/* Search Input */}
               <div className="flex-1 min-w-[250px]">
@@ -614,7 +578,6 @@ const Appointment = () => {
                   </svg>
                 </div>
               </div>
-
               {/* Date Picker */}
               <div className="flex items-center gap-4">
                 <div className="relative group">
@@ -638,7 +601,6 @@ const Appointment = () => {
                     />
                   </svg>
                 </div>
-
                 <div className="relative group">
                   <input
                     type="date"
@@ -661,7 +623,6 @@ const Appointment = () => {
                   </svg>
                 </div>
               </div>
-
               {/* Status Filter Dropdown */}
               <div className="relative">
                 <button
@@ -678,7 +639,7 @@ const Appointment = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293.707L3.293 7.293A1 1 0 013 6.586V4z"
                     />
                   </svg>
                   <span className="font-medium">{selectedLabel}</span>
@@ -698,7 +659,6 @@ const Appointment = () => {
                     />
                   </svg>
                 </button>
-
                 {showStatusDropdown && (
                   <div className="absolute top-full mt-2 right-0 bg-white border-2 border-[#009688] rounded-lg shadow-lg z-10 min-w-[180px] overflow-hidden">
                     {STATUS_OPTIONS.map((opt, index) => (
@@ -743,7 +703,6 @@ const Appointment = () => {
               </div>
             </div>
           </div>
-
           {/* Empty State */}
           {appointments.length === 0 && (
             <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -766,12 +725,15 @@ const Appointment = () => {
               </p>
             </div>
           )}
-
           {/* Render danh sách appointments */}
           {appointments.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {appointments.map((appointment) => {
-                const buttonConfig = getButtonConfig(appointment.status);
+                const normalizedStatus = normalizeStatus(appointment.status);
+                const isPending = normalizedStatus === "PENDING";
+                const isPaid = normalizedStatus === "PAID";
+                const showDetail = !isPending;
+                const detailClickable = isPaid;
                 return (
                   <div
                     key={appointment.id}
@@ -847,7 +809,6 @@ const Appointment = () => {
                         </svg>
                         <span>{getLocation(appointment.id)}</span>
                       </div>
-
                       {/* Ghi chú */}
                       <div className="bg-[#E6F8FF] border border-[#CFF2FB] rounded-lg p-3">
                         <div className="flex items-start gap-3">
@@ -880,14 +841,37 @@ const Appointment = () => {
                       </div>
                     </div>
                     <div className="p-4 border-t border-gray-200 flex gap-2">
-                      <button className="flex-1 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-                        Chi tiết
-                      </button>
-                      <button
-                        className={`flex-1 py-2.5 rounded-lg text-white transition ${buttonConfig.class}`}
-                      >
-                        {buttonConfig.text}
-                      </button>
+                      {isPending ? (
+                        <button
+                          onClick={() => {
+                            setSelectedAppointment(appointment);
+                            setShowCancelDialog(true);
+                          }}
+                          className="flex-1 py-2.5 rounded-lg text-white transition bg-red-500 hover:bg-red-600"
+                        >
+                          Hủy lịch
+                        </button>
+                      ) : null}
+                      {showDetail ? (
+                        <button
+                          onClick={
+                            detailClickable
+                              ? () =>
+                                  navigate("/patient/appointment-detail", {
+                                    state: { appointmentId: appointment.id },
+                                  })
+                              : undefined
+                          }
+                          disabled={!detailClickable}
+                          className={`flex-1 py-2.5 rounded-lg transition ${
+                            detailClickable
+                              ? "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          Chi tiết
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -896,8 +880,90 @@ const Appointment = () => {
           )}
         </div>
       </div>
+      {/* Cancel Confirmation Dialog */}
+      {showCancelDialog && selectedAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">
+            {/* Close button */}
+            <button
+              onClick={() => setShowCancelDialog(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="text-red-600" size={32} />
+              </div>
+            </div>
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
+              Xác nhận hủy lịch
+            </h3>
+            {/* Content */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-gray-700 text-center mb-3">
+                Bạn có chắc chắn muốn hủy lịch khám vào:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 text-gray-800">
+                  <Calendar size={18} className="text-red-600" />
+                  <span className="font-semibold">
+                    {formatVietnameseDate(selectedAppointment.appointment_date)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-gray-800">
+                  <Clock size={18} className="text-red-600" />
+                  <span className="font-semibold">
+                    {selectedAppointment.start_time?.slice(0, 5)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelDialog(false)}
+                disabled={loading}
+                className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Không
+              </button>
+              <button
+                onClick={() => {
+                  cancelAppointment(selectedAppointment.id);
+                  setShowCancelDialog(false);
+                }}
+                disabled={loading}
+                className="flex-1 bg-red-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  "Hủy"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes scale-in {
+          from {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 };
-
 export default Appointment;

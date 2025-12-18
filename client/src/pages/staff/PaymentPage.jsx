@@ -61,12 +61,8 @@ const PaymentPage = () => {
         label: "Đã Kê Đơn",
         color: "bg-blue-100 text-blue-700",
       },
-      "AppointmentStatusEnum.CONFIRMED": {
-        label: "Đã Xác Nhận",
-        color: "bg-green-100 text-green-700",
-      },
       "AppointmentStatusEnum.PENDING": {
-        label: "Chờ Xác Nhận",
+        label: "Chưa Khám",
         color: "bg-orange-100 text-orange-700",
       },
       "AppointmentStatusEnum.COMPLETED": {
@@ -101,9 +97,14 @@ const PaymentPage = () => {
   // Filter appointments
   const filteredAppointments = appointments.filter((apt) => {
     const search = searchTerm.toLowerCase();
-    const patientName =
-      `${apt.patient?.firstname} ${apt.patient?.lastname}`.toLowerCase();
-    const phone = apt.patient?.phone_number || "";
+    const patientName = apt.is_guest
+      ? (apt.patient_name || "").toLowerCase()
+      : `${apt.user?.firstname || ""} ${
+          apt.user?.lastname || ""
+        }`.toLowerCase();
+    const phone = apt.is_guest
+      ? apt.patient_phone || ""
+      : apt.user?.phone_number || "";
     return patientName.includes(search) || phone.includes(search);
   });
 
@@ -151,6 +152,8 @@ const PaymentPage = () => {
             {filteredAppointments.map((apt) => {
               const statusInfo = getStatusLabel(apt.status);
               const dentist = dentists[apt.dentist_id];
+              const isCompleted =
+                apt.status === "AppointmentStatusEnum.COMPLETED";
 
               return (
                 <div
@@ -161,7 +164,9 @@ const PaymentPage = () => {
                   <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-start justify-between">
                       <h3 className="text-xl font-bold text-gray-800">
-                        {apt.patient?.firstname} {apt.patient?.lastname}
+                        {apt.is_guest
+                          ? apt.patient_name
+                          : `${apt.user?.firstname} ${apt.user?.lastname}`}
                       </h3>
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
@@ -181,7 +186,11 @@ const PaymentPage = () => {
                           <div>
                             <p className="text-xs text-gray-500">Giới Tính</p>
                             <p className="text-sm font-medium text-gray-800">
-                              {apt.patient?.gender === "GenderEnum.MALE"
+                              {apt.is_guest
+                                ? apt.gender === "GenderEnum.MALE"
+                                  ? "Nam"
+                                  : "Nữ"
+                                : apt.user?.gender === "GenderEnum.MALE"
                                 ? "Nam"
                                 : "Nữ"}
                             </p>
@@ -193,7 +202,9 @@ const PaymentPage = () => {
                           <div>
                             <p className="text-xs text-gray-500">Liên Hệ</p>
                             <p className="text-sm font-medium text-gray-800">
-                              {apt.patient?.phone_number}
+                              {apt.is_guest
+                                ? apt.patient_phone
+                                : apt.user?.phone_number}
                             </p>
                           </div>
                         </div>
@@ -232,55 +243,57 @@ const PaymentPage = () => {
                     </div>
 
                     {/* Diagnosis Section */}
-                    {apt.diagnosis && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="bg-[#D5E8E8] p-3 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <FileText className="w-4 h-4 text-gray-600 mt-0.5 shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-700 mb-1">
-                                Chẩn Đoán
-                              </p>
-                              <p className="text-sm text-gray-800">
-                                {apt.diagnosis}
-                              </p>
-                            </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="bg-[#D5E8E8] p-3 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <FileText className="w-4 h-4 text-gray-600 mt-0.5 shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-gray-700 mb-1">
+                              Chẩn Đoán
+                            </p>
+                            <p className="text-sm text-gray-800">
+                              {apt.diagnosis || "Chưa có chẩn đoán"}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Card Footer */}
-<div className="px-6 py-4 border-t border-gray-200">
-  {apt.status === "AppointmentStatusEnum.PAID" ? (
-    // 🟩 Nếu đã thanh toán → Hiển thị nút "Chi tiết"
-    <button
-      onClick={() =>
-        navigate("/staff/payment-detail", {
-          state: { appointmentId: apt.id },
-        })
-      }
-      className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-    >
-      Chi tiết
-    </button>
-  ) : (
-    // 🟦 Nếu chưa thanh toán → Hiển thị nút "Thanh Toán"
-    <button
-      onClick={() =>
-        navigate("/staff/payment-detail", {
-          state: { appointmentId: apt.id },
-        })
-      }
-      className="w-full py-2.5 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors"
-    >
-      Thanh Toán
-    </button>
-  )}
-</div>
-
-
+                  <div className="px-6 py-4 border-t border-gray-200">
+                    {apt.status === "AppointmentStatusEnum.PAID" ? (
+                      // 🟩 Nếu đã thanh toán → Hiển thị nút "Chi tiết"
+                      <button
+                        onClick={() =>
+                          navigate("/staff/payment-detail", {
+                            state: { appointmentId: apt.id },
+                          })
+                        }
+                        className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Chi tiết
+                      </button>
+                    ) : (
+                      // 🟦 Nếu chưa thanh toán → Hiển thị nút "Thanh Toán", nhưng chỉ enable nếu là COMPLETED
+                      <button
+                        onClick={() =>
+                          isCompleted &&
+                          navigate("/staff/payment-detail", {
+                            state: { appointmentId: apt.id },
+                          })
+                        }
+                        disabled={!isCompleted}
+                        className={`w-full py-2.5 font-semibold rounded-lg transition-colors ${
+                          isCompleted
+                            ? "bg-teal-600 text-white hover:bg-teal-700"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                      >
+                        Thanh Toán
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}

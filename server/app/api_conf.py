@@ -31,6 +31,7 @@ medicine_import_ns=api.namespace('medicines_import', description='Các thao tác
 prescription_ns=api.namespace('prescription', description='Các thao tác liên quan đến kê toa thuốc')
 post_ns=api.namespace('post',description='Các thao tác liên quan đến bài viết/blog của nha khoa')
 invoice_ns=api.namespace('invoice', description='Các thao tác liên quan đến hóa đơn')
+user_booking_stat_ns=api.namespace('user_booking_stat', description='Các thao tác liên quan đến thông số đặt lịch')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -141,6 +142,11 @@ appointment_with_user_model = api.model('AppointmentWithPatient', {
     'id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
     'dentist_id': fields.Integer(description='ID bác sĩ'),
     'patient_id': fields.Integer(description='ID bệnh nhân'),
+    'patient_name' : fields.String(description='Tên bênh nhân mới'),
+    'patient_phone': fields.String(description='Số điện thoại bệnh nhân mới'),
+    'is_guest': fields.Boolean(description='Biến check xem có phải bệnh nhân mới'),
+    'gender': fields.String(description='Giới tính bệnh nhân mới'),
+    'date_of_birth': fields.String(description='Ngày sinh của bệnh nhân mới'),
     'appointment_date': fields.Date(description='Ngày hẹn'),
     'start_time': fields.String(description='Thời gian bắt đầu HH:MM:SS'),
     'end_time': fields.String(description='Thời gian kết thúc HH:MM:SS'),
@@ -259,6 +265,13 @@ post_model = api.model('Post', {
     'img': fields.String(description='URL ảnh'),
     'created_at': fields.DateTime(description='Ngày tạo'),
     'updated_at': fields.DateTime(description='Ngày cập nhật'),
+})
+
+user_booking_stat_model=api.model('UserBookingStat',{
+    'id': fields.Integer(readOnly=True, description='ID bảng thông số'),
+    'cancel_count_day': fields.Integer(description='Số lần hủy 1 ngày'),
+    'last_cancel_at': fields.String(description='Thời gian của lần hủy gần nhất'),
+    'blocked_until': fields.String(description='Thời gian cấm')
 })
 
 # ------------------------------

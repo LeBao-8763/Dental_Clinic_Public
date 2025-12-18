@@ -74,8 +74,10 @@ const WorkingAppointmentDetail = () => {
         response.data.status === "AppointmentStatusEnum.PRESCRIPTION"
       ) {
         setCurrentStep(2);
-      }
-      else if (response.data.status === "AppointmentStatusEnum.COMPLETED" || response.data.status === "AppointmentStatusEnum.PAID") {
+      } else if (
+        response.data.status === "AppointmentStatusEnum.COMPLETED" ||
+        response.data.status === "AppointmentStatusEnum.PAID"
+      ) {
         setCurrentStep(2);
       }
     } catch (err) {
@@ -526,6 +528,46 @@ const WorkingAppointmentDetail = () => {
   const filteredMedicines = medicines.filter((medicine) =>
     medicine.name.toLowerCase().includes(searchMedicine.toLowerCase())
   );
+
+  const getPatientName = () => {
+    if (appointment.is_guest) {
+      return appointment.patient_name;
+    } else {
+      return `${appointment.user.firstname} ${appointment.user.lastname}`;
+    }
+  };
+
+  const getPatientPhone = () => {
+    if (appointment.is_guest) {
+      return appointment.patient_phone;
+    } else {
+      return appointment.user.phone_number;
+    }
+  };
+
+  const getPatientGender = () => {
+    if (appointment.is_guest) {
+      return appointment.gender;
+    } else {
+      return appointment.user.gender;
+    }
+  };
+
+  const getPatientAge = () => {
+    if (appointment.is_guest && appointment.date_of_birth) {
+      const birthDate = new Date(appointment.date_of_birth);
+      const today = new Date("2025-12-19");
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return `${age} tuổi`;
+    } else {
+      return "Không xác định";
+    }
+  };
+
   if (!appointment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -578,8 +620,7 @@ const WorkingAppointmentDetail = () => {
                   Khám Bệnh Nhân
                 </h1>
                 <p className="text-sm text-gray-600">
-                  {appointment.patient.firstname} {appointment.patient.lastname}{" "}
-                  • {appointment.start_time.slice(0, 5)} -{" "}
+                  {getPatientName()} • {appointment.start_time.slice(0, 5)} -{" "}
                   {appointment.end_time.slice(0, 5)}
                 </p>
               </div>
@@ -688,8 +729,7 @@ const WorkingAppointmentDetail = () => {
                     </span>
                   </div>
                   <p className="font-bold text-gray-900 text-lg">
-                    {appointment.patient.firstname}{" "}
-                    {appointment.patient.lastname}
+                    {getPatientName()}
                   </p>
                 </div>
                 <div className="bg-linear-to-r from-[#E3F2FD] to-[#BBDEFB] rounded-xl p-5 shadow-sm">
@@ -711,7 +751,9 @@ const WorkingAppointmentDetail = () => {
                       SỐ ĐIỆN THOẠI
                     </span>
                   </div>
-                  <p className="font-bold text-gray-900 text-lg">0912345678</p>
+                  <p className="font-bold text-gray-900 text-lg">
+                    {getPatientPhone()}
+                  </p>
                 </div>
                 <div className="bg-linear-to-r from-[#FFF3E0] to-[#FFE0B2] rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-2 mb-2">
@@ -732,7 +774,9 @@ const WorkingAppointmentDetail = () => {
                       TUỔI
                     </span>
                   </div>
-                  <p className="font-bold text-gray-900 text-lg">35 tuổi</p>
+                  <p className="font-bold text-gray-900 text-lg">
+                    {getPatientAge()}
+                  </p>
                 </div>
                 <div className="bg-linear-to-r from-[#E8F5E9] to-[#C8E6C9] rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-2 mb-2">
@@ -754,7 +798,7 @@ const WorkingAppointmentDetail = () => {
                     </span>
                   </div>
                   <p className="font-bold text-gray-900 text-lg">
-                    {getGenderLabel(appointment.patient.gender)}
+                    {getGenderLabel(getPatientGender())}
                   </p>
                 </div>
               </div>
@@ -1118,18 +1162,18 @@ const WorkingAppointmentDetail = () => {
                 </div>
 
                 {/* Medicine Note Input */}
-<div className="mb-6">
-  <label className="text-sm font-medium text-gray-700 mb-2 block">
-    Ghi chú về loại thuốc
-  </label>
-  <textarea
-    placeholder="Nhập ghi chú (ví dụ: uống sau bữa ăn, tránh lái xe...)"
-    value={note}
-    onChange={(e) => setNote(e.target.value)}
-    rows={3}
-    className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm resize-none"
-  />
-</div>
+                <div className="mb-6">
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Ghi chú về loại thuốc
+                  </label>
+                  <textarea
+                    placeholder="Nhập ghi chú (ví dụ: uống sau bữa ăn, tránh lái xe...)"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm resize-none"
+                  />
+                </div>
                 {/* Add Button */}
                 <button
                   onClick={handleAddMedicine}
@@ -1196,8 +1240,8 @@ const WorkingAppointmentDetail = () => {
                           Số Ngày
                         </th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">
-            Ghi chú
-          </th>
+                          Ghi chú
+                        </th>
                         <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">
                           Xóa
                         </th>
@@ -1223,8 +1267,8 @@ const WorkingAppointmentDetail = () => {
                             {prescription?.duration_days} ngày
                           </td>
                           <td className="px-6 py-4 text-gray-700">
-              {prescription?.note || "—"}
-            </td>
+                            {prescription?.note || "—"}
+                          </td>
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() =>
@@ -1305,28 +1349,31 @@ const WorkingAppointmentDetail = () => {
                     HỌ TÊN
                   </div>
                   <p className="font-bold text-gray-900 text-lg">
-                    {appointment.patient.firstname}{" "}
-                    {appointment.patient.lastname}
+                    {getPatientName()}
                   </p>
                 </div>
                 <div className="bg-[#F5F5F5] rounded-xl p-5 shadow-sm">
                   <div className="text-xs font-bold text-gray-600 tracking-wide mb-2">
                     SỐ ĐIỆN THOẠI
                   </div>
-                  <p className="font-bold text-gray-900 text-lg">0912345678</p>
+                  <p className="font-bold text-gray-900 text-lg">
+                    {getPatientPhone()}
+                  </p>
                 </div>
                 <div className="bg-[#F5F5F5] rounded-xl p-5 shadow-sm">
                   <div className="text-xs font-bold text-gray-600 tracking-wide mb-2">
                     TUỔI
                   </div>
-                  <p className="font-bold text-gray-900 text-lg">35 tuổi</p>
+                  <p className="font-bold text-gray-900 text-lg">
+                    {getPatientAge()}
+                  </p>
                 </div>
                 <div className="bg-[#F5F5F5] rounded-xl p-5 shadow-sm">
                   <div className="text-xs font-bold text-gray-600 tracking-wide mb-2">
                     GIỚI TÍNH
                   </div>
                   <p className="font-bold text-gray-900 text-lg">
-                    {getGenderLabel(appointment.patient.gender)}
+                    {getGenderLabel(getPatientGender())}
                   </p>
                 </div>
               </div>
@@ -1501,7 +1548,7 @@ const WorkingAppointmentDetail = () => {
                           <td className="px-6 py-4 text-center text-gray-700">
                             {prescription?.duration_days} ngày
                           </td>
-                          <td className="px-6 py-4 text-gray-700">  
+                          <td className="px-6 py-4 text-gray-700">
                             {prescription?.note || "—"}
                           </td>
                         </tr>
@@ -1557,50 +1604,49 @@ const WorkingAppointmentDetail = () => {
           </div>
         )}
         {/* Bottom Actions */}
-{appointment.status !== "AppointmentStatusEnum.PAID" && (
-  <div className="sticky bottom-0 bg-white border-t border-gray-100 shadow-2xl rounded-t-2xl p-6 mt-6">
-    <div className="flex items-center justify-between max-w-7xl mx-auto">
-      <button
-        onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-        disabled={currentStep === 0}
-        className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-          currentStep === 0
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-300 shadow-md"
-        }`}
-      >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-        Quay Lại
-      </button>
+        {appointment.status !== "AppointmentStatusEnum.PAID" && (
+          <div className="sticky bottom-0 bg-white border-t border-gray-100 shadow-2xl rounded-t-2xl p-6 mt-6">
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <button
+                onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                disabled={currentStep === 0}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                  currentStep === 0
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-300 shadow-md"
+                }`}
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Quay Lại
+              </button>
 
-      <button
-        onClick={handleNext}
-        className="px-8 py-3 bg-linear-to-r from-[#009688] to-[#00796B] text-white rounded-xl font-semibold hover:shadow-xl transition-all shadow-lg hover:scale-105"
-      >
-        {currentStep === steps.length - 1
-          ? "Hoàn Thành"
-          : currentStep === 0
-          ? hasChanges()
-            ? "Lưu và tiếp tục"
-            : "Tiếp tục"
-          : "Tiếp Tục"}
-      </button>
-    </div>
-  </div>
-)}
-
+              <button
+                onClick={handleNext}
+                className="px-8 py-3 bg-linear-to-r from-[#009688] to-[#00796B] text-white rounded-xl font-semibold hover:shadow-xl transition-all shadow-lg hover:scale-105"
+              >
+                {currentStep === steps.length - 1
+                  ? "Hoàn Thành"
+                  : currentStep === 0
+                  ? hasChanges()
+                    ? "Lưu và tiếp tục"
+                    : "Tiếp tục"
+                  : "Tiếp Tục"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {/* Confirmation Dialog */}
       {showConfirmDialog && (

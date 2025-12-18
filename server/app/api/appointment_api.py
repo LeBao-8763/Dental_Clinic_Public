@@ -53,6 +53,9 @@ class AppointmentCreateResource(Resource):
             appointment_date=appointment_date
         )
 
+        for appt in appointments:
+            appt.user = appt.patient
+
         return appointments, 200
         
 
@@ -62,6 +65,9 @@ class AppointmentById(Resource):
     def get(self, appointment_id):
         """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân dựa theo id của cuộc hẹn"""
         appointments = dao_appointment.get_appointments_by_id(appointment_id)
+
+        appointments.user = appointments.patient
+
         return appointments, 200
 
     @appointment_ns.doc("update_appointment")

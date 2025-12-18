@@ -19,7 +19,7 @@ import PaymentDetail from "./pages/staff/PaymentDetail";
 import ScheduleSupport from "./pages/staff/ScheduleSupport";
 import { ToastContainer } from "react-toastify";
 import SessionExpiredDialog from "./components/common/SessionExpiredDialog";
-
+import AppointmentDetail from "./pages/patient/AppointmentDetail";
 function App() {
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
@@ -57,6 +57,11 @@ function App() {
           <Route path="/patient/appointment" element={<Appointment />} />
           <Route path="/patient/doctor-detail" element={<DoctorDetail />} />
         </Route>
+
+        <Route
+          path="/patient/appointment-detail"
+          element={<AppointmentDetail />}
+        />
 
         <Route element={<DentistLayout />}>
           <Route path="/dentist" element={<DentistHome />} />

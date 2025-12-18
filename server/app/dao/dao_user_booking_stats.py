@@ -1,7 +1,8 @@
 from app import db
 from app.models import User, UserBookingStats
+from datetime import datetime, timedelta
 
-MAX_CANCEL_PER_DAY = 4
+MAX_CANCEL_PER_DAY = 3
 BLOCK_HOURS = 24
 
 def create_user_booking_stats(user_id):
@@ -42,5 +43,8 @@ def update_user_booking_stats(user_id):
 
     db.session.commit()
     return stats
+
+def get_user_booking_stat_by_userId(userId):
+    return UserBookingStats.query.filter_by(user_id=userId).first()
 
 

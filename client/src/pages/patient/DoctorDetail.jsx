@@ -90,6 +90,8 @@ const DoctorDetail = () => {
   const [appointments, setAppointments] = useState([]);
   const buttonRef = React.useRef(null);
 
+  const [userBookingStat, setUserBookingStat] = useState(null);
+
   const location = useLocation();
   const { doctorId } = location.state || {};
 
@@ -109,6 +111,22 @@ const DoctorDetail = () => {
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const fetchUserBookingStat = async (userId) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.user_booking_stat.get_by_userId(userId)
+      );
+
+      setUserBookingStat(res.data);
+      console.log("Thông số đặt lịch của người dùng", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy thông số đặt lịch ", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Map day of week to API enum
   const mapDayToEnum = (dayIndex) => {
@@ -139,6 +157,12 @@ const DoctorDetail = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (patient) {
+      fetchUserBookingStat(patient.id);
+    }
+  }, [patient]);
 
   //Lấy thông tin bác sĩ theo id
   const fetchDentistById = async (id) => {
@@ -343,6 +367,10 @@ const DoctorDetail = () => {
   };
 
   const handleBookingClick = () => {
+    if (isBlocked) {
+      toast.error(`Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`);
+      return;
+    }
     if (selectedDate === null || selectedTime === null) {
       toast.error("Vui lòng chọn ngày và giờ khám");
       return;
@@ -567,6 +595,11 @@ const DoctorDetail = () => {
     (apt) => apt.patient_id === patient?.id
   );
 
+  const isBlocked =
+    userBookingStat &&
+    userBookingStat.blocked_until &&
+    new Date(userBookingStat.blocked_until) > new Date();
+
   // Show loading state
   if (loading && !dentist) {
     return (
@@ -630,6 +663,14 @@ const DoctorDetail = () => {
                       .join("/")}`
                 )
                 .join(", ")}
+            </p>
+          )}
+          {isBlocked && (
+            <p className="text-red-600 font-semibold mb-4 flex items-center gap-1">
+              <AlertCircle size={20} />
+              <span>
+                Bạn bị cấm tới thời gian {userBookingStat.blocked_until}
+              </span>
             </p>
           )}
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -758,10 +799,12 @@ const DoctorDetail = () => {
                               : false;
                             const isDisabledForWeek =
                               hasPendingInWeek && !isUserBooked;
+                            const isSlotDisabled =
+                              isBooked || isDisabledForWeek || isBlocked;
 
                             const slotClass = isUserBooked
                               ? "border-green-500 bg-green-100 text-green-700 cursor-not-allowed"
-                              : isBooked || isDisabledForWeek
+                              : isSlotDisabled
                               ? "border-red-200 bg-red-100 text-gray-700 cursor-not-allowed"
                               : selectedTime === slot.id
                               ? "border-teal-500 bg-teal-600 text-white shadow-md"
@@ -773,16 +816,17 @@ const DoctorDetail = () => {
                               ? "Đã được đặt bởi người khác"
                               : isDisabledForWeek
                               ? "Bạn đã có lịch chưa hoàn thành trong tuần này"
+                              : isBlocked
+                              ? `Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`
                               : "";
 
                             return (
                               <button
                                 key={slot.id}
                                 onClick={() =>
-                                  !(isBooked || isDisabledForWeek) &&
-                                  setSelectedTime(slot.id)
+                                  !isSlotDisabled && setSelectedTime(slot.id)
                                 }
-                                disabled={isBooked || isDisabledForWeek}
+                                disabled={isSlotDisabled}
                                 className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 min-w-[110px] text-sm leading-tight ${slotClass}`}
                                 title={slotTitle}
                               >
@@ -923,14 +967,18 @@ const DoctorDetail = () => {
         <div ref={buttonRef} className="mt-6">
           <button
             onClick={handleBookingClick}
-            disabled={isDisabledDate(monthDays[selectedDate]?.fullDate)}
+            disabled={
+              isDisabledDate(monthDays[selectedDate]?.fullDate) || isBlocked
+            }
             className={`w-full font-semibold py-3 px-6 rounded-lg shadow-md transition-all ${
-              isDisabledDate(monthDays[selectedDate]?.fullDate)
+              isDisabledDate(monthDays[selectedDate]?.fullDate) || isBlocked
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-[#009688] text-white hover:bg-[#00796B]"
             }`}
           >
-            {isDisabledDate(monthDays[selectedDate]?.fullDate)
+            {isBlocked
+              ? `Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`
+              : isDisabledDate(monthDays[selectedDate]?.fullDate)
               ? "Ngày này đã kín lịch"
               : "Đặt khám ngay"}
           </button>
@@ -942,14 +990,18 @@ const DoctorDetail = () => {
             <div className="max-w-6xl mx-auto">
               <button
                 onClick={handleBookingClick}
-                disabled={isDisabledDate(monthDays[selectedDate]?.fullDate)}
+                disabled={
+                  isDisabledDate(monthDays[selectedDate]?.fullDate) || isBlocked
+                }
                 className={`w-full font-semibold py-3 px-6 rounded-lg shadow-lg transition-all ${
-                  isDisabledDate(monthDays[selectedDate]?.fullDate)
+                  isDisabledDate(monthDays[selectedDate]?.fullDate) || isBlocked
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-[#009688] text-white hover:bg-[#00796B]"
                 }`}
               >
-                {isDisabledDate(monthDays[selectedDate]?.fullDate)
+                {isBlocked
+                  ? `Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`
+                  : isDisabledDate(monthDays[selectedDate]?.fullDate)
                   ? "Ngày này đã kín lịch"
                   : "Đặt khám ngay"}
               </button>
