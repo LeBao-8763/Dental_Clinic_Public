@@ -49,27 +49,12 @@ class PrescriptionStatusEnum(enum.Enum):
     CANCELLED = 'CANCELLED'
 
 # ------------------------------
-# 🔹 Bảng chuyên ngành
-# ------------------------------
-# class Specialization(db.Model):
-#     __tablename__ = 'specialization'
-#
-#     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     description = db.Column(db.String(255))
-#
-#     users = db.relationship('User', back_populates='specialization', lazy=True)
-#     def __str__(self):
-#         return self.name or f"Chuyên ngành {self.id}"
-
-# ------------------------------
 # 🔹 Bảng người dùng
 # ------------------------------
 class User(db.Model):
     __tablename__ = 'user'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    # specialization_id = db.Column(db.BigInteger, db.ForeignKey('specialization.id'))
     firstname = db.Column(db.String(100))
     lastname = db.Column(db.String(100))
     gender = db.Column(db.Enum(GenderEnum))
@@ -81,14 +66,11 @@ class User(db.Model):
     role = db.Column(db.Enum(RoleEnum), default=RoleEnum.ROLE_PATIENT)
     status = db.Column(db.Enum(StatusEnum), default=StatusEnum.ACTIVE)
 
-    # specialization = db.relationship('Specialization', back_populates='users')
     dentist_appointments = db.relationship('Appointment', foreign_keys='Appointment.dentist_id', back_populates='dentist')
     patient_appointments = db.relationship('Appointment', foreign_keys='Appointment.patient_id', back_populates='patient')
-    medicine_imports = db.relationship('MedicineImport', back_populates='user', lazy=True)
 
     dentist_schedules = db.relationship('DentistSchedule', back_populates='dentist', lazy=True)
     dentist_custom_schedules = db.relationship('DentistCustomSchedule', back_populates='dentist', lazy=True)
-    dentist_profile = db.relationship('DentistProfile', back_populates='dentist', uselist=False)
     booking_stats = db.relationship('UserBookingStats', back_populates='user', uselist=False)
     def __str__(self):
         return f"{self.firstname} {self.lastname}".strip() or f"Người dùng {self.id}"
@@ -113,8 +95,7 @@ class DentistProfile(db.Model):
         default=datetime.utcnow,
         onupdate=datetime.utcnow
     )
-
-    dentist = db.relationship('User', back_populates='dentist_profile')
+    dentist = db.relationship('User', backref=db.backref('dentist_profile', uselist=False), lazy=True)
 
 
 # ------------------------------
@@ -132,7 +113,7 @@ class Medicine(db.Model):
     selling_price = db.Column(db.Numeric(10, 2))
 
 
-    imports = db.relationship('MedicineImport', back_populates='medicine', lazy=True)
+    imports = db.relationship('MedicineImport', backref='medicine', lazy=True)
     details = db.relationship('PrescriptionDetail', back_populates='medicine', lazy=True)
     def __str__(self):
         return self.name or f"Thuốc {self.id}"
@@ -145,17 +126,13 @@ class MedicineImport(db.Model):
     __tablename__ = 'medicine_import'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
-    medicine_id = db.Column(db.BigInteger, db.ForeignKey(Medicine.id), nullable=False)
+    medicine_id = db.Column(db.BigInteger, db.ForeignKey('medicine.id'), nullable=False)
     import_date = db.Column(db.DateTime, default=datetime.utcnow)
     production_date = db.Column(db.DateTime)
     expiration_date = db.Column(db.DateTime)
     quantity_imported = db.Column(db.Integer)
     price = db.Column(db.Numeric(10, 2))
     stock_quantity = db.Column(db.Integer)
-
-    user = db.relationship('User', back_populates='medicine_imports')
-    medicine = db.relationship('Medicine', back_populates='imports')
 
 
 # ------------------------------

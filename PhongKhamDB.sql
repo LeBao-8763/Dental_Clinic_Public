@@ -1,17 +1,9 @@
 CREATE DATABASE dental_clinic;
 USE dental_clinic;
 
--- Bảng chuyên ngành
--- CREATE TABLE specialization (
---     id BIGINT AUTO_INCREMENT PRIMARY KEY,
---     name VARCHAR(100),
---     description VARCHAR(255)
--- );
-
 -- Bảng người dùng (bác sĩ, bệnh nhân, nhân viên)
 CREATE TABLE user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    -- specialization_id BIGINT NULL,
     firstname VARCHAR(100),
     lastname VARCHAR(100),
     gender ENUM('MALE', 'FEMALE', 'OTHER'),
@@ -22,7 +14,6 @@ CREATE TABLE user (
     created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     role ENUM('ROLE_ADMIN', 'ROLE_DENTIST', 'ROLE_STAFF', 'ROLE_PATIENT'),
     status ENUM('ACTIVE', 'INACTIVE')
-    -- FOREIGN KEY (specialization_id) REFERENCES specialization(id)
 );
 
 -- Bảng thông tin bác sĩ
@@ -54,7 +45,6 @@ CREATE TABLE medicine (
 -- Bảng nhập thuốc
 CREATE TABLE medicine_import (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT,
     medicine_id BIGINT,
     import_date DATETIME DEFAULT CURRENT_TIMESTAMP,
 	production_date DATETIME,
@@ -62,9 +52,9 @@ CREATE TABLE medicine_import (
     quantity_imported INT,
     price DECIMAL(10,2),
     stock_quantity INT, -- số lượng còn lại trong lô này
-    FOREIGN KEY (user_id) REFERENCES user(id),
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
+
 
 -- Bảng giờ hoạt động chung của phòng khám (do admin cấu hình)
 CREATE TABLE clinic_hours (
