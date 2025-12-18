@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from config import Config
 from app.scheduler.scheduler import init_scheduler
-from app.extensions import db, jwt, admin
+from app.extensions import db, jwt, admin, login
 from app.admin_view import init_admin
 
 def create_app():
@@ -15,6 +15,7 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     admin.init_app(app)
+    login.init_app(app)
 
     init_scheduler(app)
 
@@ -42,5 +43,6 @@ def create_app():
     # Khởi tạo admin sau khi app và db sẵn sàng
     with app.app_context():
         init_admin(admin)
+
 
     return app

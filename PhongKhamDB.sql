@@ -16,6 +16,29 @@ CREATE TABLE user (
     status ENUM('ACTIVE', 'INACTIVE')
 );
 
+INSERT INTO user (
+    firstname,
+    lastname,
+    gender,
+    phone_number,
+    username,
+    avatar,
+    password,
+    role,
+    status
+)
+VALUES (
+    'Super',
+    'Admin',
+    'MALE',
+    '0900000000',
+    'admin',
+    'https://res.cloudinary.com/demo/image/upload/v1720000000/admin_avatar.png',
+    '$2b$12$hyIMo6YEVU9idNLte253zubgnWmtUFEmmg4Qd6yBIZe/SyLNQKbs6', -- password: Gi@B@o123
+    'ROLE_ADMIN',
+    'ACTIVE'
+);
+
 -- Bảng thông tin bác sĩ
 CREATE TABLE dentist_profile (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
