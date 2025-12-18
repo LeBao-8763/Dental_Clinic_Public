@@ -1,48 +1,69 @@
 import React, { useState, useRef, useEffect } from "react";
+import { endpoints, publicApi } from "../../configs/Apis";
+import Loading from "../common/Loading";
 
 const DoctorFeature = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCards, setVisibleCards] = useState(3);
+  const [dentists, setDentists] = useState([]);
   const containerRef = useRef(null);
 
-  const doctors = [
-    {
-      id: 1,
-      name: "Bác sĩ 1",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus nulla ut commodo sagittis. Sapien du mettis elit non pulvinar lorem felis nec erat",
-    },
-    {
-      id: 2,
-      name: "Bác sĩ 2",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus nulla ut commodo sagittis. Sapien du mettis elit non pulvinar lorem felis nec erat",
-    },
-    {
-      id: 3,
-      name: "Bác sĩ 3",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus nulla ut commodo sagittis. Sapien du mettis elit non pulvinar lorem felis nec erat",
-    },
-    {
-      id: 4,
-      name: "Bác sĩ 4",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus nulla ut commodo sagittis. Sapien du mettis elit non pulvinar lorem felis nec erat",
-    },
-    {
-      id: 5,
-      name: "Bác sĩ 5",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus nulla ut commodo sagittis. Sapien du mettis elit non pulvinar lorem felis nec erat",
-    },
-    {
-      id: 6,
-      name: "Bác sĩ 6",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus nulla ut commodo sagittis. Sapien du mettis elit non pulvinar lorem felis nec erat",
-    },
-  ];
+  const [loading, setLoading] = useState(false);
+
+  const fetchDentist = async () => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(endpoints.get_dentist_list);
+      const dentistList = res.data;
+
+      console.log("Dentist UI data 1:", res.data);
+
+      const formattedDentists = await Promise.all(
+        dentistList.map(async (dentist) => {
+          let profile = {};
+          try {
+            profile = await fetchDentistProfile(dentist.id);
+          } catch (err) {
+            // nếu profile lỗi thì vẫn tiếp tục
+            console.warn(
+              "Không lấy được profile cho dentist:",
+              dentist.id,
+              err
+            );
+          }
+
+          // Nếu backend trả avatar là path, bạn có thể map thành full URL ở đây:
+          // const avatarUrl = `${process.env.REACT_APP_API_BASE_URL || ""}/${dentist.avatar}`
+
+          return {
+            id: dentist.id,
+            avatar: dentist.avatar || "/default-doctor.png",
+            name: `${dentist.firstname} ${dentist.lastname}`,
+            description: profile?.introduction || "",
+          };
+        })
+      );
+
+      setDentists(formattedDentists);
+      console.log("Dentist UI data:", formattedDentists);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy dữ liệu bác sĩ!", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDentistProfile = async (dentist_id) => {
+    const res = await publicApi.get(
+      endpoints.dentist_profile.get_profile(dentist_id)
+    );
+    return res.data;
+  };
+
+  useEffect(() => {
+    fetchDentist();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const updateVisibleCards = () => {
@@ -62,21 +83,30 @@ const DoctorFeature = () => {
 
   const handlePrev = () => {
     setCurrentIndex((prev) =>
-      prev === 0 ? doctors.length - visibleCards : prev - 1
+      prev === 0 ? Math.max(0, dentists.length - visibleCards) : prev - 1
     );
   };
 
   const handleNext = () => {
     setCurrentIndex((prev) =>
-      prev >= doctors.length - visibleCards ? 0 : prev + 1
+      prev >= Math.max(0, dentists.length - visibleCards) ? 0 : prev + 1
     );
   };
 
+  const maxStartIndex = Math.max(0, dentists.length - visibleCards);
   const canGoPrev = currentIndex > 0;
-  const canGoNext = currentIndex < doctors.length - visibleCards;
+  const canGoNext = currentIndex < maxStartIndex;
+
+  // số indicator tối thiểu 1 (tránh giá trị âm)
+  const indicatorCount = Math.max(1, dentists.length - visibleCards + 1);
 
   return (
     <>
+      {loading && (
+        <div className="absolute inset-0 bg-white/70 flex justify-center items-center z-50">
+          <Loading />
+        </div>
+      )}
       <style>{`
         @keyframes fadeInUp {
           from {
@@ -120,7 +150,7 @@ const DoctorFeature = () => {
 
           {/* Carousel Container */}
           <div
-            className="relative animate-fade-in-up px-12 md:px-16"
+            className="relative animate-fade-in-up px-6 md:px-12"
             style={{ animationDelay: "0.2s" }}
           >
             {/* Navigation Buttons */}
@@ -180,36 +210,35 @@ const DoctorFeature = () => {
                   }%)`,
                 }}
               >
-                {doctors.map((doctor) => (
+                {dentists.map((dentist) => (
                   <div
-                    key={doctor.id}
+                    key={dentist.id}
                     className="shrink-0 px-3"
                     style={{ width: `${100 / visibleCards}%` }}
                   >
-                    <div className="border border-gray-300 rounded-lg p-4 h-full shadow-sm hover:shadow-md transition-shadow">
-                      {/* Image Placeholder */}
-                      <div className="bg-gray-200 rounded-lg mb-4 aspect-4/3 flex items-center justify-center overflow-hidden">
-                        <svg
-                          className="w-16 h-16 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
+                    {/* 
+                      Thêm `group` để sử dụng group-hover cho ảnh,
+                      và thêm hiệu ứng nhảy + con trỏ bằng Tailwind classes:
+                    */}
+                    <div className="group border border-gray-300 rounded-lg p-4 h-full shadow-sm transform transition-transform duration-300 hover:-translate-y-3 hover:shadow-lg cursor-pointer">
+                      {/* Image */}
+                      <div className="bg-gray-200 rounded-lg mb-4 aspect-4/3 overflow-hidden">
+                        <img
+                          src={dentist.avatar}
+                          alt={dentist.name}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.src = "/default-doctor.png";
+                          }}
+                        />
                       </div>
 
                       {/* Doctor Info */}
                       <h3 className="text-lg font-bold text-gray-900 mb-2">
-                        {doctor.name}
+                        {dentist.name}
                       </h3>
                       <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-                        {doctor.description}
+                        {dentist.description}
                       </p>
                     </div>
                   </div>
@@ -219,20 +248,18 @@ const DoctorFeature = () => {
 
             {/* Indicators */}
             <div className="flex justify-center gap-2 mt-6">
-              {Array.from({ length: doctors.length - visibleCards + 1 }).map(
-                (_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentIndex(idx)}
-                    className={`h-2 rounded-full transition-all ${
-                      idx === currentIndex
-                        ? "bg-gray-900 w-8"
-                        : "bg-gray-300 w-2 hover:bg-gray-400"
-                    }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                )
-              )}
+              {Array.from({ length: indicatorCount }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(Math.min(idx, maxStartIndex))}
+                  className={`h-2 rounded-full transition-all ${
+                    idx === currentIndex
+                      ? "bg-gray-900 w-8"
+                      : "bg-gray-300 w-2 hover:bg-gray-400"
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
             </div>
           </div>
         </div>

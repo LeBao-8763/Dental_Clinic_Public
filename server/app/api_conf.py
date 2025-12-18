@@ -137,7 +137,7 @@ appointment_model = api.model('Appointment', {
 })
 
 # Thêm model cho patient info trong appointment
-appointment_with_patient_model = api.model('AppointmentWithPatient', {
+appointment_with_user_model = api.model('AppointmentWithPatient', {
     'id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
     'dentist_id': fields.Integer(description='ID bác sĩ'),
     'patient_id': fields.Integer(description='ID bệnh nhân'),
@@ -147,7 +147,7 @@ appointment_with_patient_model = api.model('AppointmentWithPatient', {
     'note': fields.String(description='Ghi chú'),
     'diagnosis':fields.String(description='Chuẩn đoán'),
     'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
-    'patient': fields.Nested(api.model('PatientBasicInfo', {
+    'user': fields.Nested(api.model('PatientBasicInfo', {
         'id': fields.Integer(description='ID bệnh nhân'),
         'firstname': fields.String(description='Tên'),
         'lastname': fields.String(description='Họ'),
@@ -285,12 +285,19 @@ auth_parser.add_argument('password', type=str, required=True, help='Mật khẩu
 
 ''' APPOINMENT '''
 appointment_creation_parser = reqparse.RequestParser()
-appointment_creation_parser.add_argument('dentist_id', type=int, required=True, help='Id bác sĩ')
-appointment_creation_parser.add_argument('patient_id', type=int, required=True, help='Id bệnh nhân')
-appointment_creation_parser.add_argument('appointment_date', type=str, required=True, help='Ngày khám (YYYY-MM-DD)')
-appointment_creation_parser.add_argument('start_time', type=str, required=True, help='Giờ bắt đầu (HH:MM:SS)')
-appointment_creation_parser.add_argument('end_time', type=str, required=True, help='Giờ kết thúc (HH:MM:SS)')
-appointment_creation_parser.add_argument('note', type=str, required=False, help='Ghi chú')
+
+appointment_creation_parser.add_argument('dentist_id', type=int, required=True)
+appointment_creation_parser.add_argument('appointment_date', type=str, required=True)
+appointment_creation_parser.add_argument('start_time', type=str, required=True)
+appointment_creation_parser.add_argument('end_time', type=str, required=True)
+appointment_creation_parser.add_argument('patient_id', type=int, required=False)
+appointment_creation_parser.add_argument('patient_name', type=str, required=False)
+appointment_creation_parser.add_argument('patient_phone', type=str, required=False)
+appointment_creation_parser.add_argument('date_of_birth', type=str, required=False)
+appointment_creation_parser.add_argument('gender', type=str, required=False)
+
+appointment_creation_parser.add_argument('note', type=str, required=False)
+
 
 ''' APPOINTMENT UPDATE '''
 appointment_update_parser = reqparse.RequestParser()

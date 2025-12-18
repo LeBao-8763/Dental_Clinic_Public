@@ -9,7 +9,7 @@ const Footer = () => {
 
         {/* Center - Copyright */}
         <div className="text-gray-600 text-sm md:text-base text-center">
-          Copyright © 2024 Website. All rights reserved.
+          Copyright © 2025 Website. Authors Loi, Bao, Huy.
         </div>
 
         {/* Right - Social Icons */}

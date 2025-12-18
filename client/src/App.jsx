@@ -18,6 +18,7 @@ import PaymentPage from "./pages/staff/PaymentPage";
 import PaymentDetail from "./pages/staff/PaymentDetail";
 import ScheduleSupport from "./pages/staff/ScheduleSupport";
 import { ToastContainer } from "react-toastify";
+import SessionExpiredDialog from "./components/common/SessionExpiredDialog";
 
 function App() {
   const user = useSelector((state) => state.auth.user);
@@ -45,6 +46,7 @@ function App() {
   return (
     <>
       <ToastContainer />
+      <SessionExpiredDialog />
       <Routes>
         <Route path="/login" element={<Login />} />
 

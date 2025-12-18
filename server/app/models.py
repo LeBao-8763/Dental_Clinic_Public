@@ -220,11 +220,22 @@ class Appointment(db.Model):
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
     patient_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
+
+    # --- Guest booking ---
+    patient_name = db.Column(db.String(255), nullable=True)
+    patient_phone = db.Column(db.String(20), nullable=True)
+    is_guest = db.Column(db.Boolean, default=False)
+
+    date_of_birth = db.Column(db.Date, nullable=True)
+    gender = db.Column(db.Enum(GenderEnum), nullable=True)
+
+
     appointment_date = db.Column(db.Date, nullable=False)
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
     note = db.Column(db.String(255))
-    # diagnosis = db.Column(db.Text)
+    diagnosis = db.Column(db.Text)
+
     status = db.Column(
         db.Enum(AppointmentStatusEnum),
         default=AppointmentStatusEnum.PENDING

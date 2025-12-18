@@ -1,6 +1,6 @@
 import axios from "axios";
 import store from "../store/store";
-import { logout } from "../store/slices/authSlice";
+import { sessionExpired } from "../store/slices/authSlice";
 
 const BASE_URL = "http://127.0.0.1:5000/api/";
 
@@ -27,6 +27,7 @@ export const endpoints = {
   appointment: {
     create: "appointments/",
     get_by_dentist_id: (dentistId) => `appointments/dentist/${dentistId}`,
+    get_by_patient_id: (patientId) => `appointments/patient/${patientId}`,
     all: "appointments/",
     get_by_id: (apt_id) => `appointments/${apt_id}`,
     update: (apt_id) => `appointments/${apt_id}`,
@@ -89,7 +90,7 @@ privateApi.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      store.dispatch(logout());
+      store.dispatch(sessionExpired());
     }
     return Promise.reject(error);
   }

@@ -36,10 +36,8 @@ const ScheduleSupport = () => {
   const [newPatient, setNewPatient] = useState({
     fullName: "",
     phone: "",
-    email: "",
     dob: "",
     gender: "",
-    address: "",
   });
 
   const fetchPatient = async () => {
@@ -353,84 +351,93 @@ const ScheduleSupport = () => {
       return;
     }
 
-    let patientId = selectedPatient?.id;
-
     setLoading(true);
+
     try {
-      // Nếu là bệnh nhân mới, tạo bệnh nhân mới trước
-      if (isNewPatient) {
-        const [firstname, ...lastnameParts] = newPatient.fullName
-          .trim()
-          .split(/\s+/);
-        const lastname = lastnameParts.join(" ");
-        const createPatientData = {
-          firstname: firstname || "",
-          lastname: lastname || "",
-          phone_number: newPatient.phone,
-          username: newPatient.email,
-          email: newPatient.email,
-          dob: newPatient.dob,
-          gender:
-            newPatient.gender === "male"
-              ? "MALE"
-              : newPatient.gender === "female"
-              ? "FEMALE"
-              : "OTHER",
-          address: newPatient.address,
-        };
-
-        const createRes = await publicApi.post(
-          endpoints.users.create,
-          createPatientData
-        );
-        patientId = createRes.data.id;
-        toast.success("Tạo bệnh nhân mới thành công!");
-      }
-
-      if (!patientId) {
-        toast.error("Không tìm thấy thông tin bệnh nhân");
-        return;
-      }
-
       const selectedFullDate = new Date(
         currentMonth.getFullYear(),
         currentMonth.getMonth(),
         selectedDate
       );
+
       const appointmentDate = getLocalDateString(selectedFullDate);
 
-      await publicApi.post(endpoints.appointment.create, {
+      // -------------------------
+      // Payload chung
+      // -------------------------
+      const payload = {
         dentist_id: selectedDoctor.id,
-        patient_id: patientId,
         appointment_date: appointmentDate,
         start_time: selectedTime.start + ":00",
         end_time: selectedTime.end + ":00",
-        notes: notes || "",
-      });
+        note: notes || "",
+      };
+
+      // -------------------------
+      // Phân nhánh user / guest
+      // -------------------------
+      if (isNewPatient) {
+        // 👉 Guest booking
+        if (!newPatient.fullName || !newPatient.phone) {
+          toast.error("Vui lòng nhập đầy đủ thông tin khách hàng mới");
+          return;
+        }
+
+        payload.patient_name = newPatient.fullName;
+        payload.patient_phone = newPatient.phone;
+
+        if (newPatient.dob) {
+          payload.date_of_birth = newPatient.dob; // YYYY-MM-DD
+        }
+
+        if (newPatient.gender) {
+          payload.gender = newPatient.gender.toUpperCase();
+          // MALE / FEMALE / OTHER
+        }
+      } else {
+        // 👉 User đã có tài khoản
+        if (!selectedPatient) {
+          toast.error("Vui lòng chọn bệnh nhân");
+          return;
+        }
+
+        payload.patient_id = selectedPatient.id;
+      }
+
+      // -------------------------
+      // 🔹 Call API
+      // -------------------------
+      await publicApi.post(endpoints.appointment.create, payload);
 
       toast.success("Đặt lịch thành công!");
+
       await fetchDentistAppointment(selectedDoctor.id);
+
+      // Reset form
       setSelectedDate(null);
       setSelectedTime(null);
       setNotes("");
+
       if (isNewPatient) {
         setNewPatient({
           fullName: "",
           phone: "",
-          email: "",
           dob: "",
           gender: "",
-          address: "",
         });
         setIsNewPatient(false);
       } else {
         setSelectedPatient(null);
         setSearchPatient("");
       }
+
       setShowConfirmDialog(false);
     } catch (error) {
       console.log("Lỗi khi tạo lịch hẹn", error);
-      toast.error("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
+      toast.error(
+        error?.response?.data?.message ||
+          "Đã có lỗi xảy ra. Vui lòng thử lại sau."
+      );
     } finally {
       setLoading(false);
     }
@@ -594,18 +601,6 @@ const ScheduleSupport = () => {
                               {selectedPatient.phone_number}
                             </span>
                           </div>
-                          <div className="col-span-2">
-                            <span className="text-gray-600">Email: </span>
-                            <span className="font-medium text-gray-800">
-                              {selectedPatient.username}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-gray-600">Địa chỉ: </span>
-                            <span className="font-medium text-gray-800">
-                              {selectedPatient.address || "Chưa có địa chỉ"}
-                            </span>
-                          </div>
                         </div>
                       </div>
                     )}
@@ -645,20 +640,6 @@ const ScheduleSupport = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          placeholder="Nhập email"
-                          value={newPatient.email}
-                          onChange={(e) =>
-                            handleNewPatientChange("email", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Ngày sinh
                         </label>
                         <input
@@ -671,8 +652,7 @@ const ScheduleSupport = () => {
                           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Giới tính
@@ -689,20 +669,6 @@ const ScheduleSupport = () => {
                           <option value="female">Nữ</option>
                           <option value="other">Khác</option>
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Địa chỉ
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Nhập địa chỉ"
-                          value={newPatient.address}
-                          onChange={(e) =>
-                            handleNewPatientChange("address", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                        />
                       </div>
                     </div>
                   </div>

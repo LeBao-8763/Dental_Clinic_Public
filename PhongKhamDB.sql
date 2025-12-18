@@ -112,6 +112,14 @@ CREATE TABLE appointments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT,
     patient_id BIGINT,
+    
+    -- Dùng cho khách hàng chưa có tài khoản 
+    patient_name VARCHAR(255),
+    patient_phone VARCHAR(20),
+    is_guest BOOLEAN DEFAULT FALSE,
+    date_of_birth DATE,
+    gender ENUM('MALE', 'FEMALE', 'OTHER'), 
+    
     appointment_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,

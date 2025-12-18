@@ -12,7 +12,6 @@ const Home = () => {
       <Features />
       <DoctorFeature />
       <AchievementFeature />
-      <Testimonials />
     </>
   );
 };

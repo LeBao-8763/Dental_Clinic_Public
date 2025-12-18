@@ -74,70 +74,70 @@ const Login = () => {
   };
 
   const validateRegisterData = (data) => {
-  const errors = {};
+    const errors = {};
 
-  // ✅ Họ tên
-  if (!data.lastName.trim()) {
-    errors.lastName = "Vui lòng nhập họ";
-  }
-  if (!data.firstName.trim()) {
-    errors.firstName = "Vui lòng nhập tên";
-  }
+    // ✅ Họ tên
+    if (!data.lastName.trim()) {
+      errors.lastName = "Vui lòng nhập họ";
+    }
+    if (!data.firstName.trim()) {
+      errors.firstName = "Vui lòng nhập tên";
+    }
 
-  // ✅ Tên đăng nhập
-  if (!data.username.trim()) {
-    errors.username = "Vui lòng nhập tên đăng nhập";
-  } else if (data.username.length < 3) {
-    errors.username = "Tên đăng nhập phải có ít nhất 3 ký tự";
-  }
+    // ✅ Tên đăng nhập
+    if (!data.username.trim()) {
+      errors.username = "Vui lòng nhập tên đăng nhập";
+    } else if (data.username.length < 3) {
+      errors.username = "Tên đăng nhập phải có ít nhất 3 ký tự";
+    }
 
-  // ✅ Số điện thoại
-  const phoneRegex = /^0\d{9}$/;
-  if (!data.phone.trim()) {
-    errors.phone = "Vui lòng nhập số điện thoại";
-  } else if (!phoneRegex.test(data.phone)) {
-    errors.phone = "Số điện thoại không hợp lệ (bắt đầu bằng 0)";
-  }
+    // ✅ Số điện thoại
+    const phoneRegex = /^0\d{9}$/;
+    if (!data.phone.trim()) {
+      errors.phone = "Vui lòng nhập số điện thoại";
+    } else if (!phoneRegex.test(data.phone)) {
+      errors.phone = "Số điện thoại không hợp lệ (bắt đầu bằng 0)";
+    }
 
-  // ✅ Giới tính
-  if (!data.gender) {
-    errors.gender = "Vui lòng chọn giới tính";
-  }
+    // ✅ Giới tính
+    if (!data.gender) {
+      errors.gender = "Vui lòng chọn giới tính";
+    }
 
-  // ✅ Mật khẩu
-  const pwd = data.password;
-  if (!pwd) {
-    errors.password = "Vui lòng nhập mật khẩu";
-  } else if (pwd.length < 8) {
-    errors.password = "Mật khẩu phải có ít nhất 8 ký tự";
-  } else if (!/[A-Z]/.test(pwd)) {
-    errors.password = "Mật khẩu phải có ít nhất một chữ hoa";
-  } else if (!/[a-z]/.test(pwd)) {
-    errors.password = "Mật khẩu phải có ít nhất một chữ thường";
-  } else if (!/\d/.test(pwd)) {
-    errors.password = "Mật khẩu phải có ít nhất một số";
-  } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
-    errors.password = "Mật khẩu phải có ít nhất một ký tự đặc biệt";
-  }
+    // ✅ Mật khẩu
+    const pwd = data.password;
+    if (!pwd) {
+      errors.password = "Vui lòng nhập mật khẩu";
+    } else if (pwd.length < 8) {
+      errors.password = "Mật khẩu phải có ít nhất 8 ký tự";
+    } else if (!/[A-Z]/.test(pwd)) {
+      errors.password = "Mật khẩu phải có ít nhất một chữ hoa";
+    } else if (!/[a-z]/.test(pwd)) {
+      errors.password = "Mật khẩu phải có ít nhất một chữ thường";
+    } else if (!/\d/.test(pwd)) {
+      errors.password = "Mật khẩu phải có ít nhất một số";
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
+      errors.password = "Mật khẩu phải có ít nhất một ký tự đặc biệt";
+    }
 
-  // ✅ Xác nhận mật khẩu
-  if (pwd !== data.confirmPassword) {
-    errors.confirmPassword = "Mật khẩu xác nhận không khớp";
-  }
+    // ✅ Xác nhận mật khẩu
+    if (pwd !== data.confirmPassword) {
+      errors.confirmPassword = "Mật khẩu xác nhận không khớp";
+    }
 
-  return errors;
-};
+    return errors;
+  };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateRegisterData(registerData);
-  setErrors(validationErrors);
+    setErrors(validationErrors);
 
-  if (Object.keys(validationErrors).length > 0) {
-    toast.error(error => Object.values(validationErrors).join(", "));
-    return;
-  }
+    if (Object.keys(validationErrors).length > 0) {
+      toast.error((error) => Object.values(validationErrors).join(", "));
+      return;
+    }
 
     // Map gender sang enum backend
     let genderEnum = null;
@@ -346,30 +346,29 @@ const Login = () => {
               </div>
 
               <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Số điện thoại
-  </label>
-  <div className="relative">
-    <input
-      type="tel"
-      inputMode="numeric"   // hiển thị bàn phím số trên điện thoại
-      maxLength={11}        // giới hạn tối đa 11 số
-      value={registerData.phone}
-      onChange={(e) => {
-        // chỉ giữ lại ký tự số
-        const onlyNums = e.target.value.replace(/[^0-9]/g, "");
-        setRegisterData({ ...registerData, phone: onlyNums });
-      }}
-      className="w-full px-4 py-3 pl-10 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-gray-400"
-      placeholder="Nhập số điện thoại"
-    />
-    <Phone
-      size={18}
-      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-    />
-  </div>
-</div>
-
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số điện thoại
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    inputMode="numeric" // hiển thị bàn phím số trên điện thoại
+                    maxLength={11} // giới hạn tối đa 11 số
+                    value={registerData.phone}
+                    onChange={(e) => {
+                      // chỉ giữ lại ký tự số
+                      const onlyNums = e.target.value.replace(/[^0-9]/g, "");
+                      setRegisterData({ ...registerData, phone: onlyNums });
+                    }}
+                    className="w-full px-4 py-3 pl-10 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-gray-400"
+                    placeholder="Nhập số điện thoại"
+                  />
+                  <Phone
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                </div>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
