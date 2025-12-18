@@ -1,3 +1,5 @@
+import hashlib
+
 from app import db
 from app.models import User, DentistSchedule
 from app.models import GenderEnum, RoleEnum, StatusEnum, DayOfWeekEnum
@@ -57,6 +59,13 @@ def login(password, account_identifier):
 
     if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
         return user
+    return None
+
+def check_login(username, password):
+    if username and password:
+        user = User.query.filter(User.username == username.strip()).first()
+        if user and bcrypt.checkpw(password.strip().encode('utf-8'), user.password.encode('utf-8')):
+            return user
     return None
 
 def get_user_by_id(user_id):

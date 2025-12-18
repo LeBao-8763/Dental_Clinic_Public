@@ -1,6 +1,9 @@
+from email.policy import default
+
 from app import db
 from datetime import datetime, time, date
 import enum
+from flask_login import UserMixin
 
 # ------------------------------
 # 🔹 Enum Python
@@ -51,20 +54,20 @@ class PrescriptionStatusEnum(enum.Enum):
 # ------------------------------
 # 🔹 Bảng người dùng
 # ------------------------------
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'user'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     firstname = db.Column(db.String(100))
     lastname = db.Column(db.String(100))
-    gender = db.Column(db.Enum(GenderEnum))
+    gender = db.Column(db.Enum(GenderEnum), nullable=False)
     phone_number = db.Column(db.String(20), unique=True)
-    username = db.Column(db.String(100), unique=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
     avatar = db.Column(db.String(255))
-    password = db.Column(db.String(255))
+    password = db.Column(db.String(255), nullable=False)
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
-    role = db.Column(db.Enum(RoleEnum), default=RoleEnum.ROLE_PATIENT)
-    status = db.Column(db.Enum(StatusEnum), default=StatusEnum.ACTIVE)
+    role = db.Column(db.Enum(RoleEnum), nullable=False, default=RoleEnum.ROLE_PATIENT)
+    status = db.Column(db.Enum(StatusEnum), nullable=False, default=StatusEnum.ACTIVE)
 
     dentist_appointments = db.relationship('Appointment', foreign_keys='Appointment.dentist_id', back_populates='dentist')
     patient_appointments = db.relationship('Appointment', foreign_keys='Appointment.patient_id', back_populates='patient')
@@ -86,8 +89,8 @@ class DentistProfile(db.Model):
     dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
 
     introduction = db.Column(db.Text)
-    education = db.Column(db.Text)
-    experience = db.Column(db.Text)
+    education = db.Column(db.Text, nullable=False)
+    experience = db.Column(db.Text, nullable=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
@@ -105,12 +108,12 @@ class Medicine(db.Model):
     __tablename__ = 'medicine'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(255))
-    reserved_quantity = db.Column(db.Integer)
-    type = db.Column(db.Enum(MedicineTypeEnum))
-    amount_per_unit = db.Column(db.Integer)
-    retail_unit = db.Column(db.String(50))
-    selling_price = db.Column(db.Numeric(10, 2))
+    name = db.Column(db.String(255), nullable=False)
+    reserved_quantity = db.Column(db.Integer, default=0)
+    type = db.Column(db.Enum(MedicineTypeEnum), nullable=False)
+    amount_per_unit = db.Column(db.Integer, nullable=False)
+    retail_unit = db.Column(db.String(50), nullable=False)
+    selling_price = db.Column(db.Numeric(10, 2), nullable=False)
 
 
     imports = db.relationship('MedicineImport', backref='medicine', lazy=True)
@@ -128,11 +131,11 @@ class MedicineImport(db.Model):
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     medicine_id = db.Column(db.BigInteger, db.ForeignKey('medicine.id'), nullable=False)
     import_date = db.Column(db.DateTime, default=datetime.utcnow)
-    production_date = db.Column(db.DateTime)
-    expiration_date = db.Column(db.DateTime)
-    quantity_imported = db.Column(db.Integer)
-    price = db.Column(db.Numeric(10, 2))
-    stock_quantity = db.Column(db.Integer)
+    production_date = db.Column(db.DateTime, nullable=False)
+    expiration_date = db.Column(db.DateTime, nullable=False)
+    quantity_imported = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    stock_quantity = db.Column(db.Integer, nullable=False)
 
 
 # ------------------------------
@@ -145,7 +148,7 @@ class ClinicHours(db.Model):
     day_of_week = db.Column(db.Enum(DayOfWeekEnum), nullable=False)
     open_time = db.Column(db.Time, nullable=False)
     close_time = db.Column(db.Time, nullable=False)
-    slot_duration_minutes = db.Column(db.Integer, default=30)
+    slot_duration_minutes = db.Column(db.Integer, nullable=False, default=30)
 
 
 # ------------------------------
@@ -257,8 +260,8 @@ class Service(db.Model):
     __tablename__ = 'service'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(255))
-    price = db.Column(db.Numeric(10, 2))
+    name = db.Column(db.String(255), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.String(255))
 
     treatments = db.relationship('TreatmentRecord', back_populates='service', lazy=True)
@@ -302,11 +305,11 @@ class PrescriptionDetail(db.Model):
     __tablename__ = 'prescription_details'
     prescription_id = db.Column(db.BigInteger, db.ForeignKey('prescriptions.id'), primary_key=True)
     medicine_id = db.Column(db.BigInteger, db.ForeignKey('medicine.id'), primary_key=True)
-    dosage = db.Column(db.Integer)
-    unit = db.Column(db.String(50))
-    duration_days = db.Column(db.Integer)
+    dosage = db.Column(db.Integer, nullable=False)
+    unit = db.Column(db.String(50), nullable=False)
+    duration_days = db.Column(db.Integer, nullable=False)
     note = db.Column(db.String(255))
-    price = db.Column(db.Numeric(10, 2))
+    price = db.Column(db.Numeric(10, 2), nullable=False)
 
     prescription = db.relationship('Prescription', back_populates='details')
     medicine = db.relationship('Medicine', back_populates='details')
@@ -335,7 +338,7 @@ class Post(db.Model):
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     title = db.Column(db.String(255), nullable=False)
-    content = db.Column(db.Text)
+    content = db.Column(db.Text, nullable=False)
     img = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(

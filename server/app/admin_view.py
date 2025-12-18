@@ -3,16 +3,40 @@ import json
 
 import bcrypt
 import cloudinary
-from flask import flash
+from flask import flash, redirect
 from flask_admin.contrib.sqla import ModelView
 from markupsafe import Markup
 from wtforms import MultipleFileField, SelectField, PasswordField
+from wtforms.validators import DataRequired, Regexp
+
 from app.extensions import db
 from app.models import User, Medicine, ClinicHours, GenderEnum, RoleEnum, StatusEnum, MedicineTypeEnum, DayOfWeekEnum, \
     MedicineImport, Service, DentistProfile, Post
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask_admin import BaseView, expose
+from flask_login import logout_user, current_user
 
-class UserView(ModelView):
+class AuthenticatedBaseView(BaseView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+class AuthenticatedModelView(ModelView):
+    def is_accessible(self):
+        return (current_user.is_authenticated
+                and current_user.status == StatusEnum.ACTIVE
+                and current_user.role == RoleEnum.ROLE_ADMIN)
+
+class LogoutView(AuthenticatedBaseView):
+    @expose('/')
+    def index(self):
+        logout_user()
+        return redirect('/admin')
+
+class StatsView (AuthenticatedBaseView):
+    @expose('/')
+    def index(self):
+        return self.render('admin/stats.html')
+
+class UserView(AuthenticatedModelView):
     can_view_details = True
     column_display_pk = True
     can_delete = False
@@ -36,7 +60,28 @@ class UserView(ModelView):
             ('INACTIVE', 'Ngừng hoạt động'),
         ],
     }
-
+    form_args = {
+        'username': {
+            'validators': [
+                DataRequired(message='Vui lòng nhập tên đăng nhập'),
+                Regexp(r'^\S+$', message='Tên đăng nhập không được chứa khoảng trắng')
+            ]
+        },
+        'phone_number': {
+            'validators': [
+                Regexp(r'^\d{10,11}$', message='Số điện thoại phải gồm 10-11 chữ số')
+            ]
+        },
+        'password': {
+            'validators': [
+                DataRequired(message='Vui lòng nhập mật khẩu'),
+                Regexp(
+                    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
+                    message='Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt'
+                )
+            ]
+        }
+    }
     column_exclude_list = ['avatar', 'password']
     column_labels = {
         'id': 'Mã',
@@ -49,7 +94,25 @@ class UserView(ModelView):
         'role': 'Vai trò',
         'status': 'Trạng thái',
     }
+    column_formatters = {
+        'gender': lambda v, c, m, p: {
+            'MALE': 'Nam',
+            'FEMALE': 'Nữ',
+            'OTHER': 'Khác'
+        }.get(m.gender.value if isinstance(m.gender, enum.Enum) else m.gender, 'Không xác định'),
 
+        'role': lambda v, c, m, p: {
+            'ROLE_ADMIN': 'Quản trị viên',
+            'ROLE_DENTIST': 'Nha sĩ',
+            'ROLE_STAFF': 'Nhân viên',
+            'ROLE_PATIENT': 'Bệnh nhân'
+        }.get(m.role.value if isinstance(m.role, enum.Enum) else m.role, 'Không xác định'),
+
+        'status': lambda v, c, m, p: {
+            'ACTIVE': 'Hoạt động',
+            'INACTIVE': 'Ngừng hoạt động'
+        }.get(m.status.value if isinstance(m.status, enum.Enum) else m.status, 'Không xác định')
+    }
     # Các field chung
     common_fields = ('firstname', 'lastname', 'gender', 'username', 'phone_number', 'role', 'status')
 
@@ -83,7 +146,7 @@ class UserView(ModelView):
             if user.status:
                 form.status.data = user.status.name
 
-class DentistProfileView(ModelView):
+class DentistProfileView(AuthenticatedModelView):
     can_view_details = True
     edit_modal = True
     column_list = ('dentist', 'education', 'experience', 'created_at')
@@ -100,7 +163,7 @@ class DentistProfileView(ModelView):
         'updated_at': 'Cập nhật lần cuối',
     }
 
-class MedicineView(ModelView):
+class MedicineView(AuthenticatedModelView):
     column_display_pk = True
     can_view_details = True
     edit_modal = True
@@ -133,7 +196,7 @@ class MedicineView(ModelView):
         }.get(m.type.value if isinstance(m.type, enum.Enum) else m.type, 'Không xác định')
     }
 
-class MedicineImportView(ModelView):
+class MedicineImportView(AuthenticatedModelView):
     can_view_details = True
 
     # 🔹 Hiển thị cột trong danh sách
@@ -159,7 +222,7 @@ class MedicineImportView(ModelView):
     }
 
 
-class ClinicHoursView(ModelView):
+class ClinicHoursView(AuthenticatedModelView):
     can_view_details = True
     column_list = ('day_of_week', 'open_time', 'close_time', 'slot_duration_minutes')
     column_labels = {
@@ -191,7 +254,7 @@ class ClinicHoursView(ModelView):
         }.get(m.day_of_week.value if isinstance(m.day_of_week, enum.Enum) else m.day_of_week, 'Không xác định')
     }
 
-class ServiceView(ModelView):
+class ServiceView(AuthenticatedModelView):
     can_view_details = True
     can_delete = False
     column_list = ('id', 'name', 'price', 'description')
@@ -202,8 +265,9 @@ class ServiceView(ModelView):
         'price': 'Giá (VNĐ)',
         'description': 'Mô tả dịch vụ',
     }
+    form_excluded_columns = ('treatments')
 
-class PostView(ModelView):
+class PostView(AuthenticatedModelView):
     can_view_details = True
     create_modal = True
     edit_modal = True
@@ -252,6 +316,7 @@ class PostView(ModelView):
             if urls:
                 model.img = json.dumps(urls)  # lưu dạng JSON chuỗi
 
+
 def init_admin(admin):
     admin.add_view(UserView(User, db.session, name="Người dùng", endpoint="user"))
     admin.add_view(DentistProfileView(DentistProfile, db.session, name="Hồ sơ bác sĩ", endpoint="dentist_profile"))
@@ -260,3 +325,5 @@ def init_admin(admin):
     admin.add_view(ClinicHoursView(ClinicHours, db.session, name="Giờ khám",  endpoint="clinic_hours"))
     admin.add_view(ServiceView(Service, db.session, name="Dịch vụ", endpoint="service"))
     admin.add_view(PostView(Post, db.session, name="Bài viết", endpoint="post"))
+    admin.add_view(StatsView(name="Thống kê"))
+    admin.add_view(LogoutView(name="Đăng xuất"))
