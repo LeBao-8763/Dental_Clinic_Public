@@ -1,5 +1,5 @@
 from app import db
-from app.models import Appointment, User, UserBookingStats
+from app.models import Appointment, User, UserBookingStats, AppointmentStatusEnum
 from app.models import GenderEnum, RoleEnum, StatusEnum
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
