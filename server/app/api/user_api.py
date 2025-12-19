@@ -7,6 +7,7 @@ from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, d
 from flask_restx import Resource
 from app.models import User
 from cloudinary import uploader
+from flask import request
 
 @user_ns.route('/')
 class UserList(Resource):
@@ -73,12 +74,24 @@ class UserList(Resource):
 @dentist_ns.route('/')
 class DentistList(Resource):
     @dentist_ns.doc('get_user_list')
-    @dentist_ns.marshal_list_with(dentist_model)  # Định nghĩa định dạng response cho Swagger UI
+    @dentist_ns.marshal_list_with(dentist_model)
     def get(self):
-        "Lấy danh sách bác sĩ"
-        dentists = dao_user.get_user_list("ROLE_DENTIST")
-        return dentists, 200
+        "Lấy danh sách bác sĩ (có filter)"
 
+        gender = request.args.get("gender")          # MALE / FEMALE
+        day = request.args.get("day")                # MONDAY / TUESDAY
+        from_time = request.args.get("from_time")    # 08:00
+        to_time = request.args.get("to_time")        # 11:00
+
+        dentists = dao_user.get_user_list(
+            role="ROLE_DENTIST",
+            gender=gender,
+            dayOfWeek=day,
+            from_time_str=from_time,
+            to_time_str=to_time
+        )
+
+        return dentists, 200
 
 
 @user_ns.route('/<int:user_id>')

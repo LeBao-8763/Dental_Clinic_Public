@@ -22,3 +22,14 @@ class CreateInvoice(Resource):
 
         result, status = dao_invoice.create_invoice(appointment_id)
         return result, status
+
+@invoice_ns.route('/<int:apt_id>')
+class InvoiceAptId(Resource):
+    @invoice_ns.doc ("get_invoice_by_apt_id")
+    @invoice_ns.marshal_with(invoice_model)
+    def get(self, apt_id):
+        invoice=dao_invoice.get_invoice_by_aptId(apt_id)
+
+        if invoice:
+            return invoice, 201
+        return 500

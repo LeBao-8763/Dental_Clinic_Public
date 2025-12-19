@@ -2,23 +2,27 @@ import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { endpoints, privateApi, publicApi } from "../../configs/Apis";
-import { toast } from "react-toastify";
-
 const AppointmentDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { appointmentId } = location.state || {};
-
   const [appointment, setAppointment] = useState(null);
   const [dentist, setDentist] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [treatments, setTreatments] = useState([]);
   const [servicesWithPrice, setServicesWithPrice] = useState([]);
-  const [totalServiceFee, setTotalServiceFee] = useState(0);
-  const [totalMedicineFee, setTotalMedicineFee] = useState(0);
-
+  const [invoice, setInvoice] = useState(null);
   const [medications, setMedications] = useState([]);
-
+  const fetchInvoiceByAptid = async (apt_id) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(endpoints.invoice.get_by_aptId(apt_id));
+      setInvoice(res.data);
+      console.log("Dữ liệu hóa đơn của cuộc hẹn", res.data);
+    } catch (err) {
+      console.log("Không tìm thấy toa thuốc cho cuộc hẹn này:", err);
+    }
+    setLoading(false);
+  };
   const fetchDentistById = async (id) => {
     try {
       const res = await publicApi.get(endpoints.get_user_info(id));
@@ -28,7 +32,6 @@ const AppointmentDetail = () => {
       console.log("Đã có lỗi xảy ra khi lấy dữ liệu bác sĩ", err);
     }
   };
-
   const fetchPrescription = async (appointmentId) => {
     setLoading(true);
     try {
@@ -41,7 +44,6 @@ const AppointmentDetail = () => {
     }
     setLoading(false);
   };
-
   const fetchServiceById = async (id) => {
     try {
       const res = await publicApi.get(endpoints.service.get_by_Id(id));
@@ -52,15 +54,12 @@ const AppointmentDetail = () => {
       return null;
     }
   };
-
   const fetchTreatmentRecordByAptId = async (appointmentId) => {
     try {
       const res = await publicApi.get(
         endpoints.treatment_record.list_by_aptId(appointmentId)
       );
       console.log("Dữ liệu treatment records", res.data);
-      setTreatments(res.data);
-
       // Lấy thông tin service cho từng treatment record
       if (res.data && res.data.length > 0) {
         const servicesData = await Promise.all(
@@ -82,7 +81,6 @@ const AppointmentDetail = () => {
       console.log("Đã có lỗi xảy ra khi lấy dữ liệu treatment records", err);
     }
   };
-
   const fetchAppointmentById = async (appointmentId) => {
     setLoading(true);
     try {
@@ -103,26 +101,13 @@ const AppointmentDetail = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (appointmentId) {
       fetchAppointmentById(appointmentId);
       fetchPrescription(appointmentId);
+      fetchInvoiceByAptid(appointmentId);
     }
   }, [appointmentId]);
-
-  const totalServicePrice = servicesWithPrice.reduce(
-    (sum, service) => sum + service.price,
-    0
-  );
-  const totalMedicationPrice = medications.reduce(
-    (sum, med) => sum + (med.dosage * med.duration_days * med.price || 0),
-    0
-  );
-  const vat = (Number(totalServicePrice) + Number(totalMedicationPrice)) * 0.1;
-
-  const grandTotal = totalServicePrice + totalMedicationPrice + vat;
-
   // Loading state
   if (loading && !appointment) {
     return (
@@ -134,7 +119,6 @@ const AppointmentDetail = () => {
       </div>
     );
   }
-
   // Error state - no appointment data
   if (!appointment) {
     return (
@@ -153,25 +137,20 @@ const AppointmentDetail = () => {
       </div>
     );
   }
-
   const patientFullName = appointment.is_guest
     ? appointment.patient_name || "Khách vãng lai"
     : `${appointment.user?.firstname || ""} ${
         appointment.user?.lastname || ""
       }`;
-
   const doctorFullName = dentist
     ? `${dentist.firstname || ""} ${dentist.lastname || ""}`
     : "Đang tải...";
-
   const patientGender = appointment.is_guest
     ? appointment.gender
     : appointment.user?.gender;
-
   const patientPhone = appointment.is_guest
     ? appointment.patient_phone
     : appointment.user?.phone_number;
-
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
@@ -184,7 +163,6 @@ const AppointmentDetail = () => {
           <span className="text-blue-600">{doctorFullName}</span>
         </h1>
       </div>
-
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         {/* Patient and Doctor Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -223,7 +201,6 @@ const AppointmentDetail = () => {
               </div>
             </div>
           </div>
-
           {/* Doctor Info */}
           <div className="bg-teal-50 rounded-xl p-6 border-2 border-teal-100 shadow-sm">
             <div className="flex items-center mb-4">
@@ -257,7 +234,6 @@ const AppointmentDetail = () => {
             </div>
           </div>
         </div>
-
         {/* Service Details */}
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
@@ -265,7 +241,6 @@ const AppointmentDetail = () => {
               Chi Tiết Dịch Vụ
             </h2>
           </div>
-
           <div className="p-6">
             {servicesWithPrice.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
@@ -302,12 +277,11 @@ const AppointmentDetail = () => {
                     ))}
                   </tbody>
                 </table>
-
                 <div className="flex justify-end mt-6 pt-4 border-t-2 border-gray-300">
                   <div className="text-right">
                     <p className="text-sm text-gray-600 mb-1">Tổng Dịch Vụ</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {totalServicePrice.toLocaleString("vi-VN")} đ
+                      {invoice?.total_service_fee.toLocaleString("vi-VN")} đ
                     </p>
                   </div>
                 </div>
@@ -315,7 +289,6 @@ const AppointmentDetail = () => {
             )}
           </div>
         </div>
-
         {/* Medication Details */}
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
@@ -371,27 +344,46 @@ const AppointmentDetail = () => {
                 ))}
               </tbody>
             </table>
-
             <div className="flex justify-end mt-6 pt-4 border-t-2 border-gray-300">
               <div className="text-right">
                 <p className="text-sm text-gray-600 mb-1">Tổng Thuốc</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {totalMedicationPrice.toLocaleString("vi-VN")} đ
+                  {invoice?.total_medicine_fee.toLocaleString("vi-VN")} đ
                 </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer - Total Payment */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-3">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-end items-center">
-            <div className="text-right">
-              <p className="text-lg font-bold text-gray-900">
-                Tổng số tiền: {grandTotal.toLocaleString("vi-VN")} đ
-              </p>
+        {/* Tổng kết giá */}
+        <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Tổng Kết Giá
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <p className="text-gray-700">Giá gốc (Dịch vụ + Thuốc):</p>
+                <p className="font-medium text-gray-900">
+                  {(
+                    invoice?.total_service_fee + invoice?.total_medicine_fee
+                  ).toLocaleString("vi-VN")}{" "}
+                  đ
+                </p>
+              </div>
+              <div className="flex justify-between">
+                <p className="text-gray-700">VAT:</p>
+                <p className="font-medium text-gray-900">
+                  {invoice?.vat.toLocaleString("vi-VN")} đ
+                </p>
+              </div>
+              <div className="flex justify-between border-t pt-3">
+                <p className="font-semibold text-gray-900">Tổng cộng:</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {invoice?.total.toLocaleString("vi-VN")} đ
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -399,5 +391,4 @@ const AppointmentDetail = () => {
     </div>
   );
 };
-
 export default AppointmentDetail;

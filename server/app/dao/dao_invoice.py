@@ -108,6 +108,9 @@ def create_invoice(appointment_id):
         print(e)
         return {"error": str(e)}, 500
 
+def get_invoice_by_aptId(apt_id):
+    return Invoice.query.filter_by(appointment_id=apt_id).first()
+
 # if __name__ == "__main__":
 #     from app import create_app
 #

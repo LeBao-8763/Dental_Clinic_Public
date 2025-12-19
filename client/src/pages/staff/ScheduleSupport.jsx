@@ -31,6 +31,7 @@ const ScheduleSupport = () => {
   const [appointments, setAppointments] = useState([]);
   const [customeSchedule, setCustomSchedule] = useState([]); // keep original name
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [userBookingStat, setUserBookingStat] = useState(null);
 
   // Thêm state cho bệnh nhân mới
   const [newPatient, setNewPatient] = useState({
@@ -49,6 +50,22 @@ const ScheduleSupport = () => {
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu người dùng ", err);
       setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserBookingStat = async (userId) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.user_booking_stat.get_by_userId(userId)
+      );
+
+      setUserBookingStat(res.data);
+      console.log("Thông số đặt lịch của người dùng", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy thông số đặt lịch ", err);
     } finally {
       setLoading(false);
     }

@@ -12,10 +12,7 @@ const PaymentDetail = () => {
   const [appointment, setAppointment] = useState(null);
   const [dentist, setDentist] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [treatments, setTreatments] = useState([]);
   const [servicesWithPrice, setServicesWithPrice] = useState([]);
-  const [totalServiceFee, setTotalServiceFee] = useState(0);
-  const [totalMedicineFee, setTotalMedicineFee] = useState(0);
 
   const [medications, setMedications] = useState([]);
 
@@ -76,7 +73,6 @@ const PaymentDetail = () => {
         endpoints.treatment_record.list_by_aptId(appointmentId)
       );
       console.log("Dữ liệu treatment records", res.data);
-      setTreatments(res.data);
 
       // Lấy thông tin service cho từng treatment record
       if (res.data && res.data.length > 0) {
@@ -395,26 +391,46 @@ const PaymentDetail = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Footer - Total Payment */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg ${
-          appointment.status === "AppointmentStatusEnum.PAID" ? "py-3" : "py-5"
-        }`}
-      >
-        <div className="max-w-6xl mx-auto px-6">
-          {appointment.status === "AppointmentStatusEnum.PAID" ? (
-            // Khi đã thanh toán: chỉ hiển thị tổng giá đã trả, footer nhỏ hơn
-            <div className="flex justify-end items-center">
-              <div className="text-right">
-                <p className="text-lg font-bold text-gray-900">
-                  Đã thanh toán: {grandTotal.toLocaleString("vi-VN")} đ
+        {/* Tổng kết giá */}
+        <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Tổng Kết Giá
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <p className="text-gray-700">Giá gốc (Dịch vụ + Thuốc):</p>
+                <p className="font-medium text-gray-900">
+                  {(totalServicePrice + totalMedicationPrice).toLocaleString(
+                    "vi-VN"
+                  )}{" "}
+                  đ
+                </p>
+              </div>
+              <div className="flex justify-between">
+                <p className="text-gray-700">VAT:</p>
+                <p className="font-medium text-gray-900">
+                  {vat.toLocaleString("vi-VN")} đ
+                </p>
+              </div>
+              <div className="flex justify-between border-t pt-3">
+                <p className="font-semibold text-gray-900">Tổng cộng:</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {grandTotal.toLocaleString("vi-VN")} đ
                 </p>
               </div>
             </div>
-          ) : (
-            // Khi chưa thanh toán: hiển thị chi tiết và nút
+          </div>
+        </div>
+      </div>
+
+      {/* Footer - Total Payment */}
+      {appointment.status !== "AppointmentStatusEnum.PAID" && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-5">
+          <div className="max-w-6xl mx-auto px-6">
             <div className="flex justify-between items-center">
               <div>
                 <div className="flex justify-between gap-4 text-gray-700 mb-1">
@@ -442,9 +458,9 @@ const PaymentDetail = () => {
                 {loading ? "Đang xử lý..." : "Xác Nhận Thanh Toán"}
               </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

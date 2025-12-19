@@ -1,5 +1,4 @@
-import React, { useEffect } from "react";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import GridListToggle from "../../components/common/GridListToggle";
 import { endpoints, publicApi } from "../../configs/Apis";
 import Loading from "../../components/common/Loading";
@@ -7,29 +6,33 @@ import { useNavigate } from "react-router-dom";
 
 const DoctorBooking = () => {
   const [dentists, setDentists] = useState([]);
-
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
-  const fetchDetistList = async () => {
+  // Filter states
+  const [selectedGender, setSelectedGender] = useState("");
+  const [selectedDays, setSelectedDays] = useState([]);
+  const [timeRange, setTimeRange] = useState([8, 18]); // Default from 8:00 to 18:00 (in hours)
+
+  const fetchDentistList = async (filters = {}) => {
     setLoading(true);
     try {
-      const res = await publicApi.get(endpoints.get_dentist_list);
+      const res = await publicApi.get(endpoints.get_dentist_list, {
+        params: filters,
+      });
       if (res.data) {
         console.log("Danh sách bác sĩ:", res.data);
         setDentists(res.data);
       }
     } catch (err) {
       console.log("Đã có lỗi xảy ra khi lấy danh sách bác sĩ:", err);
-      setLoading(false);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDetistList();
+    fetchDentistList();
   }, []);
 
   const formatGender = (gender) => {
@@ -44,6 +47,68 @@ const DoctorBooking = () => {
   };
 
   const [layout, setLayout] = useState("list");
+
+  // Handle day selection
+  const handleDayChange = (day) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  // Handle time range change (assuming a simple dual input for now, can replace with slider library like react-slider)
+  const handleTimeChange = (index, value) => {
+    const newRange = [...timeRange];
+    newRange[index] = parseInt(value, 10);
+    if (newRange[0] > newRange[1]) {
+      newRange.reverse(); // Ensure from < to
+    }
+    setTimeRange(newRange);
+  };
+
+  const genderMap = {
+    Nam: "MALE",
+    Nữ: "FEMALE",
+  };
+
+  const dayMap = {
+    "Thứ 2": "MONDAY",
+    "Thứ 3": "TUESDAY",
+    "Thứ 4": "WEDNESDAY",
+    "Thứ 5": "THURSDAY",
+    "Thứ 6": "FRIDAY",
+    "Thứ 7": "SATURDAY",
+    "Chủ Nhật": "SUNDAY",
+  };
+
+  // Apply filters (you may need to implement actual filtering logic here or in fetch)
+  const applyFilters = () => {
+    const params = {};
+
+    // gender (chỉ cho chọn 1 → backend đang support 1)
+    if (selectedGender) {
+      params.gender = genderMap[selectedGender];
+    }
+
+    // day + time
+    if (selectedDays.length === 1) {
+      params.day = dayMap[selectedDays[0]];
+      params.from_time = `${timeRange[0].toString().padStart(2, "0")}:00`;
+      params.to_time = `${timeRange[1].toString().padStart(2, "0")}:00`;
+    }
+
+    console.log("Query params gửi lên backend:", params);
+    fetchDentistList(params);
+  };
+
+  // Reset filters and refetch
+  const resetFilters = () => {
+    setSelectedGender("");
+    setSelectedDays([]);
+    setTimeRange([8, 18]);
+    // Fetch full list without filters
+    fetchDentistList();
+  };
+
   return (
     <div>
       {loading && (
@@ -51,7 +116,6 @@ const DoctorBooking = () => {
           <Loading />
         </div>
       )}
-
       <section className="relative overflow-hidden bg-[#009688] py-16 px-4">
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -64,9 +128,7 @@ const DoctorBooking = () => {
             để có số thứ tự và khung giờ khám trước.
           </p>
         </div>
-
         {/* Decorative elements - distributed across the banner */}
-
         {/* Top row */}
         <div className="absolute left-[5%] top-8 w-20 h-20 opacity-25 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -77,7 +139,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[15%] top-12 w-16 h-16 opacity-20 transform rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -98,7 +159,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[25%] top-6 w-18 h-18 opacity-22 transform -rotate-45">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -121,7 +181,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[25%] top-10 w-20 h-20 opacity-23 transform rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -131,7 +190,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[15%] top-14 w-22 h-22 opacity-24 transform -rotate-20">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <circle
@@ -164,7 +222,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[5%] top-8 w-24 h-24 opacity-26 transform rotate-30">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -174,7 +231,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         {/* Middle row - left side */}
         <div className="absolute left-[3%] top-[35%] w-18 h-18 opacity-21 transform rotate-45">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -196,7 +252,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[12%] top-[40%] w-22 h-22 opacity-25 transform -rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -206,7 +261,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[8%] top-[55%] w-20 h-20 opacity-23 transform rotate-10">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -229,7 +283,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         {/* Middle row - right side */}
         <div className="absolute right-[3%] top-[38%] w-26 h-26 opacity-27 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -263,7 +316,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[12%] top-[45%] w-20 h-20 opacity-24 transform rotate-20">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -273,7 +325,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[8%] top-[58%] w-18 h-18 opacity-22 transform -rotate-30">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -283,7 +334,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         {/* Bottom row */}
         <div className="absolute left-[7%] bottom-12 w-24 h-24 opacity-26 transform rotate-35">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -294,7 +344,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[18%] bottom-8 w-18 h-18 opacity-21 transform -rotate-40">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -315,7 +364,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[28%] bottom-14 w-20 h-20 opacity-24 transform rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -325,7 +373,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[28%] bottom-10 w-22 h-22 opacity-23 transform -rotate-20">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -348,7 +395,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[18%] bottom-16 w-20 h-20 opacity-25 transform rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <circle
@@ -381,7 +427,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[7%] bottom-12 w-18 h-18 opacity-22 transform -rotate-35">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -391,7 +436,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         {/* Additional scattered icons */}
         <div className="absolute left-[35%] top-[25%] w-16 h-16 opacity-20 transform rotate-50">
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -413,7 +457,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[35%] top-[30%] w-14 h-14 opacity-19 transform -rotate-25">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -423,7 +466,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute left-[40%] bottom-[25%] w-16 h-16 opacity-21 transform rotate-10">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -446,7 +488,6 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-
         <div className="absolute right-[40%] bottom-[28%] w-14 h-14 opacity-20 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -457,7 +498,6 @@ const DoctorBooking = () => {
           </svg>
         </div>
       </section>
-
       <section className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-6">
           {/* Sidebar Filters */}
@@ -482,73 +522,9 @@ const DoctorBooking = () => {
                   Bộ lọc tìm kiếm
                 </h3>
               </div>
-
               <div className="p-5">
-                {/* Specialty Filter */}
-                <div className="mb-6 pb-6 border-b border-gray-200">
-                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="text-[#009688]">●</span>
-                    Chuyên khoa
-                  </h4>
-                  <div className="space-y-2.5">
-                    {[
-                      "Nha khoa tổng quát",
-                      "Chỉnh nha",
-                      "Phẫu thuật hàm mặt",
-                      "Nha khoa trẻ em",
-                      "Cấy ghép implant",
-                    ].map((specialty) => (
-                      <label
-                        key={specialty}
-                        className="flex items-center cursor-pointer group"
-                      >
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            className="w-5 h-5 text-[#009688] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#009688] focus:ring-offset-0 cursor-pointer"
-                          />
-                        </div>
-                        <span className="ml-3 text-sm text-gray-700 group-hover:text-[#009688] transition-colors">
-                          {specialty}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Price Range Filter */}
-                <div className="mb-6 pb-6 border-b border-gray-200">
-                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="text-[#009688]">●</span>
-                    Giá khám
-                  </h4>
-                  <div className="space-y-2.5">
-                    {[
-                      "Dưới 200,000đ",
-                      "200,000đ - 500,000đ",
-                      "500,000đ - 1,000,000đ",
-                      "Trên 1,000,000đ",
-                    ].map((range) => (
-                      <label
-                        key={range}
-                        className="flex items-center cursor-pointer group"
-                      >
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            className="w-5 h-5 text-[#009688] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#009688] focus:ring-offset-0 cursor-pointer"
-                          />
-                        </div>
-                        <span className="ml-3 text-sm text-gray-700 group-hover:text-[#009688] transition-colors">
-                          {range}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Gender Filter */}
-                <div className="mb-6">
+                <div className="mb-6 pb-6 border-b border-gray-200">
                   <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                     <span className="text-[#009688]">●</span>
                     Giới tính
@@ -561,8 +537,11 @@ const DoctorBooking = () => {
                       >
                         <div className="relative">
                           <input
-                            type="checkbox"
-                            className="w-5 h-5 text-[#009688] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#009688] focus:ring-offset-0 cursor-pointer"
+                            type="radio"
+                            name="gender"
+                            checked={selectedGender === gender}
+                            onChange={() => setSelectedGender(gender)}
+                            className="w-5 h-5 text-[#009688] border-2 border-gray-300 focus:ring-2 focus:ring-[#009688]"
                           />
                         </div>
                         <span className="ml-3 text-sm text-gray-700 group-hover:text-[#009688] transition-colors">
@@ -572,14 +551,117 @@ const DoctorBooking = () => {
                     ))}
                   </div>
                 </div>
-
-                <button className="w-full bg-linear-to-r from-[#009688] to-[#00796b] text-white py-3 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-medium">
-                  Áp dụng bộ lọc
-                </button>
+                {/* Days Filter */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <span className="text-[#009688]">●</span>
+                    Thứ trong tuần
+                  </h4>
+                  <div className="space-y-2.5">
+                    {[
+                      "Thứ 2",
+                      "Thứ 3",
+                      "Thứ 4",
+                      "Thứ 5",
+                      "Thứ 6",
+                      "Thứ 7",
+                      "Chủ Nhật",
+                    ].map((day) => (
+                      <label
+                        key={day}
+                        className="flex items-center cursor-pointer group"
+                      >
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={selectedDays.includes(day)}
+                            onChange={() => handleDayChange(day)}
+                            className="w-5 h-5 text-[#009688] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#009688] focus:ring-offset-0 cursor-pointer"
+                          />
+                        </div>
+                        <span className="ml-3 text-sm text-gray-700 group-hover:text-[#009688] transition-colors">
+                          {day}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                {/* Time Range Filter */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <span className="text-[#009688]">●</span>
+                    Khung thời gian
+                  </h4>
+                  <div className="flex items-center gap-4">
+                    <select
+                      value={timeRange[0]}
+                      onChange={(e) => handleTimeChange(0, e.target.value)}
+                      disabled={selectedDays.length === 0}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:border-[#009688] focus:ring-[#009688]"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i}:00
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-gray-600">đến</span>
+                    <select
+                      value={timeRange[1]}
+                      onChange={(e) => handleTimeChange(1, e.target.value)}
+                      disabled={selectedDays.length === 0}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:border-[#009688] focus:ring-[#009688]"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i}:00
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedDays.length === 0 && (
+                    <p className="text-sm text-red-500 mt-2">
+                      Vui lòng chọn ít nhất một thứ trong tuần để chọn thời
+                      gian.
+                    </p>
+                  )}
+                </div>
+                {/* Buttons: Reset + Apply */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={resetFilters}
+                    className="flex-1 border border-gray-200 bg-white text-gray-700 py-3 rounded-lg hover:shadow-sm transition-all duration-150 font-medium"
+                    title="Đặt lại bộ lọc"
+                  >
+                    {/* simple reset icon + text */}
+                    <span className="inline-flex items-center gap-2 justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M16.023 9.348h4.992m0 0v-4.992m0 4.992-1.999-1.999A8.25 8.25 0 003.75 12c0 4.556 3.694 8.25 8.25 8.25a8.25 8.25 0 007.481-4.781"
+                        />
+                      </svg>
+                      Đặt lại
+                    </span>
+                  </button>
+                  <button
+                    onClick={applyFilters}
+                    className="flex-1 bg-linear-to-r from-[#009688] to-[#00796b] text-white py-3 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-medium"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
               </div>
             </div>
           </aside>
-
           {/* Main Content */}
           <main className="flex-1">
             {/* Header with toggle */}
@@ -592,7 +674,6 @@ const DoctorBooking = () => {
               </h2>
               <GridListToggle layout={layout} setLayout={setLayout} />
             </div>
-
             {/* Doctor List */}
             <div
               className={
@@ -618,17 +699,14 @@ const DoctorBooking = () => {
                           className="w-full h-full rounded-full object-cover"
                         />
                       </div>
-
                       {/* Info - Bottom */}
                       <div className="text-center">
                         <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-[#009688] transition-colors">
                           {doctor.firstname} {doctor.lastname}
                         </h3>
-
                         <div className="inline-block bg-[#009688]/10 text-[#009688] px-3 py-1 rounded-full text-xs font-medium mb-4">
                           Chỉnh nha
                         </div>
-
                         <div className="space-y-2 mb-4 text-left">
                           <p className="text-sm text-gray-600 flex items-center gap-2">
                             <svg
@@ -676,7 +754,6 @@ const DoctorBooking = () => {
                             </span>
                           </p>
                         </div>
-
                         <button
                           onClick={() =>
                             navigate("/patient/doctor-detail", {
@@ -701,17 +778,14 @@ const DoctorBooking = () => {
                           className="w-24 h-24 rounded-full shrink-0 object-cover ring-4 ring-gray-100 group-hover:ring-[#009688]/20 transition-all"
                         />
                       </div>
-
                       {/* Info */}
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[#009688] transition-colors">
                           {doctor.firstname} {doctor.lastname}
                         </h3>
-
                         <div className="inline-block bg-[#009688]/10 text-[#009688] px-3 py-1 rounded-full text-xs font-medium mb-3">
                           Chỉnh nha
                         </div>
-
                         <div className="flex items-center gap-6 flex-wrap">
                           <p className="text-sm text-gray-600 flex items-center gap-2">
                             <svg
@@ -763,7 +837,6 @@ const DoctorBooking = () => {
                           </p>
                         </div>
                       </div>
-
                       {/* Button for list view */}
                       <button
                         onClick={() =>

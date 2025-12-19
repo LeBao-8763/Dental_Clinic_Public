@@ -448,12 +448,14 @@ const DoctorDetail = () => {
     return "";
   };
 
-  // Kiểm tra ngày đã đủ 5 appointment chưa
+  // Kiểm tra ngày đã đủ 5 appointment chưa (loại trừ các lịch đã CANCELLED)
   const isDayFullyBooked = (date) => {
     if (!date) return false;
     const dateString = formatDateLocal(date); // use local format
     const count = appointments.filter(
-      (apt) => apt.appointment_date === dateString
+      (apt) =>
+        apt.appointment_date === dateString &&
+        apt.status !== "AppointmentStatusEnum.CANCELLED"
     ).length;
     return count >= 5; // Giới hạn 5 appointment/ngày
   };
@@ -518,7 +520,7 @@ const DoctorDetail = () => {
     return mon1.getTime() === mon2.getTime();
   };
 
-  // Check if a time slot is booked by anyone
+  // Check if a time slot is booked by anyone (loại trừ các lịch đã CANCELLED)
   const isTimeSlotBooked = (date, startTime, endTime) => {
     const dateString = formatDateLocal(date); // use local format
 
@@ -526,12 +528,13 @@ const DoctorDetail = () => {
       return (
         apt.appointment_date === dateString &&
         apt.start_time === startTime &&
-        apt.end_time === endTime
+        apt.end_time === endTime &&
+        apt.status !== "AppointmentStatusEnum.CANCELLED"
       );
     });
   };
 
-  // Check if a time slot is booked by the current user
+  // Check if a time slot is booked by the current user (loại trừ các lịch đã CANCELLED)
   const isUserTimeSlotBooked = (date, startTime, endTime) => {
     const dateString = formatDateLocal(date); // use local format
 
@@ -540,12 +543,13 @@ const DoctorDetail = () => {
         apt.appointment_date === dateString &&
         apt.start_time === startTime &&
         apt.end_time === endTime &&
-        apt.patient_id === patient?.id
+        apt.patient_id === patient?.id &&
+        apt.status !== "AppointmentStatusEnum.CANCELLED"
       );
     });
   };
 
-  // Check if user has pending appointment in the same week
+  // Check if user has pending appointment in the same week (đã là PENDING nên tự động loại trừ CANCELLED)
   const hasUserPendingInWeek = (date) => {
     return userAppointments.some(
       (apt) =>
@@ -590,7 +594,7 @@ const DoctorDetail = () => {
     );
   };
 
-  // Lọc lịch hẹn của user hiện tại
+  // Lọc lịch hẹn của user hiện tại (có thể lọc thêm để hiển thị chỉ các lịch không CANCELLED nếu cần, nhưng giữ nguyên theo yêu cầu)
   const userAppointments = appointments.filter(
     (apt) => apt.patient_id === patient?.id
   );

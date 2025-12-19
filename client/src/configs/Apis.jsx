@@ -60,6 +60,7 @@ export const endpoints = {
   },
   invoice: {
     create: "invoice/",
+    get_by_aptId: (apt_id) => `invoice/${apt_id}`,
   },
   user_booking_stat: {
     get_by_userId: (userId) => `user_booking_stat/${userId}`,
