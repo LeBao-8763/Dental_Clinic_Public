@@ -325,6 +325,7 @@ class Invoice(db.Model):
     total_medicine_fee = db.Column(db.Numeric(10, 2), default=0)
     vat = db.Column(db.Numeric(10, 2), default=0)
     total = db.Column(db.Numeric(10, 2), default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Quan hệ 1-1 với Appointment
     appointment = db.relationship('Appointment', back_populates='invoice', uselist=False)

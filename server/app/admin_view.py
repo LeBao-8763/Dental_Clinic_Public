@@ -3,12 +3,13 @@ import json
 
 import bcrypt
 import cloudinary
-from flask import flash, redirect
+from flask import flash, redirect, request
 from flask_admin.contrib.sqla import ModelView
 from markupsafe import Markup
-from wtforms import MultipleFileField, SelectField, PasswordField
+from wtforms import MultipleFileField, SelectField, PasswordField, FileField
 from wtforms.validators import DataRequired, Regexp
 
+from app.dao import dao_stats
 from app.extensions import db
 from app.models import User, Medicine, ClinicHours, GenderEnum, RoleEnum, StatusEnum, MedicineTypeEnum, DayOfWeekEnum, \
     MedicineImport, Service, DentistProfile, Post
@@ -31,10 +32,35 @@ class LogoutView(AuthenticatedBaseView):
         logout_user()
         return redirect('/admin')
 
-class StatsView (AuthenticatedBaseView):
+class StatsView(AuthenticatedBaseView):
     @expose('/')
     def index(self):
-        return self.render('admin/stats.html')
+        # Lấy tham số lọc
+        month = request.args.get('month', type=int)
+        dentist_id = request.args.get('dentist_id', type=int)
+
+        dentists = dao_stats.db.session.query(
+            dao_stats.User.id,
+            dao_stats.User.firstname,
+            dao_stats.User.lastname
+        ).filter(dao_stats.User.role == dao_stats.RoleEnum.ROLE_DENTIST).all()
+
+        # Nếu có chọn dentist thì thống kê theo ngày
+        if dentist_id:
+            data = dao_stats.revenue_by_day(month=month, dentist_id=dentist_id)
+            mode = "day"
+        else:
+            data = dao_stats.revenue_by_dentist(month=month)
+            mode = "dentist"
+
+        return self.render(
+            'admin/stats.html',
+            data=data,
+            mode=mode,
+            dentists=dentists,
+            selected_month=month,
+            selected_dentist=dentist_id
+        )
 
 class UserView(AuthenticatedModelView):
     can_view_details = True
@@ -113,8 +139,11 @@ class UserView(AuthenticatedModelView):
             'INACTIVE': 'Ngừng hoạt động'
         }.get(m.status.value if isinstance(m.status, enum.Enum) else m.status, 'Không xác định')
     }
+    form_overrides = {
+        'avatar': FileField
+    }
     # Các field chung
-    common_fields = ('firstname', 'lastname', 'gender', 'username', 'phone_number', 'role', 'status')
+    common_fields = ('firstname', 'lastname', 'gender', 'username', 'phone_number', 'role', 'status', 'avatar')
 
     # Create form: có thêm password
     form_create_rules = common_fields + ('password',)
@@ -130,6 +159,13 @@ class UserView(AuthenticatedModelView):
             # Chỉ hash khi tạo mới và có nhập password
             if form.password.data:
                 model.password = bcrypt.hashpw(model.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        file = form.avatar.data
+        if file and hasattr(file, 'filename') and file.filename:
+            try:
+                upload_result = cloudinary.uploader.upload(file)
+                model.avatar = upload_result.get('secure_url')
+            except Exception as e:
+                flash(f"Lỗi upload avatar: {e}", "error")
         # Khi edit: không làm gì với password → giữ nguyên giá trị cũ trong DB
         return super().on_model_change(form, model, is_created)
 
