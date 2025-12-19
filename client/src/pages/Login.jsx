@@ -87,10 +87,12 @@ const Login = () => {
     else if (data.username.length < 3)
       errors.username = "Tên đăng nhập phải có ít nhất 3 ký tự";
 
-    const phoneRegex = /^0\d{9}$/;
-    if (!data.phone.trim()) errors.phone = "Vui lòng nhập số điện thoại";
-    else if (!phoneRegex.test(data.phone))
-      errors.phone = "Số điện thoại không hợp lệ (bắt đầu bằng 0)";
+    const phoneRegex = /^0\d{9,10}$/;
+    if (!data.phone.trim()) {
+      errors.phone = "Vui lòng nhập số điện thoại";
+    } else if (!phoneRegex.test(data.phone)) {
+      errors.phone = "Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 hoặc 11 số)";
+    }
 
     if (!data.gender) errors.gender = "Vui lòng chọn giới tính";
 

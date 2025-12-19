@@ -118,10 +118,6 @@ def add_details(data):
         duration_days = int(item['duration_days'])
         total_quantity = dosage * duration_days
 
-        unit = item.get('unit')
-        price = float(item.get('price', 0))
-        note = item.get('note')
-
         medicine = Medicine.query.get(medicine_id)
 
         if medicine_id in existing_map:
