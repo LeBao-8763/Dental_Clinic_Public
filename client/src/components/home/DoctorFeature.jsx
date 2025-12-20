@@ -14,7 +14,7 @@ const DoctorFeature = () => {
     setLoading(true);
     try {
       const res = await publicApi.get(endpoints.get_dentist_list);
-      const dentistList = res.data;
+      const dentistList = res.data.data;
 
       console.log("Dentist UI data 1:", res.data);
 

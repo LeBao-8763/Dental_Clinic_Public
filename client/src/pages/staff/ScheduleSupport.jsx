@@ -22,16 +22,12 @@ const ScheduleSupport = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [notes, setNotes] = useState("");
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 11)); // December 2025
-  const today = 10; // Current date is December 10, 2025
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState([]);
   const [dentists, setDentists] = useState([]);
-  const [schedules, setSchedule] = useState([]); // weekly schedules from API
-  const [appointments, setAppointments] = useState([]);
-  const [customeSchedule, setCustomSchedule] = useState([]); // keep original name
+  const [selectedDaySchedule, setSelectedDaySchedule] = useState([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [userBookingStat, setUserBookingStat] = useState(null);
+  const [isDayFull, setIsDayFull] = useState(false);
 
   // Thêm state cho bệnh nhân mới
   const [newPatient, setNewPatient] = useState({
@@ -40,6 +36,67 @@ const ScheduleSupport = () => {
     dob: "",
     gender: "",
   });
+
+  // Helper: format date as local YYYY-MM-DD
+  const formatDateLocal = (date) => {
+    if (!date) return null;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const fetchAvailableDentisstSchedule = async (dentist_id, date) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.dentist_schedule.get_available_schedule(dentist_id, date)
+      );
+
+      // Xử lý lọc lịch dựa trên effective_from
+      const targetDateStr = formatDateLocal(new Date(date));
+      const filteredSlots = res.data.filter((slot) => {
+        return slot.effective_from <= targetDateStr;
+      });
+
+      if (filteredSlots.length > 0) {
+        const maxEffectiveFrom = filteredSlots.reduce((max, slot) => {
+          return slot.effective_from > max ? slot.effective_from : max;
+        }, filteredSlots[0].effective_from);
+
+        const latestSchedule = filteredSlots.filter(
+          (slot) => slot.effective_from === maxEffectiveFrom
+        );
+        setSelectedDaySchedule(latestSchedule);
+      } else {
+        setSelectedDaySchedule([]);
+      }
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy dữ liệu lịch khả dụng", err);
+      setSelectedDaySchedule([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkMaxAppointment = async (dentist_id, dateStr) => {
+    if (!dentist_id || !dateStr) {
+      setIsDayFull(false);
+      return;
+    }
+    try {
+      const path = endpoints.appointment.check_max_appointment(
+        dentist_id,
+        dateStr
+      );
+      const res = await publicApi.get(path);
+      // expects backend trả true/false trực tiếp
+      setIsDayFull(Boolean(res.data));
+    } catch (err) {
+      console.log("Có lỗi khi kiểm tra số lượng lịch của bác sĩ:", err);
+      setIsDayFull(false);
+    }
+  };
 
   const fetchPatient = async () => {
     setLoading(true);
@@ -55,81 +112,17 @@ const ScheduleSupport = () => {
     }
   };
 
-  const fetchUserBookingStat = async (userId) => {
-    setLoading(true);
-    try {
-      const res = await publicApi.get(
-        endpoints.user_booking_stat.get_by_userId(userId)
-      );
-
-      setUserBookingStat(res.data);
-      console.log("Thông số đặt lịch của người dùng", res.data);
-    } catch (err) {
-      console.log("Có lỗi xảy ra khi lấy thông số đặt lịch ", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchDentist = async () => {
     setLoading(true);
     try {
       const res = await publicApi.get(endpoints.get_dentist_list);
-      const transformedData = res.data.map((d) => ({
+      const transformedData = res.data.data.map((d) => ({
         id: d.id,
         name: `BS. ${d.firstname} ${d.lastname}`,
         image: d.avatar,
       }));
       setDentists(transformedData);
       console.log("Danh sách bác sĩ", res.data);
-    } catch (err) {
-      console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchDentistSchedule = async (dentist_id) => {
-    setLoading(true);
-    try {
-      const res = await publicApi.get(
-        endpoints.dentist_schedule.get_schedule(dentist_id)
-      );
-      setSchedule(res.data || []);
-      console.log("Lịch làm việc của bác sĩ", res.data);
-    } catch (err) {
-      console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchDentistAppointment = async (dentist_id) => {
-    setLoading(true);
-    try {
-      const res = await publicApi.get(
-        endpoints.appointment.get_by_dentist_id(dentist_id)
-      );
-      setAppointments(res.data || []);
-      console.log("Lịch cuộc hẹn của bác sĩ", res.data);
-    } catch (err) {
-      console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCustomSchedule = async (dentist_id) => {
-    setLoading(true);
-    try {
-      const res = await publicApi.get(
-        endpoints.custom_schedule.get_by_dentist_id(dentist_id)
-      );
-      setCustomSchedule(res.data || []);
-      console.log("Lịch lịch custom của bác sĩ", res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
       setLoading(false);
@@ -145,9 +138,12 @@ const ScheduleSupport = () => {
 
   useEffect(() => {
     if (!selectedDoctor) return;
-    fetchDentistSchedule(selectedDoctor.id);
-    fetchDentistAppointment(selectedDoctor.id);
-    fetchCustomSchedule(selectedDoctor.id);
+
+    // Fetch schedule for today when doctor is selected
+    const today = new Date();
+    const todayStr = formatDateLocal(today);
+    fetchAvailableDentisstSchedule(selectedDoctor.id, todayStr);
+
     setSelectedDate(null);
     setSelectedTime(null);
   }, [selectedDoctor]);
@@ -158,6 +154,37 @@ const ScheduleSupport = () => {
     "+ Có triệu chứng mới",
     "+ Cần tư vấn thêm",
   ];
+
+  // Generate next 8 days (today + 7)
+  const generateMonthDays = () => {
+    const days = [];
+    const today = new Date();
+    const dayNames = ["CN", "Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7"];
+    for (let i = 0; i < 8; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dayOfWeek = date.getDay();
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      days.push({
+        day: dayNames[dayOfWeek],
+        date: `${day}/${month}`,
+        fullDate: date,
+      });
+    }
+    return days;
+  };
+
+  const monthDays = generateMonthDays();
+
+  const isToday = (someDate) => {
+    const today = new Date();
+    return (
+      someDate.getDate() === today.getDate() &&
+      someDate.getMonth() === today.getMonth() &&
+      someDate.getFullYear() === today.getFullYear()
+    );
+  };
 
   // helper to remove diacritics & lowercase for more robust search
   const normalize = (str = "") =>
@@ -197,145 +224,18 @@ const ScheduleSupport = () => {
     setShowPatientSuggestions(false);
   };
 
-  // Calendar functions
-  const getDaysInMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-    return { daysInMonth, startingDayOfWeek };
-  };
+  const handleSelectDay = (index) => {
+    const item = monthDays[index];
+    const date = item?.fullDate;
+    if (!date) return;
 
-  const formatMonth = (date) => {
-    return date.toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
-  };
+    setSelectedDate(index);
+    setSelectedTime(null);
 
-  const changeMonth = (increment) => {
-    setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + increment)
-    );
-  };
+    const dateStr = formatDateLocal(date);
+    fetchAvailableDentisstSchedule(selectedDoctor.id, dateStr);
 
-  const dayMap = {
-    1: "DayOfWeekEnum.MONDAY",
-    2: "DayOfWeekEnum.TUESDAY",
-    3: "DayOfWeekEnum.WEDNESDAY",
-    4: "DayOfWeekEnum.THURSDAY",
-    5: "DayOfWeekEnum.FRIDAY",
-    6: "DayOfWeekEnum.SATURDAY",
-    0: "DayOfWeekEnum.SUNDAY",
-  };
-
-  const getLocalDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  // --- NEW HELPERS for effective_from handling ---
-  // parse YYYY-MM-DD into local Date (no timezone shift)
-  const parseYMD = (ymd) => {
-    if (!ymd) return null;
-    const parts = ymd.split("-");
-    if (parts.length < 3) return null;
-    const [y, m, d] = parts.map(Number);
-    if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null;
-    return new Date(y, m - 1, d);
-  };
-
-  /**
-   * Return the schedules (array) for a given dayOfWeek that apply at refDate.
-   * Logic:
-   * - Group schedules by effective_from
-   * - Pick the group with effective_from <= refDate and the largest effective_from
-   * - If none such group -> return [] (no schedule applies before first effective date)
-   *
-   * Expected schedule items shape: { day_of_week, start_time, end_time, effective_from }
-   */
-  const getApplicableSchedulesForDay = (dayOfWeek, refDate) => {
-    if (!schedules || schedules.length === 0) return [];
-
-    const list = schedules
-      .filter((s) => s.day_of_week === dayOfWeek)
-      .map((s) => {
-        const eff = s.effective_from || "1970-01-01";
-        const _effDate = parseYMD(eff) || new Date(0);
-        return { ...s, effective_from: eff, _effDate };
-      });
-
-    if (list.length === 0) return [];
-
-    // group by effective_from
-    const groups = list.reduce((acc, s) => {
-      const key = s.effective_from;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(s);
-      return acc;
-    }, {});
-
-    const keys = Object.keys(groups);
-    // find maximal effective_from <= refDate
-    let chosenKey = null;
-    let maxDate = null;
-    keys.forEach((k) => {
-      const d = parseYMD(k) || new Date(0);
-      if (d <= refDate) {
-        if (!maxDate || d.getTime() > maxDate.getTime()) {
-          maxDate = d;
-          chosenKey = k;
-        }
-      }
-    });
-
-    if (chosenKey) {
-      // return group's schedules (keep original items)
-      return groups[chosenKey].slice();
-    }
-
-    // no group applies yet
-    return [];
-  };
-  // --- end new helpers ---
-
-  // Updated getDaySchedules: if there's a custom schedule for that date, use it.
-  // Otherwise, use getApplicableSchedulesForDay(enumDay, date)
-  const getDaySchedules = (date) => {
-    if (!date) return [];
-    const formattedDate = getLocalDateString(date);
-    const customForDate = customeSchedule.filter(
-      (s) => s.custom_date === formattedDate
-    );
-    if (customForDate.length > 0) {
-      const isDayOff = customForDate.some((s) => s.is_day_off);
-      if (isDayOff) {
-        return [];
-      } else {
-        return customForDate
-          .filter((s) => !s.is_day_off)
-          .sort((a, b) => a.start_time.localeCompare(b.start_time));
-      }
-    } else {
-      const dow = date.getDay();
-      const enumDay = dayMap[dow];
-      // Use effective_from grouping based on the selected date
-      const applicable = getApplicableSchedulesForDay(enumDay, date);
-      // sort by start_time
-      return applicable.sort((a, b) =>
-        a.start_time.localeCompare(b.start_time)
-      );
-    }
-  };
-
-  const isTimeSlotAvailable = (time, date) => {
-    const formattedDate = getLocalDateString(date);
-    return !appointments.some(
-      (appt) =>
-        appt.appointment_date === formattedDate &&
-        appt.start_time === time + ":00"
-    );
+    checkMaxAppointment(selectedDoctor.id, dateStr);
   };
 
   // Compute step completion for header/progress
@@ -344,26 +244,20 @@ const ScheduleSupport = () => {
     : !!selectedPatient;
   const step1 = step1Complete;
   const step2 = !!selectedDoctor;
-  const step3 = !!(selectedDate && selectedTime);
+  const step3 = !!(selectedDate !== null && selectedTime);
   const step4 = notes && notes.trim().length > 0;
   const completed = [step1, step2, step3, step4].filter(Boolean).length;
 
   const formatSelectedDate = () => {
-    if (!selectedDate) return null;
-    const dt = new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth(),
-      selectedDate
-    );
-    const weekday = dt.toLocaleDateString("vi-VN", { weekday: "long" });
-    const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    const dateStr = dt.toLocaleDateString("vi-VN");
-    return `${weekdayCap}, ${dateStr}`;
+    if (selectedDate === null) return null;
+    const item = monthDays[selectedDate];
+    if (!item) return null;
+    return `${item.day}, ${item.date}`;
   };
 
   // Hàm confirmAppointment tương tự như trong DoctorDetail
   const confirmAppointment = async () => {
-    if (!selectedDoctor || !selectedTime || !selectedDate) {
+    if (!selectedDoctor || !selectedTime || selectedDate === null) {
       toast.error("Vui lòng chọn bác sĩ, ngày và giờ khám");
       return;
     }
@@ -371,13 +265,15 @@ const ScheduleSupport = () => {
     setLoading(true);
 
     try {
-      const selectedFullDate = new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth(),
-        selectedDate
-      );
+      const selectedFullDate = monthDays[selectedDate].fullDate;
+      const appointmentDate = formatDateLocal(selectedFullDate);
 
-      const appointmentDate = getLocalDateString(selectedFullDate);
+      // Find selected time slot
+      const slot = selectedDaySchedule.find((s) => s.id === selectedTime);
+      if (!slot) {
+        toast.error("Không tìm thấy khung giờ đã chọn");
+        return;
+      }
 
       // -------------------------
       // Payload chung
@@ -385,8 +281,8 @@ const ScheduleSupport = () => {
       const payload = {
         dentist_id: selectedDoctor.id,
         appointment_date: appointmentDate,
-        start_time: selectedTime.start + ":00",
-        end_time: selectedTime.end + ":00",
+        start_time: slot.start_time,
+        end_time: slot.end_time,
         note: notes || "",
       };
 
@@ -428,7 +324,8 @@ const ScheduleSupport = () => {
 
       toast.success("Đặt lịch thành công!");
 
-      await fetchDentistAppointment(selectedDoctor.id);
+      // Refresh schedule for selected date
+      await fetchAvailableDentisstSchedule(selectedDoctor.id, appointmentDate);
 
       // Reset form
       setSelectedDate(null);
@@ -775,165 +672,133 @@ const ScheduleSupport = () => {
                     Vui lòng chọn bác sĩ trước
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Calendar */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <button
-                          onClick={() => changeMonth(-1)}
-                          className="p-2 hover:bg-gray-100 rounded-lg"
-                        >
-                          ←
-                        </button>
-                        <h3 className="text-lg font-semibold text-gray-800">
-                          {formatMonth(currentMonth)}
-                        </h3>
-                        <button
-                          onClick={() => changeMonth(1)}
-                          className="p-2 hover:bg-gray-100 rounded-lg"
-                        >
-                          →
-                        </button>
-                      </div>
-                      {/* Calendar Grid */}
-                      <div className="grid grid-cols-7 gap-2">
-                        {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map(
-                          (day) => (
-                            <div
-                              key={day}
-                              className="text-center text-sm font-medium text-gray-600 py-2"
-                            >
-                              {day}
+                  <div className="space-y-6">
+                    {/* Days Selection - Horizontal Scroll */}
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {monthDays.map((item, index) => {
+                        const isSelected = selectedDate === index;
+                        const isTodayDate = isToday(item.fullDate);
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => handleSelectDay(index)}
+                            className={`shrink-0 flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 min-w-[110px] ${
+                              isSelected
+                                ? "border-teal-500 bg-teal-50 shadow-md hover:-translate-y-1"
+                                : isTodayDate
+                                ? "border-teal-300 bg-white hover:border-teal-400 hover:bg-teal-50 hover:-translate-y-1 hover:shadow-lg"
+                                : "border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50 hover:-translate-y-1 hover:shadow-lg"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                {item.day},
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                {item.date}
+                              </span>
                             </div>
-                          )
-                        )}
-                        {(() => {
-                          const { daysInMonth, startingDayOfWeek } =
-                            getDaysInMonth(currentMonth);
-                          const days = [];
-                          // Empty cells before first day
-                          for (let i = 0; i < startingDayOfWeek; i++) {
-                            days.push(
-                              <div
-                                key={`empty-${i}`}
-                                className="aspect-square"
-                              ></div>
-                            );
-                          }
-                          // Days of month
-                          for (let day = 1; day <= daysInMonth; day++) {
-                            const isSelected = selectedDate === day;
-                            const isToday = day === today;
-                            days.push(
-                              <button
-                                key={day}
-                                onClick={() => {
-                                  setSelectedDate(day);
-                                  setSelectedTime(null);
-                                }}
-                                className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${
-                                  isSelected
-                                    ? "bg-teal-600 text-white"
-                                    : isToday
-                                    ? "border-2 border-teal-600 text-gray-800 hover:bg-teal-50"
-                                    : "text-gray-800 hover:bg-gray-50"
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            );
-                          }
-                          return days;
-                        })()}
-                      </div>
+                          </button>
+                        );
+                      })}
                     </div>
+
                     {/* Time Slots */}
                     <div>
                       <div className="flex items-center gap-2 mb-4 text-gray-600">
                         <Clock className="w-5 h-5" />
                         <span className="font-medium">
-                          Lịch khám ngày{" "}
-                          {selectedDate
-                            ? `${selectedDate}/12/2025`
-                            : "__/__/____"}
+                          Khung giờ khám{" "}
+                          {selectedDate !== null
+                            ? `ngày ${monthDays[selectedDate].date}`
+                            : ""}
                         </span>
+                        {/* Thông báo ngày full */}
+                        {isDayFull && (
+                          <span className="ml-2 text-red-500 text-sm font-medium">
+                            Ngày này đã đầy lịch
+                          </span>
+                        )}
                       </div>
-                      {selectedDate ? (
+
+                      {selectedDate !== null ? (
                         (() => {
-                          const selectedFullDate = new Date(
-                            currentMonth.getFullYear(),
-                            currentMonth.getMonth(),
-                            selectedDate
-                          );
-                          const formattedDate =
-                            getLocalDateString(selectedFullDate);
-                          const customForDate = customeSchedule.filter(
-                            (s) => s.custom_date === formattedDate
-                          );
-                          const isDayOff = customForDate.some(
-                            (s) => s.is_day_off
-                          );
-                          const daySchedules =
-                            getDaySchedules(selectedFullDate);
-                          if (isDayOff) {
+                          const selectedFullDate =
+                            monthDays[selectedDate].fullDate;
+
+                          if (selectedDaySchedule.length === 0) {
                             return (
                               <div className="text-center py-12">
                                 <div className="text-gray-400 mb-2">
                                   <Calendar className="w-12 h-12 mx-auto mb-3" />
                                 </div>
                                 <p className="text-gray-600 font-medium">
-                                  Hôm nay bác sĩ tạm nghỉ
-                                </p>
-                              </div>
-                            );
-                          } else if (daySchedules.length === 0) {
-                            return (
-                              <div className="text-center py-12">
-                                <div className="text-gray-400 mb-2">
-                                  <Calendar className="w-12 h-12 mx-auto mb-3" />
-                                </div>
-                                <p className="text-gray-600 font-medium">
-                                  Không có lịch hôm nay
+                                  Không có lịch khám cho ngày này
                                 </p>
                               </div>
                             );
                           }
+
+                          // Filter out past time slots if today
+                          let filteredSchedule = selectedDaySchedule;
+                          if (isToday(selectedFullDate)) {
+                            const now = new Date();
+                            const currentHours = now.getHours();
+                            const currentMinutes = now.getMinutes();
+                            filteredSchedule = selectedDaySchedule.filter(
+                              (slot) => {
+                                const [h, m] = slot.start_time
+                                  .slice(0, 5)
+                                  .split(":")
+                                  .map(Number);
+                                return (
+                                  h > currentHours ||
+                                  (h === currentHours && m > currentMinutes)
+                                );
+                              }
+                            );
+                          }
+
+                          if (filteredSchedule.length === 0) {
+                            return (
+                              <div className="text-center py-12">
+                                <div className="text-gray-400 mb-2">
+                                  <Clock className="w-12 h-12 mx-auto mb-3" />
+                                </div>
+                                <p className="text-gray-600 font-medium">
+                                  Không còn khung giờ khả dụng cho ngày hôm nay
+                                </p>
+                              </div>
+                            );
+                          }
+
                           return (
-                            <div className="grid grid-cols-3 gap-2">
-                              {daySchedules.map((slot) => {
-                                const startTime = slot.start_time.substring(
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                              {filteredSchedule.map((slot) => {
+                                const timeLabel = `${slot.start_time.slice(
                                   0,
                                   5
-                                );
-                                const endTime = slot.end_time.substring(0, 5);
-                                const displayTime = `${startTime} - ${endTime}`;
-                                const available = isTimeSlotAvailable(
-                                  startTime,
-                                  selectedFullDate
-                                );
-                                const isSelected =
-                                  selectedTime &&
-                                  selectedTime.start === startTime;
+                                )} - ${slot.end_time.slice(0, 5)}`;
+                                const isSelected = selectedTime === slot.id;
+
                                 return (
                                   <button
-                                    key={startTime}
+                                    key={slot.id}
                                     onClick={() =>
-                                      available &&
-                                      setSelectedTime({
-                                        start: startTime,
-                                        end: endTime,
-                                      })
+                                      !isDayFull && setSelectedTime(slot.id)
                                     }
-                                    disabled={!available}
-                                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                                      isSelected
-                                        ? "bg-teal-600 text-white"
-                                        : available
-                                        ? "bg-teal-50 text-gray-800 hover:bg-teal-100"
-                                        : "bg-gray-100 text-gray-400 line-through cursor-not-allowed"
+                                    disabled={isDayFull}
+                                    className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 text-sm leading-tight ${
+                                      isDayFull
+                                        ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        : isSelected
+                                        ? "border-teal-500 bg-teal-600 text-white shadow-md"
+                                        : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50 hover:scale-[1.02]"
                                     }`}
                                   >
-                                    {displayTime}
+                                    <span className="text-sm font-semibold">
+                                      {timeLabel}
+                                    </span>
                                   </button>
                                 );
                               })}
@@ -947,20 +812,6 @@ const ScheduleSupport = () => {
                           </p>
                         </div>
                       )}
-                      <div className="flex items-center gap-4 mt-6 text-xs text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 bg-gray-100 rounded"></div>
-                          <span>Còn trống</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 bg-gray-300 rounded"></div>
-                          <span>Đã đặt</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 bg-teal-600 rounded"></div>
-                          <span>Đã chọn</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -1102,8 +953,18 @@ const ScheduleSupport = () => {
                                 {formatSelectedDate()}
                               </p>
                               <p className="text-sm text-gray-600">
-                                {selectedTime
-                                  ? `${selectedTime.start} - ${selectedTime.end}`
+                                {selectedTime &&
+                                selectedDaySchedule.find(
+                                  (s) => s.id === selectedTime
+                                )
+                                  ? `${selectedDaySchedule
+                                      .find((s) => s.id === selectedTime)
+                                      .start_time.slice(
+                                        0,
+                                        5
+                                      )} - ${selectedDaySchedule
+                                      .find((s) => s.id === selectedTime)
+                                      .end_time.slice(0, 5)}`
                                   : ""}
                               </p>
                             </>
@@ -1187,8 +1048,13 @@ const ScheduleSupport = () => {
             <p className="text-center mb-6">
               Bạn có chắc chắn muốn đặt lịch khám vào: <br />
               {formatSelectedDate()} <br />
-              {selectedTime
-                ? `${selectedTime.start} - ${selectedTime.end}`
+              {selectedTime &&
+              selectedDaySchedule.find((s) => s.id === selectedTime)
+                ? `${selectedDaySchedule
+                    .find((s) => s.id === selectedTime)
+                    .start_time.slice(0, 5)} - ${selectedDaySchedule
+                    .find((s) => s.id === selectedTime)
+                    .end_time.slice(0, 5)}`
                 : ""}
             </p>
             {/* Buttons */}

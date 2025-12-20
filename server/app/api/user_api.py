@@ -3,7 +3,7 @@ import re
 from werkzeug.exceptions import BadRequest
 
 from app.dao import dao_user, dao_appointment
-from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, dentist_model, appointment_model
+from app.api_conf import user_ns, user_creation_parser,user_model, dentist_ns, dentist_model, appointment_model, dentist_response_model
 from flask_restx import Resource
 from app.models import User
 from cloudinary import uploader
@@ -67,31 +67,45 @@ class UserList(Resource):
     @user_ns.marshal_with(user_model, code=201) # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
     def get(self):
         "Lấy danh sách người dùng"
-        users=dao_user.get_user_list("ROLE_PATIENT")
-        return users, 200
+        result=dao_user.get_user_list("ROLE_PATIENT")
+        return result["items"], 200
 
 
 @dentist_ns.route('/')
 class DentistList(Resource):
     @dentist_ns.doc('get_user_list')
-    @dentist_ns.marshal_list_with(dentist_model)
+    @dentist_ns.marshal_with(dentist_response_model)
     def get(self):
-        "Lấy danh sách bác sĩ (có filter)"
+        """Lấy danh sách bác sĩ (có filter + phân trang)"""
 
-        gender = request.args.get("gender")          # MALE / FEMALE
-        day = request.args.get("day")                # MONDAY / TUESDAY
-        from_time = request.args.get("from_time")    # 08:00
-        to_time = request.args.get("to_time")        # 11:00
+        gender = request.args.get("gender")
+        day = request.args.get("day")
+        from_time = request.args.get("from_time")
+        to_time = request.args.get("to_time")
 
-        dentists = dao_user.get_user_list(
+        page = request.args.get("page", type=int)
+        per_page = request.args.get("per_page", type=int)
+
+
+        result = dao_user.get_user_list(
             role="ROLE_DENTIST",
             gender=gender,
             dayOfWeek=day,
             from_time_str=from_time,
-            to_time_str=to_time
+            to_time_str=to_time,
+            page=page,
+            per_page=per_page
         )
 
-        return dentists, 200
+        return {
+            "data": result["items"],
+            "pagination": {
+                "page": result["page"],
+                "per_page": result["per_page"],
+                "total": result["total"],
+                "total_pages": result["total_pages"]
+            }
+        }, 200
 
 
 @user_ns.route('/<int:user_id>')

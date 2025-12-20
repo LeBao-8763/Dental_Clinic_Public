@@ -54,6 +54,15 @@ def create_appointment(
         # Validate guest
         if not patient_name or not patient_phone:
             raise ValueError("Khách chưa có tài khoản phải nhập tên và số điện thoại!")
+
+        existing_user = User.query.filter_by(
+            phone_number=patient_phone
+        ).first()
+
+        if existing_user:
+            raise ValueError(
+                "Số điện thoại đã có tài khoản. Vui lòng đăng nhập để đặt lịch."
+        )
     else:
         patient = User.query.get(patient_id)
         if not patient:
@@ -149,7 +158,8 @@ def get_appointments_by_dentist(dentist_id, status=None, appointment_date=None):
     )
 
     if status:
-        query = query.filter(Appointment.status == status)
+        statuses=status.split(",")
+        query = query.filter(Appointment.status.in_(statuses))
 
     if appointment_date:
         query = query.filter(Appointment.appointment_date == appointment_date)
@@ -253,7 +263,47 @@ def update_appointment(appointment_id, **kwargs):
     db.session.commit()
     return appointment
 
+def get_booked_slots(dentist_id, appointment_date):
+    return Appointment.query.filter(
+        Appointment.dentist_id == dentist_id,
+        Appointment.appointment_date == appointment_date,
+        Appointment.status != AppointmentStatusEnum.CANCELLED
+    ).all()
 
+#Hàm check xem bác sĩ đã có 5 lịch 1 ngày chưa
+def check_max_dentist_schedule(dentist_id, date):
+    count = Appointment.query.filter(
+        Appointment.dentist_id == dentist_id,
+        Appointment.appointment_date == date
+    ).count()
+
+    return count >= 5
+
+def has_unfinished_appointment_in_current_week(patient_id=None, patient_phone=None, target_date=None):
+    if not target_date:
+        target_date = datetime.utcnow().date()
+
+    start_of_week = target_date - timedelta(days=target_date.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+
+    query = Appointment.query.filter(
+        Appointment.appointment_date.between(start_of_week, end_of_week),
+        Appointment.status.in_([
+            AppointmentStatusEnum.PENDING,
+            AppointmentStatusEnum.CONSULTING,
+            AppointmentStatusEnum.PRESCRIPTION,
+            AppointmentStatusEnum.COMPLETED,
+        ])
+    )
+
+    if patient_id:
+        query = query.filter(Appointment.patient_id == patient_id)
+    elif patient_phone:
+        # Dùng like để match số điện thoại linh hoạt hơn
+        query = query.filter(Appointment.patient_phone.like(f"%{patient_phone}%"))
+    
+    unfinished = query.first()
+    return unfinished is not None
 
 #huy-dev
 def get_all_appointments():

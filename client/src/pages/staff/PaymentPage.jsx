@@ -1,27 +1,106 @@
 import React, { useState, useEffect } from "react";
-import { Search, User, Phone, Clock, Calendar, FileText } from "lucide-react";
+import {
+  Search,
+  User,
+  Phone,
+  Clock,
+  Calendar,
+  FileText,
+  Filter,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { endpoints, publicApi } from "../../configs/Apis";
 
 const PaymentPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [dentists, setDentists] = useState({}); // Lưu thông tin bác sĩ theo id
   const navigate = useNavigate();
 
-  // Fetch appointments khi component mount
-  useEffect(() => {
-    fetchAppointment();
-  }, []);
+  // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
+  const STATUS_OPTIONS = [
+    { label: "Tất cả", value: "" },
+    { label: "Chưa khám", value: "PENDING" },
+    { label: "Đang khám", value: "IN_PROGRESS" },
+    { label: "Đã khám", value: "COMPLETED" },
+    { label: "Đã hoàn thành", value: "PAID" },
+    { label: "Hủy", value: "CANCELLED" },
+  ];
 
+  // Map frontend key -> real backend statuses (dùng khi gửi params)
+  const STATUS_FILTER_MAP = {
+    IN_PROGRESS: ["CONSULTING", "PRESCRIPTION"],
+  };
+
+  // Helper: normalize status (hỗ trợ "AppointmentStatusEnum.PENDING" hoặc "PENDING")
+  const normalizeStatus = (status) => {
+    if (!status) return "";
+    if (typeof status !== "string") return "";
+    return status.includes(".") ? status.split(".").pop() : status;
+  };
+
+  // Map enum -> label hiển thị
+  const STATUS_TEXT = {
+    PENDING: "Chưa khám",
+    CONSULTING: "Đang khám",
+    PRESCRIPTION: "Đang khám",
+    COMPLETED: "Đã khám",
+    PAID: "Đã khám",
+    CANCELLED: "Hủy",
+  };
+
+  // Map enum -> css class
+  const STATUS_CLASS = {
+    PENDING: "bg-blue-100 text-blue-700",
+    CONSULTING: "bg-yellow-100 text-yellow-700",
+    PRESCRIPTION: "bg-yellow-100 text-yellow-700",
+    COMPLETED: "bg-purple-100 text-yellow-700",
+    CANCELLED: "bg-red-100 text-red-700",
+    PAID: "bg-green-100 text-green-700",
+  };
+
+  // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
+  const getStatusText = (status) => {
+    const s = normalizeStatus(status);
+    return STATUS_TEXT[s] || "Chưa xác định";
+  };
+
+  const getStatusClass = (status) => {
+    const s = normalizeStatus(status);
+    return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
+  };
+
+  // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
+  const selectedLabel =
+    STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
+
+  // Fetch appointments
   const fetchAppointment = async () => {
     setLoading(true);
     try {
-      const res = await publicApi.get(endpoints.appointment.all);
+      const today = new Date();
+      const formattedDate = today.toISOString().split("T")[0]; // "YYYY-MM-DD"
+      const params = {
+        date: formattedDate,
+      };
+      if (searchTerm.trim()) {
+        params.keyword = searchTerm.trim();
+      }
+      if (selectedStatus) {
+        if (STATUS_FILTER_MAP[selectedStatus]) {
+          params.status = STATUS_FILTER_MAP[selectedStatus].join(",");
+        } else {
+          params.status = selectedStatus;
+        }
+      }
+      const res = await publicApi.get(endpoints.appointment.all, { params });
       console.log("Dữ liệu cuộc hẹn", res.data);
       setAppointments(res.data);
-
       // Fetch thông tin bác sĩ cho mỗi appointment
       const uniqueDentistIds = [
         ...new Set(res.data.map((apt) => apt.dentist_id)),
@@ -40,50 +119,16 @@ const PaymentPage = () => {
         publicApi.get(endpoints.get_user_info(id))
       );
       const dentistResponses = await Promise.all(dentistPromises);
-
       // Tạo object map dentist_id -> thông tin bác sĩ
       const dentistMap = {};
       dentistResponses.forEach((res) => {
         dentistMap[res.data.id] = res.data;
       });
-
       console.log("Dữ liệu bác sĩ", dentistMap);
       setDentists(dentistMap);
     } catch (err) {
       console.log("Đã có lỗi xảy ra khi lấy dữ liệu bác sĩ", err);
     }
-  };
-
-  // Hàm chuyển đổi status sang tiếng Việt
-  const getStatusLabel = (status) => {
-    const statusMap = {
-      "AppointmentStatusEnum.PRESCRIPTION": {
-        label: "Đã Kê Đơn",
-        color: "bg-blue-100 text-blue-700",
-      },
-      "AppointmentStatusEnum.PENDING": {
-        label: "Chưa Khám",
-        color: "bg-orange-100 text-orange-700",
-      },
-      "AppointmentStatusEnum.COMPLETED": {
-        label: "Đã Hoàn Thành",
-        color: "bg-teal-100 text-teal-700",
-      },
-      "AppointmentStatusEnum.PAID": {
-        label: "Đã Thanh Toán",
-        color: "bg-purple-100 text-purple-700",
-      },
-      "AppointmentStatusEnum.CANCELLED": {
-        label: "Đã Hủy",
-        color: "bg-red-100 text-red-700",
-      },
-    };
-    return (
-      statusMap[status] || {
-        label: "Chưa xác định",
-        color: "bg-gray-100 text-gray-700",
-      }
-    );
   };
 
   // Hàm format ngày giờ
@@ -94,19 +139,17 @@ const PaymentPage = () => {
     return `${day}/${month}/${year} - ${startTimeFormatted} → ${endTimeFormatted}`;
   };
 
-  // Filter appointments
-  const filteredAppointments = appointments.filter((apt) => {
-    const search = searchTerm.toLowerCase();
-    const patientName = apt.is_guest
-      ? (apt.patient_name || "").toLowerCase()
-      : `${apt.user?.firstname || ""} ${
-          apt.user?.lastname || ""
-        }`.toLowerCase();
-    const phone = apt.is_guest
-      ? apt.patient_phone || ""
-      : apt.user?.phone_number || "";
-    return patientName.includes(search) || phone.includes(search);
-  });
+  useEffect(() => {
+    fetchAppointment();
+  }, [selectedStatus]);
+
+  // debounce cho searchTerm
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchAppointment();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -123,21 +166,65 @@ const PaymentPage = () => {
             Quản lý và xử lý thanh toán cho các cuộc hẹn
           </p>
         </div>
-
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-2xl">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên bệnh nhân hoặc số điện thoại..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-600"
-            />
+        {/* Search and Filter Section */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            Tìm kiếm và lọc
+          </h2>
+          <div className="flex flex-wrap gap-4">
+            {/* Search Input */}
+            <div className="flex-1 min-w-[300px]">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên bệnh nhân hoặc số điện thoại..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-600"
+                />
+              </div>
+            </div>
+            {/* Status Filter Dropdown */}
+            <div className="relative min-w-[150px]">
+              <button
+                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                className="w-full flex items-center justify-between pl-4 pr-3 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-600 gap-2"
+              >
+                <Filter className="w-5 h-5 text-gray-400" />
+                <span>{selectedLabel}</span>
+                <ChevronDown
+                  className={`w-5 h-5 transition-transform ${
+                    showStatusDropdown ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {showStatusDropdown && (
+                <div className="absolute top-full mt-1 w-full bg-white border-2 border-teal-500 rounded-lg shadow-lg z-10 overflow-hidden">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setSelectedStatus(opt.value);
+                        setShowStatusDropdown(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-teal-100 transition-colors ${
+                        selectedStatus === opt.value
+                          ? "bg-teal-100 text-teal-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {selectedStatus === opt.value && (
+                        <Check className="w-4 h-4 text-teal-700" />
+                      )}
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
         {/* Loading State */}
         {loading && (
           <div className="text-center py-12">
@@ -145,16 +232,13 @@ const PaymentPage = () => {
             <p className="text-gray-500 mt-4">Đang tải dữ liệu...</p>
           </div>
         )}
-
         {/* Appointments Grid */}
         {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredAppointments.map((apt) => {
-              const statusInfo = getStatusLabel(apt.status);
+            {appointments.map((apt) => {
               const dentist = dentists[apt.dentist_id];
-              const isCompleted =
-                apt.status === "AppointmentStatusEnum.COMPLETED";
-
+              const normalizedStatus = normalizeStatus(apt.status);
+              const isCompleted = normalizedStatus === "COMPLETED";
               return (
                 <div
                   key={apt.id}
@@ -169,13 +253,14 @@ const PaymentPage = () => {
                           : `${apt.user?.firstname} ${apt.user?.lastname}`}
                       </h3>
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(
+                          apt.status
+                        )}`}
                       >
-                        {statusInfo.label}
+                        {getStatusText(apt.status)}
                       </span>
                     </div>
                   </div>
-
                   {/* Card Body */}
                   <div className="px-6 py-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -196,7 +281,6 @@ const PaymentPage = () => {
                             </p>
                           </div>
                         </div>
-
                         <div className="flex items-start gap-2">
                           <Phone className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                           <div>
@@ -209,7 +293,6 @@ const PaymentPage = () => {
                           </div>
                         </div>
                       </div>
-
                       {/* Right Column */}
                       <div className="space-y-3">
                         <div className="flex items-start gap-2">
@@ -223,7 +306,6 @@ const PaymentPage = () => {
                             </p>
                           </div>
                         </div>
-
                         <div className="flex items-start gap-2">
                           <Clock className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                           <div>
@@ -241,7 +323,6 @@ const PaymentPage = () => {
                         </div>
                       </div>
                     </div>
-
                     {/* Diagnosis Section */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <div className="bg-[#D5E8E8] p-3 rounded-lg">
@@ -259,10 +340,9 @@ const PaymentPage = () => {
                       </div>
                     </div>
                   </div>
-
                   {/* Card Footer */}
                   <div className="px-6 py-4 border-t border-gray-200">
-                    {apt.status === "AppointmentStatusEnum.PAID" ? (
+                    {normalizedStatus === "PAID" ? (
                       // 🟩 Nếu đã thanh toán → Hiển thị nút "Chi tiết"
                       <button
                         onClick={() =>
@@ -299,9 +379,8 @@ const PaymentPage = () => {
             })}
           </div>
         )}
-
         {/* Empty State */}
-        {!loading && filteredAppointments.length === 0 && (
+        {!loading && appointments.length === 0 && (
           <div className="text-center py-12">
             <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg">Không tìm thấy cuộc hẹn nào</p>
@@ -311,5 +390,4 @@ const PaymentPage = () => {
     </div>
   );
 };
-
 export default PaymentPage;

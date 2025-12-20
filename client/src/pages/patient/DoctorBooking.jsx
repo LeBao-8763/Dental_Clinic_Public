@@ -14,15 +14,29 @@ const DoctorBooking = () => {
   const [selectedDays, setSelectedDays] = useState([]);
   const [timeRange, setTimeRange] = useState([8, 18]); // Default from 8:00 to 18:00 (in hours)
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(2); // Default 10, có thể thay đổi
+  const [pagination, setPagination] = useState({
+    total: 0,
+    total_pages: 1,
+    page: 1,
+    per_page: 10,
+  });
+
   const fetchDentistList = async (filters = {}) => {
     setLoading(true);
     try {
       const res = await publicApi.get(endpoints.get_dentist_list, {
-        params: filters,
+        params: {
+          ...filters,
+          page: currentPage, // Thêm page
+          per_page: perPage, // Thêm per_page
+        },
       });
       if (res.data) {
         console.log("Danh sách bác sĩ:", res.data);
-        setDentists(res.data);
+        setDentists(res.data.data);
+        setPagination(res.data.pagination); // Lưu pagination info
       }
     } catch (err) {
       console.log("Đã có lỗi xảy ra khi lấy danh sách bác sĩ:", err);
@@ -82,20 +96,16 @@ const DoctorBooking = () => {
 
   // Apply filters (you may need to implement actual filtering logic here or in fetch)
   const applyFilters = () => {
+    setCurrentPage(1); // Reset về page 1 khi apply filter
     const params = {};
-
-    // gender (chỉ cho chọn 1 → backend đang support 1)
     if (selectedGender) {
       params.gender = genderMap[selectedGender];
     }
-
-    // day + time
     if (selectedDays.length === 1) {
       params.day = dayMap[selectedDays[0]];
       params.from_time = `${timeRange[0].toString().padStart(2, "0")}:00`;
       params.to_time = `${timeRange[1].toString().padStart(2, "0")}:00`;
     }
-
     console.log("Query params gửi lên backend:", params);
     fetchDentistList(params);
   };
@@ -105,9 +115,43 @@ const DoctorBooking = () => {
     setSelectedGender("");
     setSelectedDays([]);
     setTimeRange([8, 18]);
-    // Fetch full list without filters
-    fetchDentistList();
+    setCurrentPage(1); // Reset page
+    fetchDentistList(); // Fetch full list
   };
+
+  //Hàm này được gọi khi chuyển trang , fetch lại dữ liệu từ db và giữ nguyên các filter đã lọc trước đó
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.total_pages) return; // Giới hạn
+    setCurrentPage(newPage);
+    // Refetch với filters hiện tại (cần lấy filters từ state)
+    const params = {};
+    if (selectedGender) {
+      params.gender = genderMap[selectedGender];
+    }
+    if (selectedDays.length === 1) {
+      params.day = dayMap[selectedDays[0]];
+      params.from_time = `${timeRange[0].toString().padStart(2, "0")}:00`;
+      params.to_time = `${timeRange[1].toString().padStart(2, "0")}:00`;
+    }
+    fetchDentistList(params);
+  };
+
+  //Đảm bảo fetch lại dữ liệu khi có sự thay đổi trang hiện tại
+  useEffect(() => {
+    // Chỉ fetch nếu currentPage thay đổi (sau lần đầu)
+    if (currentPage !== pagination.page) {
+      const params = {}; // Lấy filters hiện tại (tương tự applyFilters)
+      if (selectedGender) {
+        params.gender = genderMap[selectedGender];
+      }
+      if (selectedDays.length === 1) {
+        params.day = dayMap[selectedDays[0]];
+        params.from_time = `${timeRange[0].toString().padStart(2, "0")}:00`;
+        params.to_time = `${timeRange[1].toString().padStart(2, "0")}:00`;
+      }
+      fetchDentistList(params);
+    }
+  }, [currentPage]);
 
   return (
     <div>
@@ -853,6 +897,40 @@ const DoctorBooking = () => {
                 </div>
               ))}
             </div>
+            {pagination.total_pages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-[#009688] hover:text-white transition"
+                >
+                  Previous
+                </button>
+                {Array.from(
+                  { length: pagination.total_pages },
+                  (_, i) => i + 1
+                ).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`px-4 py-2 rounded-md ${
+                      pageNum === currentPage
+                        ? "bg-[#009688] text-white"
+                        : "bg-gray-200 hover:bg-[#009688] hover:text-white"
+                    } transition`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === pagination.total_pages}
+                  className="px-4 py-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-[#009688] hover:text-white transition"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </main>
         </div>
       </section>

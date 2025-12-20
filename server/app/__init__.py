@@ -1,7 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
 from config import Config
-from app.scheduler.scheduler import init_scheduler
 from app.extensions import db, jwt, admin, login
 from app.admin_view import init_admin
 
@@ -16,8 +15,6 @@ def create_app():
     jwt.init_app(app)
     admin.init_app(app)
     login.init_app(app)
-
-    init_scheduler(app)
 
     from .api_conf import api_bp
     app.register_blueprint(api_bp)

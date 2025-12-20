@@ -1,6 +1,7 @@
 from app import db
-from app.models import DentistSchedule, DayOfWeekEnum, ClinicHours
+from app.models import DentistSchedule, DayOfWeekEnum, ClinicHours, DentistCustomSchedule
 from datetime import datetime, date, timedelta
+from app.dao import dao_appointment
 
 def create_dentist_schedule(dentist_id, day_of_week, start_time, end_time):
     try:
@@ -112,6 +113,63 @@ def delete_dentist_schedules_by_day(dentist_id, day_of_week):
     db.session.commit()
     return deleted_count
 
+def get_day_of_week_enum(date_obj):
+    return DayOfWeekEnum[date_obj.strftime("%A").upper()]
+
+def is_slot_booked(slot_start, slot_end, appointments):
+    for apt in appointments:
+        if slot_start < apt.end_time and slot_end > apt.start_time:
+            return True
+    return False
+
+def get_base_schedules(dentist_id, appointment_date):
+    day_of_week = get_day_of_week_enum(appointment_date)
+
+    custom = DentistCustomSchedule.query.filter_by(
+        dentist_id=dentist_id,
+        custom_date=appointment_date
+    ).all()
+
+    if custom:
+        # Nếu có ngày nghỉ nguyên ngày
+        if any(c.is_day_off for c in custom):
+            return []
+
+        # Ngày custom nhưng có ca làm
+        return custom
+
+    # Không có custom → dùng schedule thường
+    return DentistSchedule.query.filter(
+        DentistSchedule.dentist_id == dentist_id,
+        DentistSchedule.day_of_week == day_of_week
+    ).all()
+
+def get_available_schedule_by_date(dentist_id, appointment_date):
+
+    if isinstance(appointment_date, str):
+        appointment_date = datetime.strptime(
+            appointment_date, "%Y-%m-%d"
+        ).date()
+
+    base_slots=get_base_schedules(dentist_id, appointment_date)
+
+    if not base_slots:
+        return []
+    
+    booked=dao_appointment.get_booked_slots(dentist_id, appointment_date)
+
+    available_slots=[]
+
+    for slot in base_slots:
+        start=slot.start_time
+        end=slot.end_time
+
+        if not is_slot_booked(start, end, booked):
+            available_slots.append(slot)
+    
+    return available_slots
+    
+  
 #huy-dev
 def get_all_dentist_schedules():
     return DentistSchedule.query.all()

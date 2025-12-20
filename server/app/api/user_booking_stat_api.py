@@ -13,4 +13,16 @@ class UserBookingStat(Resource):
         if user_booking_stat:
             return user_booking_stat, 201
         return 500
-        
+    
+    @user_booking_stat_ns.doc('reset_user_booking_block')
+    @user_booking_stat_ns.marshal_with(user_booking_stat_model, code=200)
+    def patch(self, user_id):
+        """
+        Reset block nếu đã hết hạn (blocked_until <= now)
+        """
+        user_booking_stat = dao_user_booking_stats.reset_block_if_expired(user_id)
+
+        if not user_booking_stat:
+            user_booking_stat_ns.abort(404, "User booking stat not found")
+
+        return user_booking_stat, 200

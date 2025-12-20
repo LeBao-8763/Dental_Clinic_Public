@@ -5,23 +5,100 @@ import { useNavigate } from "react-router-dom";
 
 const WorkingAppointment = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDate, setSelectedDate] = useState("15/10/2025");
+  // Mặc định là ngày hôm nay
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+  });
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
-  const [selectedStatus, setSelectedStatus] = React.useState("Tất cả");
+  // selectedStatus lưu ENUM (ví dụ: "", "PENDING", "IN_PROGRESS", "PAID", "CANCELED")
+  const [selectedStatus, setSelectedStatus] = React.useState("");
   const [loading, setLoading] = useState(false);
   const [appointment, setAppointment] = useState(null);
 
+  // Tính toán max date (hôm nay + 7 ngày)
+  const getMaxDate = () => {
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 7);
+    return maxDate.toISOString().split("T")[0];
+  };
+
+  const maxDate = getMaxDate();
+
   const navigate = useNavigate();
 
-  const statusOptions = ["Tất cả", "Chưa khám", "Đang khám", "Đã khám", "Hủy"];
+  // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
+  const STATUS_OPTIONS = [
+    { label: "Tất cả", value: "" },
+    { label: "Chưa khám", value: "PENDING" },
+    { label: "Đang khám", value: "IN_PROGRESS" }, // key trung gian
+    { label: "Đã khám", value: "PAID" },
+    { label: "Hủy", value: "CANCELED" },
+  ];
+
+  // Map frontend key -> real backend statuses (dùng khi gửi params)
+  const STATUS_FILTER_MAP = {
+    IN_PROGRESS: ["CONSULTING", "PRESCRIPTION", "COMPLETED"],
+  };
+
+  // Helper: normalize status (hỗ trợ "AppointmentStatusEnum.PENDING" hoặc "PENDING")
+  const normalizeStatus = (status) => {
+    if (!status) return "";
+    if (typeof status !== "string") return "";
+    return status.includes(".") ? status.split(".").pop() : status;
+  };
+
+  // Map enum -> label hiển thị
+  const STATUS_TEXT = {
+    PENDING: "Chưa khám",
+    CONSULTING: "Đang khám",
+    PRESCRIPTION: "Đang khám",
+    COMPLETED: "Đang khám",
+    PAID: "Đã khám",
+    CANCELLED: "Hủy",
+    CANCELED: "Hủy",
+  };
+
+  // Map enum -> css class
+  const STATUS_CLASS = {
+    PENDING: "bg-blue-100 text-blue-700",
+    CONSULTING: "bg-yellow-100 text-yellow-700",
+    PRESCRIPTION: "bg-yellow-100 text-yellow-700",
+    COMPLETED: "bg-yellow-100 text-yellow-700",
+    CANCELLED: "bg-red-100 text-red-700",
+    CANCELED: "bg-red-100 text-red-700",
+    PAID: "bg-green-100 text-green-700",
+  };
 
   const user = useSelector((state) => state.auth.user);
 
   const fetchDentistWorkingScheduleById = async (dentistId) => {
     setLoading(true);
     try {
+      const params = {};
+
+      // selectedStatus bây giờ có thể là key trung gian (IN_PROGRESS) hoặc enum thật
+      if (selectedStatus) {
+        if (STATUS_FILTER_MAP[selectedStatus]) {
+          // gửi nhiều status thành chuỗi phân cách bằng dấu phẩy
+          params.status = STATUS_FILTER_MAP[selectedStatus].join(",");
+        } else {
+          params.status = selectedStatus;
+        }
+      }
+
+      // Truyền date theo format YYYY-MM-DD
+      if (selectedDate) {
+        params.date = selectedDate;
+      }
+
+      if (searchTerm.trim()) {
+        params.keyword = searchTerm.trim();
+      }
+
       const response = await publicApi.get(
-        endpoints.appointment.get_by_dentist_id(dentistId)
+        endpoints.appointment.get_by_dentist_id(dentistId),
+        { params }
       );
       setAppointment(response.data);
       console.log("Lịch làm việc bác sĩ theo id:", response.data);
@@ -36,7 +113,32 @@ const WorkingAppointment = () => {
     if (user) {
       fetchDentistWorkingScheduleById(user.id);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, selectedStatus, selectedDate]);
+
+  // debounce cho searchTerm
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (user) fetchDentistWorkingScheduleById(user.id);
+    }, 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, user]);
+
+  // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
+  const getStatusText = (status) => {
+    const s = normalizeStatus(status);
+    return STATUS_TEXT[s] || "Không xác định";
+  };
+
+  const getStatusClass = (status) => {
+    const s = normalizeStatus(status);
+    return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
+  };
+
+  // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
+  const selectedLabel =
+    STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -87,11 +189,9 @@ const WorkingAppointment = () => {
               <div className="relative group">
                 <input
                   type="date"
-                  value={selectedDate.split("/").reverse().join("-")}
-                  onChange={(e) => {
-                    const date = new Date(e.target.value);
-                    setSelectedDate(date.toLocaleDateString("vi-VN"));
-                  }}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  max={maxDate}
                   className="px-4 py-2.5 pl-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] hover:border-[#009688] transition-all cursor-pointer"
                 />
                 <svg
@@ -129,7 +229,7 @@ const WorkingAppointment = () => {
                     d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                   />
                 </svg>
-                <span className="font-medium">{selectedStatus}</span>
+                <span className="font-medium">{selectedLabel}</span>
                 <svg
                   className={`w-4 h-4 transition-transform ${
                     showStatusDropdown ? "rotate-180" : ""
@@ -150,25 +250,25 @@ const WorkingAppointment = () => {
               {/* Dropdown Menu */}
               {showStatusDropdown && (
                 <div className="absolute top-full mt-2 right-0 bg-white border-2 border-[#009688] rounded-lg shadow-lg z-10 min-w-[180px] overflow-hidden">
-                  {statusOptions.map((status, index) => (
+                  {STATUS_OPTIONS.map((opt, index) => (
                     <button
                       key={index}
                       onClick={() => {
-                        setSelectedStatus(status);
+                        setSelectedStatus(opt.value); // lưu enum (value hoặc key trung gian)
                         setShowStatusDropdown(false);
                       }}
                       className={`w-full px-4 py-3 text-left hover:bg-[#E0F2F1] transition-colors ${
-                        selectedStatus === status
+                        selectedStatus === opt.value
                           ? "bg-[#E0F2F1] text-[#009688] font-semibold"
                           : "text-gray-700"
                       } ${
-                        index !== statusOptions.length - 1
+                        index !== STATUS_OPTIONS.length - 1
                           ? "border-b border-gray-200"
                           : ""
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {selectedStatus === status && (
+                        {selectedStatus === opt.value && (
                           <svg
                             className="w-4 h-4 text-[#009688]"
                             fill="none"
@@ -183,7 +283,7 @@ const WorkingAppointment = () => {
                             />
                           </svg>
                         )}
-                        <span>{status}</span>
+                        <span>{opt.label}</span>
                       </div>
                     </button>
                   ))}
@@ -243,17 +343,6 @@ const WorkingAppointment = () => {
               const patientPhone = item.is_guest
                 ? item.patient_phone
                 : item.user.phone_number;
-
-              const appointmentStatus =
-                item.status === "AppointmentStatusEnum.PENDING"
-                  ? "Chưa khám"
-                  : item.status === "AppointmentStatusEnum.IN_PROGRESS"
-                  ? "Đang khám"
-                  : item.status === "AppointmentStatusEnum.COMPLETED"
-                  ? "Đã khám"
-                  : item.status === "AppointmentStatusEnum.PAID"
-                  ? "Đã thanh toán"
-                  : "Hủy";
 
               return (
                 <div
@@ -336,18 +425,11 @@ const WorkingAppointment = () => {
                       </div>
                     </div>
                     <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${
-                        appointmentStatus === "Chưa khám"
-                          ? "bg-blue-100 text-blue-700"
-                          : appointmentStatus === "Đang khám"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : appointmentStatus === "Đã khám" ||
-                            appointmentStatus === "Đã thanh toán"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
+                      className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusClass(
+                        item.status
+                      )}`}
                     >
-                      {appointmentStatus}
+                      {getStatusText(item.status)}
                     </span>
                   </div>
 

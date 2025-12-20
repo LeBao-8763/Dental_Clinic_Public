@@ -125,15 +125,18 @@ const Appointment = () => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, user]);
+
   // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
   const getStatusText = (status) => {
     const s = normalizeStatus(status);
     return STATUS_TEXT[s] || "Không xác định";
   };
+
   const getStatusClass = (status) => {
     const s = normalizeStatus(status);
     return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
   };
+
   const formatVietnameseDate = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);

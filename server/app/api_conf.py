@@ -274,6 +274,18 @@ user_booking_stat_model=api.model('UserBookingStat',{
     'blocked_until': fields.String(description='Thời gian cấm')
 })
 
+pagination_model = dentist_ns.model("Pagination", {
+    "page": fields.Integer,
+    "per_page": fields.Integer,
+    "total": fields.Integer,
+    "total_pages": fields.Integer,
+})
+
+dentist_response_model = dentist_ns.model("DentistResponse", {
+    "data": fields.List(fields.Nested(dentist_model)),
+    "pagination": fields.Nested(pagination_model)
+})
+
 # ------------------------------
 # --- Định nghĩa Parsers cho Swagger UI ---
 # Parsers được sử dụng để định nghĩa các tham số đầu vào (query params, form data)

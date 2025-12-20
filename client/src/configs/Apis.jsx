@@ -20,6 +20,8 @@ export const endpoints = {
   },
   dentist_schedule: {
     get_schedule: (dentistId) => `dentist_schedules/${dentistId}`,
+    get_available_schedule: (dentistId, date) =>
+      `dentist_schedules/${dentistId}/${date}`,
     create_multiple: `dentist_schedules/`,
     delete_by_day: (dentistId, dayOfWeek) =>
       `/dentist_schedules/${dentistId}/${dayOfWeek}`,
@@ -31,6 +33,10 @@ export const endpoints = {
     all: "appointments/",
     get_by_id: (apt_id) => `appointments/${apt_id}`,
     update: (apt_id) => `appointments/${apt_id}`,
+    check_max_appointment: (dentist_id, date) =>
+      `appointments/check-max/${dentist_id}/${date}`,
+    check_weekly_booking: (patient_id, date) =>
+      `appointments/check-weekly-booking/${patient_id}/${date}`,
   },
   custom_schedule: {
     get_by_dentist_id: (dentistId) => `dentist_custom_schedules/${dentistId}`,
@@ -64,6 +70,7 @@ export const endpoints = {
   },
   user_booking_stat: {
     get_by_userId: (userId) => `user_booking_stat/${userId}`,
+    reset: (userId) => `user_booking_stat/${userId}`,
   },
 };
 

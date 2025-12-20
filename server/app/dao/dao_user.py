@@ -1,7 +1,7 @@
 import hashlib
 
 from app import db
-from app.models import User, DentistSchedule
+from app.models import User, DentistSchedule, Appointment
 from app.models import GenderEnum, RoleEnum, StatusEnum, DayOfWeekEnum
 import bcrypt
 from .dao_user_booking_stats import create_user_booking_stats
@@ -20,6 +20,7 @@ def create_user(firstname, lastname, gender,username, password, phone_number, sp
 
     if password is not None:    
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
 
     if not role:
         user = User(
@@ -41,12 +42,24 @@ def create_user(firstname, lastname, gender,username, password, phone_number, sp
             avatar=avatar,
             phone_number=phone_number,)
     db.session.add(user)
-    db.session.commit()
+    db.session.flush()
+
+    #Check xem bệnh nhân có đặt lịch bên bệnh viện lúc chưa có tài khoản hay chưa
+    guest_appointments = Appointment.query.filter(
+        Appointment.is_guest == True,
+        Appointment.patient_phone == user.phone_number
+    ).all()
+
+    for appt in guest_appointments:
+        appt.patient_id = user.id
+        appt.is_guest = False
+        appt.patient_phone = None
 
     # Nếu là bệnh nhân -> tạo stats
     if user.role == RoleEnum.ROLE_PATIENT:
         create_user_booking_stats(user.id)
 
+    db.session.commit()
     return user
 
 def login(password, account_identifier):
@@ -71,7 +84,8 @@ def check_login(username, password):
 def get_user_by_id(user_id):
     return User.query.get(user_id)
 
-def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=None, dayOfWeek=None):
+def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=None, dayOfWeek=None,  page=1,
+    per_page=6):
     try:
         role_enum = RoleEnum(role)   # convert string -> Enum
     except ValueError:
@@ -98,7 +112,20 @@ def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=
             )
             .distinct(User.id)
         )
-    return query.all()
+
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    return {
+        "items": pagination.items,
+        "total": pagination.total,
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total_pages": pagination.pages
+    }
 
 #huy-dev
 # def get_user_by_id(user_id):

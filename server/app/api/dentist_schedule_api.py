@@ -29,6 +29,7 @@ class Dental_Schedule(Resource):
 
         return 500
 
+
 @dentist_shedule_ns.route('/<int:dentist_id>')
 class DentistScheduleList(Resource):
     @dentist_shedule_ns.doc('get_dentist_schedules')
@@ -41,6 +42,17 @@ class DentistScheduleList(Resource):
         return schedules
 
 
+@dentist_shedule_ns.route('/<int:dentist_id>/<string:date>')
+class DentistScheduleList(Resource):
+    @dentist_shedule_ns.doc('get_available_dentist_schedules')
+    @dentist_shedule_ns.marshal_list_with(dentist_shedule_model)
+    def get(self, dentist_id, date):
+        "Lấy danh sách lịch làm việc khả dụng của nha sĩ theo ngày"
+        schedules=dao_dentist_schedule.get_available_schedule_by_date(dentist_id, date)
+
+        if schedules:
+            return schedules, 201
+        return 500
 
 @dentist_shedule_ns.route('/<int:dentist_id>/<string:day_of_week>')
 class DentistScheduleByDay(Resource):
