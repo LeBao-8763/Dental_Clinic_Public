@@ -36,6 +36,7 @@ def create_invoice(appointment_id):
             total_medicine_fee += Decimal(d.price or 0) * Decimal(d.dosage or 0) * Decimal(d.duration_days or 1)
 
             qty_to_deduct = (d.dosage or 0) * (d.duration_days or 1)
+            qty_used = qty_to_deduct  # ✅ Giữ lại số lượng ban đầu để trừ reserved_quantity
 
             # 🔹 Lấy các lô thuốc có cùng medicine_id, ưu tiên hạn sớm nhất (FEFO)
             imports = (
@@ -60,7 +61,7 @@ def create_invoice(appointment_id):
 
             # 🔹 Cập nhật lại reserved_quantity trong bảng medicine (trừ lượng đã xuất)
             reserved_now = medicine.reserved_quantity or 0
-            medicine.reserved_quantity = max(reserved_now - qty_to_deduct, 0)
+            medicine.reserved_quantity = max(reserved_now - qty_used, 0)
             db.session.add(medicine)
 
         # 5️⃣ Tính tổng tiền dịch vụ
@@ -110,13 +111,3 @@ def create_invoice(appointment_id):
 
 def get_invoice_by_aptId(apt_id):
     return Invoice.query.filter_by(appointment_id=apt_id).first()
-
-# if __name__ == "__main__":
-#     from app import create_app
-#
-#     app = create_app()
-#     with app.app_context():
-#         # 🔹 Gọi hàm để test
-#         result, status = create_invoice(appointment_id=2)
-#         print("Status:", status)
-#         print("Result:", result)

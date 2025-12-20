@@ -5,5 +5,5 @@ from flask_admin import Admin
 
 db = SQLAlchemy()
 jwt = JWTManager()
-admin = Admin(name="QUẢN TRỊ PHÒNG KHÁM NHA KHOA", template_mode="bootstrap4")
+admin = Admin(name="QUẢN TRỊ PHÒNG KHÁM NHA KHOA", template_mode="bootstrap4", index_view="")
 login = LoginManager()
