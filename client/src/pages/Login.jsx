@@ -13,7 +13,7 @@ const Login = () => {
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [setErrors] = useState({});
 
   // Register fields
   const [registerData, setRegisterData] = useState({
@@ -91,7 +91,8 @@ const Login = () => {
     if (!data.phone.trim()) {
       errors.phone = "Vui lòng nhập số điện thoại";
     } else if (!phoneRegex.test(data.phone)) {
-      errors.phone = "Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 hoặc 11 số)";
+      errors.phone =
+        "Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 hoặc 11 số)";
     }
 
     if (!data.gender) errors.gender = "Vui lòng chọn giới tính";

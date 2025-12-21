@@ -2,12 +2,17 @@ from app.dao import dao_dentist_schedule
 from flask import Flask, request, jsonify
 from flask_restx import Resource
 from app.api_conf import dentist_shedule_model, dentist_shedule_parser, dentist_shedule_ns, multiple_schedule_model
+from flask_jwt_extended import jwt_required
+from app.utils.check_role import role_required
+from app.models import RoleEnum
 
 @dentist_shedule_ns.route('/')
 class Dental_Schedule(Resource):
     @dentist_shedule_ns.doc('create_dentist_schedule')
     @dentist_shedule_ns.expect(multiple_schedule_model)   # Định nghĩa định dạng request body cho Swagger UI
-    @dentist_shedule_ns.marshal_with(multiple_schedule_model, code=201) # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
+    @dentist_shedule_ns.marshal_with(multiple_schedule_model, code=201) 
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def post(self):
         "Tạo lịch hẹn mới"
         data=request.get_json()
@@ -35,6 +40,8 @@ class DentistScheduleList(Resource):
     @dentist_shedule_ns.doc('get_dentist_schedules')
     @dentist_shedule_ns.param('day_of_week', "Ngày trong tuần để lọc lịch làm việc (tùy chọn)")
     @dentist_shedule_ns.marshal_list_with(dentist_shedule_model) # Định nghĩa định dạng response
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def get(self, dentist_id):
         "Lấy danh sách lịch làm việc của nha sĩ theo ID và ngày trong tuần (nếu có)"
         day_of_week = request.args.get('day_of_week')
@@ -59,6 +66,8 @@ class DentistScheduleByDay(Resource):
     @dentist_shedule_ns.doc('delete_dentist_schedules_by_day')
     @dentist_shedule_ns.response(200, 'Xóa thành công')
     @dentist_shedule_ns.response(400, 'day_of_week không hợp lệ')
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def delete(self, dentist_id, day_of_week):
         """
         Xóa tất cả lịch làm việc của bác sĩ trong một ngày cụ thể

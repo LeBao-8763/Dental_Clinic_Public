@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Calendar, Clock, User, Briefcase, CheckCircle, X } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  User,
+  Briefcase,
+  CheckCircle,
+  X,
+  AlertCircle,
+} from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 import { toast } from "react-toastify";
@@ -22,6 +30,7 @@ const DoctorDetail = () => {
   const { doctorId } = location.state || {};
   const [isWeekBooked, setIsWeekBooked] = useState(false);
   const [pendingAppointments, setPendingAppointments] = useState([]);
+  const [userBookingStat, setUserBookingStat] = useState(null);
 
   const patient = useSelector((state) => state.auth.user);
 
@@ -79,7 +88,7 @@ const DoctorDetail = () => {
         }
       );
 
-      setPendingAppointments(response.data);
+      setPendingAppointments(response.data.data);
     } catch (error) {
       console.error("Error fetching dentist data:", error);
       setLoading(false);
@@ -120,9 +129,24 @@ const DoctorDetail = () => {
 
   const resetUserBookingStat = async (patient_id) => {
     try {
-      await publicApi.patch(endpoints.user_booking_stat.reset(patient_id));
+      await privateApi.patch(endpoints.user_booking_stat.reset(patient_id));
     } catch (err) {
       console.log("Có lỗi xảy ra khi reset thông số đặt lịch", err);
+    }
+  };
+
+  const fetchUserBookingStat = async (userId) => {
+    setLoading(true);
+    try {
+      const res = await privateApi.get(
+        endpoints.user_booking_stat.get_by_userId(userId)
+      );
+      setUserBookingStat(res.data);
+      console.log("Thông số đặt lịch của người dùng", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy thông số đặt lịch ", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -254,6 +278,7 @@ const DoctorDetail = () => {
         checkUnfinishedSchedule(patient.id, todayStr);
         resetUserBookingStat(patient.id);
         fetchPatientSchedule(patient.id);
+        fetchUserBookingStat(patient.id);
       }
     }
   }, [doctorId, patient]);
@@ -309,8 +334,17 @@ const DoctorDetail = () => {
     }
   };
 
+  const isBlocked =
+    userBookingStat &&
+    userBookingStat.blocked_until &&
+    new Date(userBookingStat.blocked_until) > new Date();
+
   const handleBookingClick = () => {
     setDescription("");
+    if (isBlocked) {
+      toast.error(`Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`);
+      return;
+    }
     if (isDayFull) {
       toast.warn("Ngày này đã đủ số lịch, vui lòng chọn ngày khác.");
       return;
@@ -413,6 +447,14 @@ const DoctorDetail = () => {
                 .join(", ")}
             </p>
           )}
+          {isBlocked && (
+            <p className="text-red-600 font-semibold mb-4 flex items-center gap-1">
+              <AlertCircle size={20} />
+              <span>
+                Bạn bị cấm tới thời gian {userBookingStat.blocked_until}
+              </span>
+            </p>
+          )}
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <Calendar className="text-teal-600" size={28} />
             Lịch khám
@@ -453,7 +495,7 @@ const DoctorDetail = () => {
               </div>
             )}
 
-            {isWeekBooked && (
+            {isWeekBooked && !isBlocked && (
               <div className="p-4 mb-4 rounded-lg bg-red-50 border border-red-100 text-red-700 text-center">
                 Tuần này bạn đã đặt lịch. Vui lòng hoàn thành lịch hiện tại
                 trước khi đặt thêm.
@@ -488,10 +530,14 @@ const DoctorDetail = () => {
                             0,
                             5
                           )} - ${slot.end_time.slice(0, 5)}`;
-                          const isDisabled = isDayFull || isWeekBooked;
+                          const isDisabled =
+                            isDayFull || isWeekBooked || isBlocked;
                           let slotClass;
                           if (isDisabled) {
-                            if (isWeekBooked) {
+                            if (isBlocked) {
+                              slotClass =
+                                "border-red-300 bg-red-100 text-red-400 opacity-60 cursor-not-allowed";
+                            } else if (isWeekBooked) {
                               slotClass =
                                 "border-red-300 bg-red-100 text-red-400 opacity-60 cursor-not-allowed";
                             } else {
@@ -509,6 +555,12 @@ const DoctorDetail = () => {
                             <button
                               key={slot.id}
                               onClick={() => {
+                                if (isBlocked) {
+                                  toast.error(
+                                    `Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`
+                                  );
+                                  return;
+                                }
                                 if (isDayFull) {
                                   toast.warn(
                                     "Ngày này đã đủ số lịch, vui lòng chọn ngày khác."

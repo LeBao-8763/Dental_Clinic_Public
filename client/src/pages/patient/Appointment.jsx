@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Calendar, Clock, X, AlertCircle } from "lucide-react";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 import { useSelector } from "react-redux";
 import Loading from "../../components/common/Loading";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +18,16 @@ const Appointment = () => {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
+  const [userBookingStat, setUserBookingStat] = useState(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage] = useState(6); // Default 10
+  const [pagination, setPagination] = useState({
+    total: 0,
+    total_pages: 1,
+    page: 1,
+    per_page: 10,
+  });
 
   // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
   const STATUS_OPTIONS = [
@@ -61,7 +71,10 @@ const Appointment = () => {
     if (!pid) return;
     setLoading(true);
     try {
-      const params = {};
+      const params = {
+        page: currentPage,
+        per_page: perPage,
+      };
       // selectedStatus bây giờ có thể là key trung gian (IN_PROGRESS) hoặc enum thật
       if (selectedStatus) {
         if (STATUS_FILTER_MAP[selectedStatus]) {
@@ -78,18 +91,35 @@ const Appointment = () => {
       if (searchTerm.trim()) {
         params.keyword = searchTerm.trim();
       }
-      const res = await publicApi.get(
+      const res = await privateApi.get(
         endpoints.appointment.get_by_patient_id(pid),
         { params }
       );
       console.log("Dữ liệu cuộc hẹn", res.data);
-      setAppointments(res.data || []);
+      setAppointments(res.data.data || []);
+      setPagination(res.data.pagination); // Lưu pagination info
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu cuộc hẹn", err);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchUserBookingStat = async (userId) => {
+    setLoading(true);
+    try {
+      const res = await privateApi.get(
+        endpoints.user_booking_stat.get_by_userId(userId)
+      );
+      setUserBookingStat(res.data);
+      console.log("Thông số đặt lịch của người dùng", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy thông số đặt lịch ", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const cancelAppointment = async (appointmentId) => {
     if (!appointmentId) return;
     setLoading(true);
@@ -109,13 +139,19 @@ const Appointment = () => {
     }
   };
 
-  // fetch khi user hoặc filter thay đổi
+  // Reset currentPage về 1 khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, selectedStartDate, selectedEndDate, searchTerm]);
+
+  // fetch khi user hoặc filter thay đổi (sẽ dùng currentPage=1 từ effect trên)
   useEffect(() => {
     if (user) {
       fetchAppointment(user.id);
+      fetchUserBookingStat(user.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedStatus, selectedStartDate, selectedEndDate]);
+  }, [user, selectedStatus, selectedStartDate, selectedEndDate, currentPage]);
 
   // debounce cho searchTerm (gọi với user.id)
   useEffect(() => {
@@ -125,6 +161,18 @@ const Appointment = () => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, user]);
+
+  // Đảm bảo fetch lại khi currentPage thay đổi
+  useEffect(() => {
+    if (currentPage !== pagination.page && user) {
+      fetchAppointment(user.id);
+    }
+  }, [currentPage, pagination.page, user]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.total_pages) return;
+    setCurrentPage(newPage);
+  };
 
   // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
   const getStatusText = (status) => {
@@ -157,6 +205,19 @@ const Appointment = () => {
   // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
   const selectedLabel =
     STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
+
+  const isBlocked =
+    userBookingStat?.blocked_until &&
+    new Date(userBookingStat.blocked_until) > new Date();
+
+  let blockedMessage = "";
+  if (isBlocked && userBookingStat?.blocked_until) {
+    const [datePart, timePart] = userBookingStat.blocked_until.split(" ");
+    const formattedDate = formatVietnameseDate(datePart);
+    const formattedTime = timePart.slice(0, 5);
+    blockedMessage = `Bạn đã bị cấm đến ngày ${formattedDate} giờ ${formattedTime} vì đã hủy lịch quá số lượng cho phép`;
+  }
+
   return (
     <div>
       {/* Loading overlay */}
@@ -850,7 +911,13 @@ const Appointment = () => {
                             setSelectedAppointment(appointment);
                             setShowCancelDialog(true);
                           }}
-                          className="flex-1 py-2.5 rounded-lg text-white transition bg-red-500 hover:bg-red-600"
+                          disabled={isBlocked}
+                          title={blockedMessage}
+                          className={`flex-1 py-2.5 rounded-lg text-white transition ${
+                            isBlocked
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-red-500 hover:bg-red-600"
+                          }`}
                         >
                           Hủy lịch
                         </button>
@@ -879,6 +946,40 @@ const Appointment = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {pagination.total_pages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-8">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-[#009688] hover:text-white transition"
+              >
+                Previous
+              </button>
+              {Array.from(
+                { length: pagination.total_pages },
+                (_, i) => i + 1
+              ).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`px-4 py-2 rounded-md ${
+                    pageNum === currentPage
+                      ? "bg-[#009688] text-white"
+                      : "bg-gray-200 hover:bg-[#009688] hover:text-white"
+                  } transition`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === pagination.total_pages}
+                className="px-4 py-2 bg-gray-200 rounded-md disabled:opacity-50 hover:bg-[#009688] hover:text-white transition"
+              >
+                Next
+              </button>
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi } from "../../configs/Apis";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -8,7 +8,7 @@ const WorkingAppointment = () => {
   // Mặc định là ngày hôm nay
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    return today.toLocaleDateString("en-CA"); // ISO format YYYY-MM-DD theo local
   });
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
   // selectedStatus lưu ENUM (ví dụ: "", "PENDING", "IN_PROGRESS", "PAID", "CANCELED")
@@ -96,7 +96,7 @@ const WorkingAppointment = () => {
         params.keyword = searchTerm.trim();
       }
 
-      const response = await publicApi.get(
+      const response = await privateApi.get(
         endpoints.appointment.get_by_dentist_id(dentistId),
         { params }
       );

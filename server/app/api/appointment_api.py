@@ -1,9 +1,11 @@
 from flask import jsonify, request
 from flask_restx import Resource
-from app.api_conf import appointment_ns, appointment_model, appointment_creation_parser,appointment_with_user_model,appointment_update_parser
+from app.api_conf import appointment_ns, appointment_model, appointment_creation_parser,appointment_with_user_model,appointment_update_parser,patient_appointment_pagination_res_model
 from app.dao import dao_appointment
 from datetime import datetime
 from flask_jwt_extended import jwt_required
+from app.utils.check_role import role_required
+from app.models import RoleEnum
 
 
 @appointment_ns.route('/')
@@ -90,10 +92,10 @@ class AppointmentById(Resource):
         return {"message": "Server Error when update appointment"}, 500
 
 @appointment_ns.route('/dentist/<int:dentist_id>')
-@jwt_required()
-@role_required([RoleEnum.ROLE_DENTIST.value])
 class AppointmentByDentistResource(Resource):
     @appointment_ns.marshal_list_with(appointment_with_user_model)
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def get(self, dentist_id):
         """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân"""
 
@@ -123,24 +125,22 @@ class CheckMaxAppointment(Resource):
         """Check xem bác sĩ đã có 5 lịch trên ngày hay chưa"""
         return dao_appointment.check_max_dentist_schedule(dentist_id, date)
 
-@appointment_ns.route('/check-weekly-booking/<string:date>')
+@appointment_ns.route('/check-weekly-booking/<int:patient_id>/<string:date>')
 class CheckMaxAppointment(Resource):
-    def get(self, date):
+    def get(self, patient_id,date):
         """Check xem trong tuần đó bệnh nhân đã có lịch hay chưa"""
         target_date = datetime.strptime(date, "%Y-%m-%d").date() if date else None
-        patient_phone = request.args.get("phone")
         blocked = dao_appointment.has_unfinished_appointment_in_current_week(
-            patient_phone=patient_phone,
+            patient_id=patient_id,
             target_date=target_date
         )
-        return {"blocked": blocked}, 200
+        return blocked, 200
 
-       
 
 @appointment_ns.route('/patient/<int:patient_id>')
-@jwt_required()
 class AppointmentByPatientResource(Resource):
-    @appointment_ns.marshal_list_with(appointment_with_user_model)
+    @appointment_ns.marshal_list_with(patient_appointment_pagination_res_model)
+    @jwt_required()
     def get(self, patient_id):
         """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân"""
 
@@ -148,6 +148,9 @@ class AppointmentByPatientResource(Resource):
         start_date_str=request.args.get('start_date')
         end_date_str=request.args.get('end_date')
         keyword=request.args.get('keyword')
+        
+        page = request.args.get('page', type=int)
+        per_page = request.args.get('per_page', type=int)
 
         
         start_date = None
@@ -157,18 +160,28 @@ class AppointmentByPatientResource(Resource):
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             end_date= datetime.strptime(end_date_str,"%Y-%m-%d").date()
 
-        appointments = dao_appointment.get_appointments_by_patient(
+        result = dao_appointment.get_appointments_by_patient(
             patient_id=patient_id,
             status=status,
             start_date=start_date,
             end_date=end_date,
-            keyword=keyword
+            keyword=keyword,
+            page=page,
+            per_page=per_page
         )
 
-        for appt in appointments:
+        for appt in result["items"]:
             appt.user = appt.dentist
 
-        return appointments, 200
+        return {
+            "data": result["items"],
+            "pagination": {
+                "page": result["page"],
+                "per_page": result["per_page"],
+                "total": result["total"],
+                "total_pages": result["total_pages"]
+            }
+        }, 200
 
 #huy-dev 
 #Lấy tất cả lịch hẹn không giới hạn bác sĩ

@@ -1,91 +1,66 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { endpoints, publicApi } from "../../configs/Apis";
+import Loading from "../common/Loading";
+import { Users, UserCheck, CalendarCheck, TrendingUp } from "lucide-react";
 
 const AchievementFeature = () => {
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
+
+  const fetchGeneralStat = async () => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(endpoints.stats.general_stat);
+
+      setStats(res.data.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy dữ liệu thông số tổng quát", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGeneralStat();
+  }, []);
+
   const achievements = [
     {
       id: 1,
-      icon: (
-        <svg
-          className="w-12 h-12"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      number: "500+",
-      description: "Nụ cười được chăm sóc.",
+      icon: Users,
+      number: stats?.total_patients || "0",
+      description: "Bệnh nhân đã điều trị",
     },
     {
       id: 2,
-      icon: (
-        <svg
-          className="w-12 h-12"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      number: "500+",
-      description: "Nụ cười được chăm sóc.",
+      icon: UserCheck,
+      number: stats?.total_dentists || "0",
+      description: "Nha sĩ chuyên nghiệp",
     },
     {
       id: 3,
-      icon: (
-        <svg
-          className="w-12 h-12"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      number: "500+",
-      description: "Nụ cười được chăm sóc.",
+      icon: CalendarCheck,
+      number: stats?.total_completed_appointments || "0",
+      description: "Lịch hẹn hoàn thành",
     },
     {
       id: 4,
-      icon: (
-        <svg
-          className="w-12 h-12"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-          />
-        </svg>
-      ),
-      number: "99%",
-      description: "Bệnh nhân hài lòng",
+      icon: TrendingUp,
+      number: stats?.completion_rate
+        ? `${stats.completion_rate.toFixed(1)}%`
+        : "0%",
+      description: "Tỷ lệ hoàn thành",
     },
   ];
 
   return (
     <>
+      {loading && (
+        <div className="absolute inset-0 bg-white/70 flex justify-center items-center z-50">
+          <Loading />
+        </div>
+      )}
+
       <style>{`
         @keyframes fadeInUp {
           from {
@@ -118,28 +93,31 @@ const AchievementFeature = () => {
 
           {/* Achievement Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            {achievements.map((achievement, index) => (
-              <div
-                key={achievement.id}
-                className="flex flex-col items-center text-center animate-fade-in-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                {/* Icon Circle */}
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-gray-900 flex items-center justify-center mb-4 text-gray-900">
-                  {achievement.icon}
+            {achievements.map((achievement, index) => {
+              const IconComponent = achievement.icon;
+              return (
+                <div
+                  key={achievement.id}
+                  className="flex flex-col items-center text-center animate-fade-in-up"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  {/* Icon Circle */}
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-gray-900 flex items-center justify-center mb-4 text-gray-900">
+                    <IconComponent className="w-10 h-10 md:w-12 md:h-12" />
+                  </div>
+
+                  {/* Number */}
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                    {achievement.number}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-gray-600 text-sm md:text-base">
+                    {achievement.description}
+                  </p>
                 </div>
-
-                {/* Number */}
-                <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                  {achievement.number}
-                </h3>
-
-                {/* Description */}
-                <p className="text-gray-600 text-sm md:text-base">
-                  {achievement.description}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -72,6 +72,9 @@ export const endpoints = {
     get_by_userId: (userId) => `user_booking_stat/${userId}`,
     reset: (userId) => `user_booking_stat/${userId}`,
   },
+  stats: {
+    general_stat: "stats",
+  },
 };
 
 export const publicApi = axios.create({

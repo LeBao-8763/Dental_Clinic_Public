@@ -6,7 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi } from "../../configs/Apis";
 import Loading from "../../components/common/Loading";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
@@ -56,7 +56,7 @@ const ScheduleArrange = () => {
   const fetchClinicHours = async () => {
     setLoading(true);
     try {
-      const res = await publicApi.get(endpoints.clinic_hour.list);
+      const res = await privateApi.get(endpoints.clinic_hour.list);
       setClinicHoursData(res.data);
       console.log("Lịch làm việc của bệnh viện", res.data);
     } catch (err) {
@@ -70,7 +70,7 @@ const ScheduleArrange = () => {
   const fetchDentistScheduleById = async (dentistId) => {
     setLoading(true);
     try {
-      const res = await publicApi.get(
+      const res = await privateApi.get(
         endpoints.dentist_schedule.get_schedule(dentistId)
       );
       console.log("Lịch làm việc của bác sĩ", res.data);
@@ -85,7 +85,7 @@ const ScheduleArrange = () => {
   const fetchCustomSchedule = async (dentist_id) => {
     setLoading(true);
     try {
-      const res = await publicApi.get(
+      const res = await privateApi.get(
         endpoints.custom_schedule.get_by_dentist_id(dentist_id)
       );
 
@@ -305,7 +305,7 @@ const ScheduleArrange = () => {
         const slotsForDay = getTimeSlotsForDayEnum(dayEnum);
         const schedules = convertSlotsToTimeRanges(newSlots, slotsForDay);
 
-        await publicApi.post(endpoints.dentist_schedule.create_multiple, {
+        await privateApi.post(endpoints.dentist_schedule.create_multiple, {
           dentist_id: user.id,
           day_of_week: dayEnumValue,
           schedules: schedules,
@@ -511,7 +511,7 @@ const ScheduleArrange = () => {
     if (!selectedDate) return;
     try {
       // Delete custom schedule for this date
-      await publicApi.delete(
+      await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
 
@@ -543,12 +543,12 @@ const ScheduleArrange = () => {
     setDayOffLoading(true);
     try {
       // First, delete any existing custom schedule for this date (including time-based ones)
-      await publicApi.delete(
+      await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
 
       // Then create new day-off custom schedule
-      await publicApi.post(endpoints.custom_schedule.create, {
+      await privateApi.post(endpoints.custom_schedule.create, {
         dentist_id: user.id,
         custom_date: selectedDate,
         is_day_off: true,
@@ -578,7 +578,7 @@ const ScheduleArrange = () => {
     setRemoveDayOffLoading(true);
     try {
       // Delete the day-off custom schedule
-      await publicApi.delete(
+      await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
 
@@ -599,7 +599,7 @@ const ScheduleArrange = () => {
     try {
       if (slotIndices.length === 0) {
         // No slots selected → delete custom schedule for this date if it exists
-        await publicApi.delete(
+        await privateApi.delete(
           endpoints.custom_schedule.delete_by_date(user.id, dateStr)
         );
         toast.info("Đã xóa lịch custom cho ngày này");
@@ -610,12 +610,12 @@ const ScheduleArrange = () => {
         const schedules = convertSlotsToTimeRanges(slotIndices, slotsForDate);
 
         // First, delete any existing custom schedule for this date
-        await publicApi.delete(
+        await privateApi.delete(
           endpoints.custom_schedule.delete_by_date(user.id, dateStr)
         );
 
         // Then create new custom schedule with the selected slots
-        await publicApi.post(endpoints.custom_schedule.create, {
+        await privateApi.post(endpoints.custom_schedule.create, {
           dentist_id: user.id,
           custom_date: dateStr,
           is_day_off: false,

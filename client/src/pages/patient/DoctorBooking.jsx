@@ -15,7 +15,7 @@ const DoctorBooking = () => {
   const [timeRange, setTimeRange] = useState([8, 18]); // Default from 8:00 to 18:00 (in hours)
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(2); // Default 10, có thể thay đổi
+  const [perPage] = useState(2); // Default 10, có thể thay đổi
   const [pagination, setPagination] = useState({
     total: 0,
     total_pages: 1,

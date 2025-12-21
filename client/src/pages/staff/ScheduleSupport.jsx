@@ -8,7 +8,7 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 import Loading from "../../components/common/Loading";
 import { toast } from "react-toastify";
 
@@ -28,6 +28,9 @@ const ScheduleSupport = () => {
   const [selectedDaySchedule, setSelectedDaySchedule] = useState([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isDayFull, setIsDayFull] = useState(false);
+  const [userBookingStat, setUserBookingStat] = useState(null);
+  const [isWeekBooked, setIsWeekBooked] = useState(false);
+  const [pendingAppointments, setPendingAppointments] = useState([]);
 
   // Thêm state cho bệnh nhân mới
   const [newPatient, setNewPatient] = useState({
@@ -103,7 +106,7 @@ const ScheduleSupport = () => {
     try {
       const res = await publicApi.get(endpoints.users.list);
       setPatients(res.data);
-      console.log("Danh sách bệnh nhân", res.data);
+      console.log("Danh sách bệnh nhân", res.data.data);
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu người dùng ", err);
       setLoading(false);
@@ -125,6 +128,58 @@ const ScheduleSupport = () => {
       console.log("Danh sách bác sĩ", res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra lấy dữ liệu bác sĩ ", err);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserBookingStat = async (userId) => {
+    setLoading(true);
+    try {
+      const res = await privateApi.get(
+        endpoints.user_booking_stat.get_by_userId(userId)
+      );
+      setUserBookingStat(res.data);
+      console.log("Thông số đặt lịch của người dùng", res.data);
+    } catch (err) {
+      console.log("Có lỗi xảy ra khi lấy thông số đặt lịch ", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPatientSchedule = async (patient_id) => {
+    setLoading(true);
+    try {
+      const response = await privateApi.get(
+        endpoints.appointment.get_by_patient_id(patient_id),
+        {
+          params: {
+            status: "PENDING",
+          },
+        }
+      );
+
+      setPendingAppointments(response.data.data);
+    } catch (error) {
+      console.error("Error fetching dentist data:", error);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkUnfinishedSchedule = async (patient_id, date) => {
+    setLoading(true);
+    try {
+      const res = await publicApi.get(
+        endpoints.appointment.check_weekly_booking(patient_id, date)
+      );
+
+      setIsWeekBooked(res.data);
+    } catch (error) {
+      console.log("Error fetching dentist data:", error);
       setLoading(false);
     } finally {
       setLoading(false);
@@ -216,12 +271,17 @@ const ScheduleSupport = () => {
     setSelectedPatient(patient);
     setSearchPatient(`${patient.firstname} ${patient.lastname}`);
     setShowPatientSuggestions(false);
+    fetchUserBookingStat(patient.id);
+    fetchPatientSchedule(patient.id);
   };
 
   const handleClearPatient = () => {
     setSelectedPatient(null);
     setSearchPatient("");
     setShowPatientSuggestions(false);
+    setUserBookingStat(null);
+    setPendingAppointments([]);
+    setIsWeekBooked(false);
   };
 
   const handleSelectDay = (index) => {
@@ -236,6 +296,10 @@ const ScheduleSupport = () => {
     fetchAvailableDentisstSchedule(selectedDoctor.id, dateStr);
 
     checkMaxAppointment(selectedDoctor.id, dateStr);
+
+    if (selectedPatient) {
+      checkUnfinishedSchedule(selectedPatient.id, dateStr);
+    }
   };
 
   // Compute step completion for header/progress
@@ -255,8 +319,25 @@ const ScheduleSupport = () => {
     return `${item.day}, ${item.date}`;
   };
 
+  const isBlocked =
+    userBookingStat &&
+    userBookingStat.blocked_until &&
+    new Date(userBookingStat.blocked_until) > new Date();
+
   // Hàm confirmAppointment tương tự như trong DoctorDetail
   const confirmAppointment = async () => {
+    if (isBlocked) {
+      toast.error(
+        `Khách hàng bị cấm đặt lịch đến ${userBookingStat.blocked_until}`
+      );
+      return;
+    }
+    if (isWeekBooked) {
+      toast.warn(
+        "Tuần này khách hàng đã đặt lịch, vui lòng hoàn thành trước khi đặt thêm."
+      );
+      return;
+    }
     if (!selectedDoctor || !selectedTime || selectedDate === null) {
       toast.error("Vui lòng chọn bác sĩ, ngày và giờ khám");
       return;
@@ -320,7 +401,7 @@ const ScheduleSupport = () => {
       // -------------------------
       // 🔹 Call API
       // -------------------------
-      await publicApi.post(endpoints.appointment.create, payload);
+      await privateApi.post(endpoints.appointment.create, payload);
 
       toast.success("Đặt lịch thành công!");
 
@@ -413,6 +494,9 @@ const ScheduleSupport = () => {
                         setSelectedPatient(null);
                         setSearchPatient("");
                         setShowPatientSuggestions(false);
+                        setUserBookingStat(null);
+                        setPendingAppointments([]);
+                        setIsWeekBooked(false);
                       }}
                       className="w-4 h-4 text-teal-600"
                     />
@@ -430,6 +514,9 @@ const ScheduleSupport = () => {
                         setSelectedPatient(null);
                         setSearchPatient("");
                         setShowPatientSuggestions(false);
+                        setUserBookingStat(null);
+                        setPendingAppointments([]);
+                        setIsWeekBooked(false);
                       }}
                       className="w-4 h-4 text-teal-600"
                     />
@@ -516,6 +603,15 @@ const ScheduleSupport = () => {
                             </span>
                           </div>
                         </div>
+                        {isBlocked && (
+                          <p className="text-red-600 font-semibold mt-4 flex items-center gap-1">
+                            <AlertCircle size={20} />
+                            <span>
+                              Khách hàng bị cấm đặt lịch đến{" "}
+                              {userBookingStat.blocked_until}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     )}
                   </>
@@ -673,6 +769,26 @@ const ScheduleSupport = () => {
                   </p>
                 ) : (
                   <div className="space-y-6">
+                    {pendingAppointments.length > 0 && (
+                      <p className="text-teal-600 font-semibold mb-4">
+                        Khách hàng có lịch vào những khung giờ:{" "}
+                        {pendingAppointments
+                          .map(
+                            (apt) =>
+                              `${apt.start_time.slice(
+                                0,
+                                5
+                              )} - ${apt.end_time.slice(
+                                0,
+                                5
+                              )} ngày ${apt.appointment_date
+                                .split("-")
+                                .reverse()
+                                .join("/")}`
+                          )
+                          .join(", ")}
+                      </p>
+                    )}
                     {/* Days Selection - Horizontal Scroll */}
                     <div className="flex gap-3 overflow-x-auto pb-2">
                       {monthDays.map((item, index) => {
@@ -720,6 +836,13 @@ const ScheduleSupport = () => {
                           </span>
                         )}
                       </div>
+
+                      {isWeekBooked && !isBlocked && (
+                        <div className="p-4 mb-4 rounded-lg bg-red-50 border border-red-100 text-red-700 text-center">
+                          Tuần này khách hàng đã đặt lịch. Vui lòng hoàn thành
+                          lịch hiện tại trước khi đặt thêm.
+                        </div>
+                      )}
 
                       {selectedDate !== null ? (
                         (() => {
@@ -780,21 +903,49 @@ const ScheduleSupport = () => {
                                   5
                                 )} - ${slot.end_time.slice(0, 5)}`;
                                 const isSelected = selectedTime === slot.id;
+                                const isDisabled =
+                                  isDayFull || isWeekBooked || isBlocked;
+                                let slotClass;
+                                if (isDisabled) {
+                                  if (isBlocked || isWeekBooked) {
+                                    slotClass =
+                                      "border-red-300 bg-red-100 text-red-400 opacity-60 cursor-not-allowed";
+                                  } else {
+                                    slotClass =
+                                      "border-gray-300 bg-gray-100 text-gray-400 opacity-60 cursor-not-allowed";
+                                  }
+                                } else {
+                                  slotClass = isSelected
+                                    ? "border-teal-500 bg-teal-600 text-white shadow-md"
+                                    : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50 hover:scale-[1.02]";
+                                }
 
                                 return (
                                   <button
                                     key={slot.id}
-                                    onClick={() =>
-                                      !isDayFull && setSelectedTime(slot.id)
-                                    }
-                                    disabled={isDayFull}
-                                    className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 text-sm leading-tight ${
-                                      isDayFull
-                                        ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        : isSelected
-                                        ? "border-teal-500 bg-teal-600 text-white shadow-md"
-                                        : "border-gray-300 bg-white hover:border-teal-300 hover:bg-teal-50 hover:scale-[1.02]"
-                                    }`}
+                                    onClick={() => {
+                                      if (isBlocked) {
+                                        toast.error(
+                                          `Khách hàng bị cấm đặt lịch đến ${userBookingStat.blocked_until}`
+                                        );
+                                        return;
+                                      }
+                                      if (isDayFull) {
+                                        toast.warn(
+                                          "Ngày này đã đủ số lịch, vui lòng chọn ngày khác."
+                                        );
+                                        return;
+                                      }
+                                      if (isWeekBooked) {
+                                        toast.warn(
+                                          "Tuần này khách hàng đã đặt lịch, vui lòng hoàn thành trước khi đặt thêm."
+                                        );
+                                        return;
+                                      }
+                                      setSelectedTime(slot.id);
+                                    }}
+                                    disabled={isDisabled}
+                                    className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center min-h-12 min-w-[110px] text-sm leading-tight ${slotClass}`}
                                   >
                                     <span className="text-sm font-semibold">
                                       {timeLabel}

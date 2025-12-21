@@ -11,7 +11,7 @@ import {
   Check,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { endpoints, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi, publicApi } from "../../configs/Apis";
 
 const PaymentPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -84,7 +84,7 @@ const PaymentPage = () => {
     setLoading(true);
     try {
       const today = new Date();
-      const formattedDate = today.toISOString().split("T")[0]; // "YYYY-MM-DD"
+      const formattedDate = today.toLocaleDateString("en-CA"); // "YYYY-MM-DD"
       const params = {
         date: formattedDate,
       };
@@ -98,7 +98,7 @@ const PaymentPage = () => {
           params.status = selectedStatus;
         }
       }
-      const res = await publicApi.get(endpoints.appointment.all, { params });
+      const res = await privateApi.get(endpoints.appointment.all, { params });
       console.log("Dữ liệu cuộc hẹn", res.data);
       setAppointments(res.data);
       // Fetch thông tin bác sĩ cho mỗi appointment

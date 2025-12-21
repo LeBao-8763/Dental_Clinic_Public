@@ -35,7 +35,8 @@ def create_app():
         prescription_api,
         post_api,
         invoice_api,
-        user_booking_stat_api
+        user_booking_stat_api,
+        stats_api
     )
 
     # Khởi tạo admin sau khi app và db sẵn sàng

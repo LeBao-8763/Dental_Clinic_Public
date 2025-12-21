@@ -2,12 +2,17 @@ from app.dao import dao_treatment_record
 from flask import Flask, request, jsonify
 from flask_restx import Resource
 from app.api_conf import treatment_record_ns,treatment_record_input_model,treatment_records_create_model,treatment_record_model
+from flask_jwt_extended import jwt_required
+from app.utils.check_role import role_required
+from app.models import RoleEnum
 
 @treatment_record_ns.route('/')
 class UserList(Resource):
     @treatment_record_ns.doc('create_treatment_record')
     @treatment_record_ns.expect(treatment_record_model)   # Định nghĩa định dạng request body cho Swagger UI
-    @treatment_record_ns.marshal_with(treatment_record_model, code=201) # Định nghĩa định dạng response và mã trạng thái khi tạo thành công
+    @treatment_record_ns.marshal_with(treatment_record_model, code=201) 
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def post(self):
         "Tạo một hoặc nhiều bảng ghi hồ sơ điều trị mới"
         data=request.get_json()
@@ -28,6 +33,7 @@ class UserList(Resource):
 class TreatmentRecordByAppointment(Resource):
     @treatment_record_ns.doc('get_treatment_record_by_aptId')
     @treatment_record_ns.marshal_with(treatment_record_model, code=201)
+    @jwt_required()
     def get(self, appointment_id):
         '''Lấy các phương thức điều trị của một cuộc hẹn '''
         treatment_records=dao_treatment_record.get_treatment_record_by_aptId(appointment_id)
@@ -40,6 +46,8 @@ class TreatmentRecordByAppointment(Resource):
     @treatment_record_ns.doc('delete_treatment_records_by_aptId')
     @treatment_record_ns.response(200, 'Xóa thành công')
     @treatment_record_ns.response(400, 'Xóa lỗi')
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
     def delete(self, appointment_id):
         """
         Xóa tất cả bản ghi điều trị đã chọn

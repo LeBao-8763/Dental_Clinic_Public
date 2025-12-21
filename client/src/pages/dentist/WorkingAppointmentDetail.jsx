@@ -104,7 +104,7 @@ const WorkingAppointmentDetail = () => {
   const fetchTreatmentRecord = async (apt_id) => {
     setLoading(true);
     try {
-      const response = await publicApi.get(
+      const response = await privateApi.get(
         endpoints.treatment_record.list_by_aptId(apt_id)
       );
       setTreatmentRecord(response.data);
@@ -130,7 +130,7 @@ const WorkingAppointmentDetail = () => {
           price: s.price,
         })),
       };
-      await publicApi.post(endpoints.treatment_record.create, payload);
+      await privateApi.post(endpoints.treatment_record.create, payload);
     } catch (err) {
       console.log("Thêm dịch vụ chữa trị lỗi", err);
       throw err;
@@ -163,7 +163,7 @@ const WorkingAppointmentDetail = () => {
         status = "COMPLETED";
         payload = { status };
       }
-      await publicApi.patch(
+      await privateApi.patch(
         endpoints.appointment.update(appointmentId),
         payload
       );
@@ -178,7 +178,7 @@ const WorkingAppointmentDetail = () => {
   const deleteTreatmentRecord = async () => {
     setLoading(true);
     try {
-      await publicApi.delete(
+      await privateApi.delete(
         endpoints.treatment_record.delete_by_aptId(appointmentId)
       );
       setTreatmentRecord([]);
@@ -193,7 +193,7 @@ const WorkingAppointmentDetail = () => {
 
   const updateDiagnosis = async () => {
     try {
-      await publicApi.patch(endpoints.appointment.update(appointmentId), {
+      await privateApi.patch(endpoints.appointment.update(appointmentId), {
         diagnosis: diagnosis,
       });
       setInitialDiagnosis(diagnosis); // Cập nhật lại giá trị ban đầu

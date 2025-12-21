@@ -56,7 +56,7 @@ const AppointmentDetail = () => {
   };
   const fetchTreatmentRecordByAptId = async (appointmentId) => {
     try {
-      const res = await publicApi.get(
+      const res = await privateApi.get(
         endpoints.treatment_record.list_by_aptId(appointmentId)
       );
       console.log("Dữ liệu treatment records", res.data);

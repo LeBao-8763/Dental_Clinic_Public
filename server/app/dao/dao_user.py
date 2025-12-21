@@ -84,8 +84,8 @@ def check_login(username, password):
 def get_user_by_id(user_id):
     return User.query.get(user_id)
 
-def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=None, dayOfWeek=None,  page=1,
-    per_page=6):
+def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=None, dayOfWeek=None,  page=None,
+    per_page=None):
     try:
         role_enum = RoleEnum(role)   # convert string -> Enum
     except ValueError:

@@ -32,6 +32,7 @@ prescription_ns=api.namespace('prescription', description='Các thao tác liên 
 post_ns=api.namespace('post',description='Các thao tác liên quan đến bài viết/blog của nha khoa')
 invoice_ns=api.namespace('invoice', description='Các thao tác liên quan đến hóa đơn')
 user_booking_stat_ns=api.namespace('user_booking_stat', description='Các thao tác liên quan đến thông số đặt lịch')
+stats_ns = api.namespace('stats', description='Statistics APIs')
 
 # ------------------------------
 # --- Định nghĩa Models cho Swagger UI ---
@@ -283,6 +284,11 @@ pagination_model = dentist_ns.model("Pagination", {
 
 dentist_response_model = dentist_ns.model("DentistResponse", {
     "data": fields.List(fields.Nested(dentist_model)),
+    "pagination": fields.Nested(pagination_model)
+})
+
+patient_appointment_pagination_res_model = appointment_ns.model("AppointmentResponse", {
+    "data": fields.List(fields.Nested(appointment_with_user_model)),
     "pagination": fields.Nested(pagination_model)
 })
 

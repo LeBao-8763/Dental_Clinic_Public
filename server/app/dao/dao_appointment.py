@@ -166,7 +166,7 @@ def get_appointments_by_dentist(dentist_id, status=None, appointment_date=None):
 
     return query.all()
 
-def get_appointments_by_patient(patient_id, status=None, start_date=None, end_date=None, keyword=None):
+def get_appointments_by_patient(patient_id, status=None, start_date=None, end_date=None, keyword=None, page=None, per_page=None):
     query = (
         Appointment.query
         .options(joinedload(Appointment.dentist))
@@ -174,27 +174,42 @@ def get_appointments_by_patient(patient_id, status=None, start_date=None, end_da
     )
 
     if status:
-        statuses=status.split(",")
+        statuses = status.split(",")
         query = query.filter(Appointment.status.in_(statuses))
 
     if start_date and end_date:
         query = query.filter(Appointment.appointment_date.between(start_date, end_date))
 
     if keyword:
-        # Xóa khoảng trắng thừa ở đầu/cuối
         keyword = keyword.strip()
-        
-        # Join với bảng User (dentist) và tìm kiếm trong firstname, lastname hoặc fullname
         query = query.join(User, Appointment.dentist_id == User.id).filter(
             or_(
                 User.firstname.like(f'%{keyword}%'),
                 User.lastname.like(f'%{keyword}%'),
-                # Tìm kiếm theo tên đầy đủ (firstname + lastname)
                 func.concat(User.firstname, ' ', User.lastname).like(f'%{keyword}%')
             )
         )
-    
-    return query.all()
+
+    # Nếu có page & per_page, dùng paginate
+    if page and per_page:
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        return {
+            "items": pagination.items,
+            "total": pagination.total,
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total_pages": pagination.pages
+        }
+    else:
+        # Không phân trang
+        return {
+            "items": query.all(),
+            "total": len(query.all()),
+            "page": 1,
+            "per_page": len(query.all()),
+            "total_pages": 1
+        }
+
 
 
 def get_all_appointment_with_filter(status=None, appointment_date=None, start_date=None, end_date=None):
@@ -279,7 +294,7 @@ def check_max_dentist_schedule(dentist_id, date):
 
     return count >= 5
 
-def has_unfinished_appointment_in_current_week(patient_id=None, patient_phone=None, target_date=None):
+def has_unfinished_appointment_in_current_week(patient_id=None,  target_date=None):
     if not target_date:
         target_date = datetime.utcnow().date()
 
@@ -287,6 +302,7 @@ def has_unfinished_appointment_in_current_week(patient_id=None, patient_phone=No
     end_of_week = start_of_week + timedelta(days=6)
 
     query = Appointment.query.filter(
+        Appointment.patient_id == patient_id,
         Appointment.appointment_date.between(start_of_week, end_of_week),
         Appointment.status.in_([
             AppointmentStatusEnum.PENDING,
@@ -294,16 +310,11 @@ def has_unfinished_appointment_in_current_week(patient_id=None, patient_phone=No
             AppointmentStatusEnum.PRESCRIPTION,
             AppointmentStatusEnum.COMPLETED,
         ])
-    )
+    ).first()
 
-    if patient_id:
-        query = query.filter(Appointment.patient_id == patient_id)
-    elif patient_phone:
-        # Dùng like để match số điện thoại linh hoạt hơn
-        query = query.filter(Appointment.patient_phone.like(f"%{patient_phone}%"))
-    
-    unfinished = query.first()
-    return unfinished is not None
+    return bool(query)
+
+
 
 #huy-dev
 def get_all_appointments():
