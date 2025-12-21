@@ -75,6 +75,9 @@ class User(db.Model, UserMixin):
     dentist_custom_schedules = db.relationship('DentistCustomSchedule', back_populates='dentist', lazy=True)
     booking_stats = db.relationship('UserBookingStats', back_populates='user', uselist=False)
 
+    def __str__(self):
+        return self.name
+
 
 # ------------------------------
 # 🔹 Bảng hồ sơ bác sĩ

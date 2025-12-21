@@ -140,7 +140,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
-                    alt={`${user.firstname} avatar`}
+                    alt={`${user.name} avatar`}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -149,7 +149,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               </div>
               {isOpen && user && (
                 <div className="flex-1">
-                  <p className="font-semibold text-sm">{`${user.firstname} ${user.lastname}`}</p>
+                  <p className="font-semibold text-sm">{`${user.name} `}</p>
                   <p className="text-xs text-gray-400">{user.username}</p>
                 </div>
               )}

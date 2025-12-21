@@ -49,6 +49,7 @@ class AppointmentCreateResource(Resource):
     def get(self):
         status = request.args.get('status')
         date_str = request.args.get('date')
+        keyword= request.args.get('keyword')
 
         appointment_date = None
         if date_str:
@@ -56,7 +57,8 @@ class AppointmentCreateResource(Resource):
 
         appointments = dao_appointment.get_all_appointment_with_filter(
             status=status,
-            appointment_date=appointment_date
+            appointment_date=appointment_date,
+            keyword=keyword
         )
 
         for appt in appointments:
@@ -101,6 +103,7 @@ class AppointmentByDentistResource(Resource):
 
         status = request.args.get('status')
         date_str = request.args.get('date')
+        keyword= request.args.get('keyword')
 
         appointment_date = None
         if date_str:
@@ -109,7 +112,8 @@ class AppointmentByDentistResource(Resource):
         appointments = dao_appointment.get_appointments_by_dentist(
             dentist_id=dentist_id,
             status=status,
-            appointment_date=appointment_date
+            appointment_date=appointment_date,
+            keyword=keyword
         )
 
          # Gán patient vào user

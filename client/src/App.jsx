@@ -20,28 +20,47 @@ import ScheduleSupport from "./pages/staff/ScheduleSupport";
 import { ToastContainer } from "react-toastify";
 import SessionExpiredDialog from "./components/common/SessionExpiredDialog";
 import AppointmentDetail from "./pages/patient/AppointmentDetail";
+import { endpoints, privateApi } from "./configs/Apis";
 function App() {
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (user) {
-      if (user.role === "RoleEnum.ROLE_DENTIST") {
-        if (!location.pathname.startsWith("/dentist")) {
-          navigate("/dentist");
-        }
-      } else {
-        if (location.pathname.startsWith("/dentist")) {
-          navigate("/");
-        }
+    if (!user) return;
+
+    const path = location.pathname;
+
+    if (user.role === "RoleEnum.ROLE_DENTIST") {
+      if (!path.startsWith("/dentist")) {
+        navigate("/dentist", { replace: true });
+      }
+    } else if (user.role === "RoleEnum.ROLE_STAFF") {
+      if (!path.startsWith("/staff")) {
+        navigate("/staff", { replace: true });
+      }
+    } else {
+      // patient
+      if (path.startsWith("/dentist") || path.startsWith("/staff")) {
+        navigate("/", { replace: true });
       }
     }
-    // Optional: If not logged in, redirect from protected routes to login
-    // else if (location.pathname !== "/login" && !["/", "/patient/doctor-booking", "/patient/appointment", "/patient/doctor-detail"].includes(location.pathname)) {
-    //   navigate("/login");
-    // }
   }, [user, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (user?.id) {
+      const resetBookingStat = async () => {
+        try {
+          await privateApi.patch(endpoints.user_booking_stat.reset(user.id));
+          console.log("Đã reset booking stat cho user", user.id);
+        } catch (err) {
+          console.log("Reset booking stat thất bại", err);
+        }
+      };
+
+      resetBookingStat();
+    }
+  }, [user]);
 
   return (
     <>

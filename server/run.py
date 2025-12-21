@@ -14,10 +14,6 @@ def admin_login():
     user = dao_user.check_login(username, password)
     if user:
         login_user(user)
-        print(user.firstname)
-    else:
-        print(user)
-        print("alo")
     return redirect('/admin')
 
 @login.user_loader

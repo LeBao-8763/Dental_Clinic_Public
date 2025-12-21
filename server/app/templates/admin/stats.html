@@ -11,7 +11,7 @@
     <option value="">-- Tất cả --</option>
     {% for d in dentists %}
       <option value="{{ d.id }}" {% if selected_dentist == d.id %}selected{% endif %}>
-        {d.name}
+        {{d.name}}
       </option>
     {% endfor %}
   </select>

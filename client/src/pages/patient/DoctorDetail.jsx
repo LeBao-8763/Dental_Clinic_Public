@@ -127,14 +127,6 @@ const DoctorDetail = () => {
     }
   };
 
-  const resetUserBookingStat = async (patient_id) => {
-    try {
-      await privateApi.patch(endpoints.user_booking_stat.reset(patient_id));
-    } catch (err) {
-      console.log("Có lỗi xảy ra khi reset thông số đặt lịch", err);
-    }
-  };
-
   const fetchUserBookingStat = async (userId) => {
     setLoading(true);
     try {
@@ -276,7 +268,6 @@ const DoctorDetail = () => {
 
       if (patient?.id) {
         checkUnfinishedSchedule(patient.id, todayStr);
-        resetUserBookingStat(patient.id);
         fetchPatientSchedule(patient.id);
         fetchUserBookingStat(patient.id);
       }
@@ -342,7 +333,9 @@ const DoctorDetail = () => {
   const handleBookingClick = () => {
     setDescription("");
     if (isBlocked) {
-      toast.error(`Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until}`);
+      toast.error(
+        `Bạn bị cấm đặt lịch đến ${userBookingStat.blocked_until} vì đã hủy lịch quá số lượng cho phép`
+      );
       return;
     }
     if (isDayFull) {
@@ -451,7 +444,8 @@ const DoctorDetail = () => {
             <p className="text-red-600 font-semibold mb-4 flex items-center gap-1">
               <AlertCircle size={20} />
               <span>
-                Bạn bị cấm tới thời gian {userBookingStat.blocked_until}
+                Bạn bị cấm tới thời gian {userBookingStat.blocked_until} vì đã
+                hủy lịch quá số lượng cho phép
               </span>
             </p>
           )}

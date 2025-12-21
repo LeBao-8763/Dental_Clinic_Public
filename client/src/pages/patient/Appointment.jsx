@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Calendar, Clock, X, AlertCircle } from "lucide-react";
-import { endpoints, privateApi, publicApi } from "../../configs/Apis";
+import { endpoints, privateApi } from "../../configs/Apis";
 import { useSelector } from "react-redux";
 import Loading from "../../components/common/Loading";
 import { useNavigate } from "react-router-dom";
@@ -125,7 +125,7 @@ const Appointment = () => {
     setLoading(true);
     try {
       // Gọi API hủy, ví dụ endpoint nhận PATCH /appointments/:id/cancel
-      await publicApi.patch(endpoints.appointment.update(appointmentId), {
+      await privateApi.patch(endpoints.appointment.update(appointmentId), {
         status: "CANCELLED", // hoặc theo API backend của bạn
       });
       // Sau khi hủy xong, fetch lại danh sách appointments

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Lock, ArrowLeft, User, Phone, Eye, EyeOff } from "lucide-react";
 import bgImage from "../assets/pexels-cottonbro-6502748.jpg";
-import { endpoints, publicApi } from "../configs/Apis";
+import { endpoints, privateApi, publicApi } from "../configs/Apis";
 import Loading from "../components/common/Loading";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -70,6 +70,7 @@ const Login = () => {
       setLoading(false);
     }
   };
+
   // ---------- Register ----------
   const validateRegisterData = (data) => {
     const errors = {};

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { endpoints, privateApi } from "../../configs/Apis";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-
 const WorkingAppointment = () => {
   const [searchTerm, setSearchTerm] = useState("");
   // Mặc định là ngày hôm nay
@@ -15,18 +14,14 @@ const WorkingAppointment = () => {
   const [selectedStatus, setSelectedStatus] = React.useState("");
   const [loading, setLoading] = useState(false);
   const [appointment, setAppointment] = useState(null);
-
   // Tính toán max date (hôm nay + 7 ngày)
   const getMaxDate = () => {
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 7);
     return maxDate.toISOString().split("T")[0];
   };
-
   const maxDate = getMaxDate();
-
   const navigate = useNavigate();
-
   // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
   const STATUS_OPTIONS = [
     { label: "Tất cả", value: "" },
@@ -35,19 +30,16 @@ const WorkingAppointment = () => {
     { label: "Đã khám", value: "PAID" },
     { label: "Hủy", value: "CANCELED" },
   ];
-
   // Map frontend key -> real backend statuses (dùng khi gửi params)
   const STATUS_FILTER_MAP = {
     IN_PROGRESS: ["CONSULTING", "PRESCRIPTION", "COMPLETED"],
   };
-
   // Helper: normalize status (hỗ trợ "AppointmentStatusEnum.PENDING" hoặc "PENDING")
   const normalizeStatus = (status) => {
     if (!status) return "";
     if (typeof status !== "string") return "";
     return status.includes(".") ? status.split(".").pop() : status;
   };
-
   // Map enum -> label hiển thị
   const STATUS_TEXT = {
     PENDING: "Chưa khám",
@@ -58,7 +50,6 @@ const WorkingAppointment = () => {
     CANCELLED: "Hủy",
     CANCELED: "Hủy",
   };
-
   // Map enum -> css class
   const STATUS_CLASS = {
     PENDING: "bg-blue-100 text-blue-700",
@@ -69,14 +60,11 @@ const WorkingAppointment = () => {
     CANCELED: "bg-red-100 text-red-700",
     PAID: "bg-green-100 text-green-700",
   };
-
   const user = useSelector((state) => state.auth.user);
-
   const fetchDentistWorkingScheduleById = async (dentistId) => {
     setLoading(true);
     try {
       const params = {};
-
       // selectedStatus bây giờ có thể là key trung gian (IN_PROGRESS) hoặc enum thật
       if (selectedStatus) {
         if (STATUS_FILTER_MAP[selectedStatus]) {
@@ -86,16 +74,13 @@ const WorkingAppointment = () => {
           params.status = selectedStatus;
         }
       }
-
       // Truyền date theo format YYYY-MM-DD
       if (selectedDate) {
         params.date = selectedDate;
       }
-
       if (searchTerm.trim()) {
         params.keyword = searchTerm.trim();
       }
-
       const response = await privateApi.get(
         endpoints.appointment.get_by_dentist_id(dentistId),
         { params }
@@ -108,14 +93,12 @@ const WorkingAppointment = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (user) {
       fetchDentistWorkingScheduleById(user.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedStatus, selectedDate]);
-
   // debounce cho searchTerm
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -124,22 +107,21 @@ const WorkingAppointment = () => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, user]);
-
   // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
   const getStatusText = (status) => {
     const s = normalizeStatus(status);
     return STATUS_TEXT[s] || "Không xác định";
   };
-
   const getStatusClass = (status) => {
     const s = normalizeStatus(status);
     return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
   };
-
   // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
   const selectedLabel =
     STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
-
+  // Tính toán ngày hiện tại (YYYY-MM-DD)
+  const currentDate = new Date().toLocaleDateString("en-CA");
+  const isCurrentDate = selectedDate === currentDate;
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -150,13 +132,11 @@ const WorkingAppointment = () => {
             Bạn có thể kiểm tra lịch khám hàng ngày, hàng tuần tại đây.
           </p>
         </div>
-
         {/* Search and Filter Section */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">
             Tìm kiếm và lọc
           </h2>
-
           <div className="flex flex-wrap gap-4">
             {/* Search Input */}
             <div className="flex-1 min-w-[250px]">
@@ -183,7 +163,6 @@ const WorkingAppointment = () => {
                 </svg>
               </div>
             </div>
-
             {/* Date Picker */}
             <div className="flex items-center gap-2">
               <div className="relative group">
@@ -209,7 +188,6 @@ const WorkingAppointment = () => {
                 </svg>
               </div>
             </div>
-
             {/* Status Filter Dropdown */}
             <div className="relative">
               <button
@@ -246,7 +224,6 @@ const WorkingAppointment = () => {
                   />
                 </svg>
               </button>
-
               {/* Dropdown Menu */}
               {showStatusDropdown && (
                 <div className="absolute top-full mt-2 right-0 bg-white border-2 border-[#009688] rounded-lg shadow-lg z-10 min-w-[180px] overflow-hidden">
@@ -292,7 +269,6 @@ const WorkingAppointment = () => {
             </div>
           </div>
         </div>
-
         {/* Loading State */}
         {loading && (
           <div className="text-center py-12">
@@ -300,7 +276,6 @@ const WorkingAppointment = () => {
             <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
           </div>
         )}
-
         {/* Empty State */}
         {!loading && (!appointment || appointment.length === 0) && (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -320,7 +295,6 @@ const WorkingAppointment = () => {
             <p className="mt-4 text-gray-600">Không có lịch hẹn nào</p>
           </div>
         )}
-
         {/* Appointments Grid */}
         {!loading && appointment && appointment.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -329,7 +303,6 @@ const WorkingAppointment = () => {
               const patientName = item.is_guest
                 ? item.patient_name
                 : `${item.user.name} `;
-
               const patientGender = item.is_guest
                 ? item.gender === "GenderEnum.MALE"
                   ? "Nam"
@@ -339,11 +312,14 @@ const WorkingAppointment = () => {
                 : item.user.gender === "GenderEnum.MALE"
                 ? "Nam"
                 : "Nữ";
-
               const patientPhone = item.is_guest
                 ? item.patient_phone
                 : item.user.phone_number;
-
+              const normalizedStatus = normalizeStatus(item.status);
+              const isCancelled =
+                normalizedStatus === "CANCELLED" ||
+                normalizedStatus === "CANCELED";
+              const isDisabled = isCancelled || !isCurrentDate;
               return (
                 <div
                   key={item.id}
@@ -432,7 +408,6 @@ const WorkingAppointment = () => {
                       {getStatusText(item.status)}
                     </span>
                   </div>
-
                   {/* Note Section */}
                   <div className="bg-[#E0F2F1] rounded-lg p-4 mb-4 border-l-4 border-[#009688]">
                     <div className="flex items-start gap-2">
@@ -459,15 +434,20 @@ const WorkingAppointment = () => {
                       </div>
                     </div>
                   </div>
-
                   {/* Action Button */}
                   <button
                     onClick={() =>
+                      !isDisabled &&
                       navigate("/dentist/working-appointment-detail", {
                         state: { appointmentId: item.id },
                       })
                     }
-                    className="w-full text-[#009688] hover:bg-[#009688] hover:text-white font-medium text-sm flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all duration-300 border border-[#009688]"
+                    disabled={isDisabled}
+                    className={`w-full text-[#009688] font-medium text-sm flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all duration-300 border border-[#009688] ${
+                      isDisabled
+                        ? "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-[#009688]"
+                        : "hover:bg-[#009688] hover:text-white"
+                    }`}
                   >
                     Xem chi tiết
                     <svg
@@ -493,5 +473,4 @@ const WorkingAppointment = () => {
     </div>
   );
 };
-
 export default WorkingAppointment;
