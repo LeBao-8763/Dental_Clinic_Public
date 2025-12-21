@@ -169,9 +169,7 @@ const PaymentDetail = () => {
 
   const patientFullName = appointment.is_guest
     ? appointment.patient_name || "Khách vãng lai"
-    : `${appointment.user?.firstname || ""} ${
-        appointment.user?.lastname || ""
-      }`;
+    : appointment.user?.name || "Không xác định";
 
   const patientGender = appointment.is_guest
     ? appointment.gender
@@ -247,8 +245,7 @@ const PaymentDetail = () => {
               <div>
                 <p className="text-xs text-teal-600 mb-1">Tên Bác Sĩ</p>
                 <p className="text-base font-semibold text-gray-900">
-                  {dentist?.firstname || ""}{" "}
-                  {dentist?.lastname || "Đang tải..."}
+                  {dentist?.name || "Đang tải..."}
                 </p>
               </div>
               <div>

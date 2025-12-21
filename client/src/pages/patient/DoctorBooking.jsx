@@ -739,14 +739,14 @@ const DoctorBooking = () => {
                         {/* Avatar hình ảnh */}
                         <img
                           src={doctor.avatar}
-                          alt={`${doctor.firstname} ${doctor.lastname}`}
+                          alt={doctor?.name || "Bác sĩ"}
                           className="w-full h-full rounded-full object-cover"
                         />
                       </div>
                       {/* Info - Bottom */}
                       <div className="text-center">
                         <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-[#009688] transition-colors">
-                          {doctor.firstname} {doctor.lastname}
+                          {doctor.name}
                         </h3>
                         <div className="inline-block bg-[#009688]/10 text-[#009688] px-3 py-1 rounded-full text-xs font-medium mb-4">
                           Chỉnh nha
@@ -818,14 +818,14 @@ const DoctorBooking = () => {
                         {/* Avatar hình ảnh */}
                         <img
                           src={doctor.avatar} // link avatar
-                          alt={`${doctor.firstname} ${doctor.lastname}`}
+                          alt={doctor?.name || "Bác sĩ"}
                           className="w-24 h-24 rounded-full shrink-0 object-cover ring-4 ring-gray-100 group-hover:ring-[#009688]/20 transition-all"
                         />
                       </div>
                       {/* Info */}
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[#009688] transition-colors">
-                          {doctor.firstname} {doctor.lastname}
+                          {doctor.name}
                         </h3>
                         <div className="inline-block bg-[#009688]/10 text-[#009688] px-3 py-1 rounded-full text-xs font-medium mb-3">
                           Chỉnh nha

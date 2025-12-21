@@ -73,7 +73,7 @@ export const endpoints = {
     reset: (userId) => `user_booking_stat/${userId}`,
   },
   stats: {
-    general_stat: "stats",
+    general_stat: "stats/",
   },
 };
 

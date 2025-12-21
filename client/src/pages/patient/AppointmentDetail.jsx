@@ -139,12 +139,10 @@ const AppointmentDetail = () => {
   }
   const patientFullName = appointment.is_guest
     ? appointment.patient_name || "Khách vãng lai"
-    : `${appointment.user?.firstname || ""} ${
-        appointment.user?.lastname || ""
-      }`;
-  const doctorFullName = dentist
-    ? `${dentist.firstname || ""} ${dentist.lastname || ""}`
-    : "Đang tải...";
+    : appointment.user?.name || "Không xác định";
+
+  const doctorFullName = dentist?.name || "Đang tải...";
+
   const patientGender = appointment.is_guest
     ? appointment.gender
     : appointment.user?.gender;
@@ -215,8 +213,7 @@ const AppointmentDetail = () => {
               <div>
                 <p className="text-xs text-teal-600 mb-1">Tên Bác Sĩ</p>
                 <p className="text-base font-semibold text-gray-900">
-                  {dentist?.firstname || ""}{" "}
-                  {dentist?.lastname || "Đang tải..."}
+                  {dentist?.name || ""}
                 </p>
               </div>
               <div>

@@ -533,7 +533,7 @@ const WorkingAppointmentDetail = () => {
     if (appointment.is_guest) {
       return appointment.patient_name;
     } else {
-      return `${appointment.user.firstname} ${appointment.user.lastname}`;
+      return `${appointment.user.name} `;
     }
   };
 

@@ -121,9 +121,10 @@ const ScheduleSupport = () => {
       const res = await publicApi.get(endpoints.get_dentist_list);
       const transformedData = res.data.data.map((d) => ({
         id: d.id,
-        name: `BS. ${d.firstname} ${d.lastname}`,
+        name: `BS. ${d.name}`,
         image: d.avatar,
       }));
+
       setDentists(transformedData);
       console.log("Danh sách bác sĩ", res.data);
     } catch (err) {
@@ -259,7 +260,7 @@ const ScheduleSupport = () => {
     const s = searchPatient.trim();
     if (!s) return false;
     const ns = normalize(s);
-    const fullName = `${patient.firstname} ${patient.lastname}`;
+    const fullName = patient?.name || "";
     return (
       normalize(fullName).includes(ns) ||
       (patient.phone_number && patient.phone_number.includes(ns)) ||
@@ -269,7 +270,7 @@ const ScheduleSupport = () => {
 
   const handlePatientSelect = (patient) => {
     setSelectedPatient(patient);
-    setSearchPatient(`${patient.firstname} ${patient.lastname}`);
+    setSearchPatient(patient?.name || "");
     setShowPatientSuggestions(false);
     fetchUserBookingStat(patient.id);
     fetchPatientSchedule(patient.id);
@@ -569,8 +570,9 @@ const ScheduleSupport = () => {
                                 }`}
                               >
                                 <div className="font-semibold text-gray-800">
-                                  {patient.firstname} {patient.lastname}
+                                  {patient?.name || "Bệnh nhân"}
                                 </div>
+
                                 <div className="text-sm text-gray-500 mt-1">
                                   {patient.phone_number} • {patient.username}
                                 </div>
@@ -592,8 +594,7 @@ const ScheduleSupport = () => {
                           <div>
                             <span className="text-gray-600">Họ tên: </span>
                             <span className="font-medium text-gray-800">
-                              {selectedPatient.firstname}{" "}
-                              {selectedPatient.lastname}
+                              {selectedPatient?.name || "Bệnh nhân"}
                             </span>
                           </div>
                           <div>
@@ -1049,8 +1050,8 @@ const ScheduleSupport = () => {
                             <>
                               <p className="font-medium text-gray-800">
                                 {selectedPatient
-                                  ? `${selectedPatient.firstname} ${selectedPatient.lastname}`
-                                  : "Khách mới"}
+                                  ? selectedPatient.name || "Bệnh nhân"
+                                  : "Đang tải..."}
                               </p>
                               {selectedPatient && (
                                 <p className="text-sm text-gray-600">

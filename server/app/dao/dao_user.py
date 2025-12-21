@@ -7,7 +7,7 @@ import bcrypt
 from .dao_user_booking_stats import create_user_booking_stats
 from datetime import datetime, timedelta
 
-def create_user(firstname, lastname, gender,username, password, phone_number, specialization_id=None,address=None,role=None, avatar=None):
+def create_user(name, gender,username, password, phone_number, specialization_id=None,address=None,role=None, avatar=None):
     user=User.query.filter_by(phone_number=phone_number).first()
 
     if user is not None:
@@ -24,8 +24,7 @@ def create_user(firstname, lastname, gender,username, password, phone_number, sp
 
     if not role:
         user = User(
-            firstname=firstname,
-            lastname=lastname,
+            name=name,
             gender=gender_enum,
             username=username,
             password=hashed_pw,
@@ -33,8 +32,7 @@ def create_user(firstname, lastname, gender,username, password, phone_number, sp
             phone_number=phone_number,)
     else:
          user = User(
-            firstname=firstname,
-            lastname=lastname,
+            name=name,
             gender=gender_enum,
             username=username,
             password=hashed_pw,
@@ -153,14 +151,13 @@ def update_user_role(user_id, new_role):
 # def get_all_users():
 #     return User.query.all()
 
-def update_user(user_id, username=None, phone_number=None, firstname=None, lastname=None, role=None, gender=None, password=None):
+def update_user(user_id, username=None, phone_number=None, name=None, role=None, gender=None, password=None):
     user = User.query.get(user_id)
     if not user:
         return None
     if username: user.username = username
     if phone_number: user.phone_number = phone_number
-    if firstname: user.firstname = firstname
-    if lastname: user.lastname = lastname
+    if name: user.name = name
     if role: user.role = role
     if gender: user.gender = gender
     #if password: user.password = hash_password(password)  # nếu có hàm hash

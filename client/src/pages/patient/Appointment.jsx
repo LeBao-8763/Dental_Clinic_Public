@@ -805,8 +805,7 @@ const Appointment = () => {
                   >
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                       <h3 className="text-lg font-semibold text-gray-800">
-                        BS. {appointment.user.firstname}{" "}
-                        {appointment.user.lastname}
+                        BS. {appointment.user.name}
                       </h3>
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(

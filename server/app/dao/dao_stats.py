@@ -9,7 +9,7 @@ def revenue_by_dentist(month=None):
     query = (
         db.session.query(
             User.id.label("dentist_id"),
-            func.concat(User.firstname, " ", User.lastname).label("dentist_name"),
+            func.concat(User.name).label("dentist_name"),
             func.sum(Invoice.total).label("total_revenue")
         )
         .join(Appointment, Appointment.id == Invoice.appointment_id)
@@ -68,10 +68,14 @@ def general_revenue():
 
     total = db.session.query(func.count(Appointment.id)).scalar()
 
+    completion_rate = 0
+    if total > 0:
+        completion_rate = round(total_completed_appointments * 100 / total, 2)
+
 
     return {
         "total_patients": total_patients + total_guests,
         "total_dentists": total_dentists,
         "total_completed_appointments": total_completed_appointments,
-        "completion_rate": (total_completed_appointments*100/total)
+        "completion_rate": (completion_rate)
     }

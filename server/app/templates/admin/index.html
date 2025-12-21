@@ -1,33 +1,51 @@
-{% extends 'admin/base.html' %}
-
-{% block body %}
-{% if current_user.is_authenticated %}
-  <div class="container mt-5 text-center">
-    <h1 class="text-info">Xin chào <span class="text-danger">{{ current_user.firstname }}</span> 👋</h1>
-    <p>Chào mừng bạn đến với trang quản trị hệ thống!</p>
-  </div>
+{% extends 'admin/base.html' %} {% block body %} {% if
+current_user.is_authenticated %}
+<div class="container mt-5 text-center">
+  <h1 class="text-info">
+    Xin chào <span class="text-danger">{{ current_user.name }}</span> 👋
+  </h1>
+  <p>Chào mừng bạn đến với trang quản trị hệ thống!</p>
+</div>
 {% else %}
-  <div class="d-flex justify-content-center align-items-center vh-100 bg-light">
-    <div class="card shadow-lg border-0" style="width: 400px; border-radius: 15px;">
-      <div class="card-body p-5">
-        <h2 class="text-center mb-4 text-primary fw-bold">Đăng nhập Quản trị</h2>
-        <form method="post" action="{{ url_for('admin_login') }}">
-          <div class="form-group mb-3">
-            <label for="username" class="form-label fw-semibold">Tên đăng nhập</label>
-            <input type="text" class="form-control form-control-lg rounded-3" id="username" name="username"
-                   placeholder="Nhập tên đăng nhập" required>
-          </div>
+<div class="d-flex justify-content-center align-items-center vh-100 bg-light">
+  <div
+    class="card shadow-lg border-0"
+    style="width: 400px; border-radius: 15px"
+  >
+    <div class="card-body p-5">
+      <h2 class="text-center mb-4 text-primary fw-bold">Đăng nhập Quản trị</h2>
+      <form method="post" action="{{ url_for('admin_login') }}">
+        <div class="form-group mb-3">
+          <label for="username" class="form-label fw-semibold"
+            >Tên đăng nhập</label
+          >
+          <input
+            type="text"
+            class="form-control form-control-lg rounded-3"
+            id="username"
+            name="username"
+            placeholder="Nhập tên đăng nhập"
+            required
+          />
+        </div>
 
-          <div class="form-group mb-3">
-            <label for="pwd" class="form-label fw-semibold">Mật khẩu</label>
-            <input type="password" class="form-control form-control-lg rounded-3" id="pwd" name="password"
-                   placeholder="Nhập mật khẩu" required>
-          </div>
+        <div class="form-group mb-3">
+          <label for="pwd" class="form-label fw-semibold">Mật khẩu</label>
+          <input
+            type="password"
+            class="form-control form-control-lg rounded-3"
+            id="pwd"
+            name="password"
+            placeholder="Nhập mật khẩu"
+            required
+          />
+        </div>
 
-          <button type="submit" class="btn btn-primary w-100 btn-lg rounded-3">Đăng nhập</button>
-        </form>
-      </div>
+        <button type="submit" class="btn btn-primary w-100 btn-lg rounded-3">
+          Đăng nhập
+        </button>
+      </form>
     </div>
   </div>
-{% endif %}
-{% endblock %}
+</div>
+{% endif %} {% endblock %}

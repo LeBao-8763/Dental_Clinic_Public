@@ -4,8 +4,7 @@ USE dental_clinic;
 -- Bảng người dùng (bác sĩ, bệnh nhân, nhân viên)
 CREATE TABLE user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    firstname VARCHAR(100),
-    lastname VARCHAR(100),
+    name VARCHAR(100),
     gender ENUM('MALE', 'FEMALE', 'OTHER'),
     phone_number VARCHAR(20) UNIQUE,
     username VARCHAR(100) UNIQUE,
@@ -17,8 +16,7 @@ CREATE TABLE user (
 );
 
 INSERT INTO user (
-    firstname,
-    lastname,
+    name,
     gender,
     phone_number,
     username,
@@ -28,8 +26,7 @@ INSERT INTO user (
     status
 )
 VALUES (
-    'Super',
-    'Admin',
+    'Super Admin',
     'MALE',
     '0900000000',
     'admin',

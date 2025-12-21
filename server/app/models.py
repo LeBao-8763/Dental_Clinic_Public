@@ -58,8 +58,7 @@ class User(db.Model, UserMixin):
     __tablename__ = 'user'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    firstname = db.Column(db.String(100))
-    lastname = db.Column(db.String(100))
+    name = db.Column(db.String(100))
     gender = db.Column(db.Enum(GenderEnum), nullable=False)
     phone_number = db.Column(db.String(20), unique=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
@@ -75,8 +74,6 @@ class User(db.Model, UserMixin):
     dentist_schedules = db.relationship('DentistSchedule', back_populates='dentist', lazy=True)
     dentist_custom_schedules = db.relationship('DentistCustomSchedule', back_populates='dentist', lazy=True)
     booking_stats = db.relationship('UserBookingStats', back_populates='user', uselist=False)
-    def __str__(self):
-        return f"{self.firstname} {self.lastname}".strip() or f"Người dùng {self.id}"
 
 
 # ------------------------------

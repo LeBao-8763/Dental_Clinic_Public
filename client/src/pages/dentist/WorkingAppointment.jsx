@@ -328,7 +328,7 @@ const WorkingAppointment = () => {
               // Xác định thông tin hiển thị dựa trên is_guest
               const patientName = item.is_guest
                 ? item.patient_name
-                : `${item.user.firstname} ${item.user.lastname}`;
+                : `${item.user.name} `;
 
               const patientGender = item.is_guest
                 ? item.gender === "GenderEnum.MALE"

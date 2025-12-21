@@ -249,9 +249,10 @@ const PaymentPage = () => {
                     <div className="flex items-start justify-between">
                       <h3 className="text-xl font-bold text-gray-800">
                         {apt.is_guest
-                          ? apt.patient_name
-                          : `${apt.user?.firstname} ${apt.user?.lastname}`}
+                          ? apt.patient_name || "Khách vãng lai"
+                          : apt.user?.name || "Không xác định"}
                       </h3>
+
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(
                           apt.status
@@ -301,7 +302,7 @@ const PaymentPage = () => {
                             <p className="text-xs text-gray-500">Bác Sĩ</p>
                             <p className="text-sm font-medium text-gray-800">
                               {dentist
-                                ? `${dentist.firstname} ${dentist.lastname}`
+                                ? dentist.name
                                 : `Bác sĩ #${apt.dentist_id}`}
                             </p>
                           </div>

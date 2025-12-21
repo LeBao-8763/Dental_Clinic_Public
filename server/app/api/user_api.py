@@ -51,8 +51,7 @@ class UserList(Resource):
         new_user=dao_user.create_user(
             username=args.get('username'),
             phone_number=args.get('phonenumber'),
-            firstname=args.get('firstname'),
-            lastname=args.get('lastname'),
+            name=args.get('name'),
             role=args.get('role'),
             gender=args.get('gender'),
             avatar=avatar_url,
@@ -144,8 +143,7 @@ class UpdateUser(Resource):
             user_id,
             username=args.get('username'),
             phone_number=args.get('phonenumber'),
-            firstname=args.get('firstname'),
-            lastname=args.get('lastname'),
+            name=args.get('lastname'),
             role=args.get('role'),
             gender=args.get('gender'),
             password=args.get('password')

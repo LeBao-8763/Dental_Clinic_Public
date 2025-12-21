@@ -14,26 +14,21 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [setErrors] = useState({});
-
   // Register fields
   const [registerData, setRegisterData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     username: "",
     phone: "",
     password: "",
     confirmPassword: "",
     gender: "",
   });
-
   // Show/hide password states
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   // ---------- Login ----------
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -47,7 +42,6 @@ const Login = () => {
         account_identifier: account,
         password: password,
       });
-
       if (res.data) {
         const userRes = await publicApi.get(
           endpoints.get_user_info(res.data.user_id)
@@ -76,17 +70,13 @@ const Login = () => {
       setLoading(false);
     }
   };
-
   // ---------- Register ----------
   const validateRegisterData = (data) => {
     const errors = {};
-
-    if (!data.lastName.trim()) errors.lastName = "Vui lòng nhập họ";
-    if (!data.firstName.trim()) errors.firstName = "Vui lòng nhập tên";
+    if (!data.name.trim()) errors.name = "Vui lòng nhập tên";
     if (!data.username.trim()) errors.username = "Vui lòng nhập tên đăng nhập";
     else if (data.username.length < 3)
       errors.username = "Tên đăng nhập phải có ít nhất 3 ký tự";
-
     const phoneRegex = /^0\d{9,10}$/;
     if (!data.phone.trim()) {
       errors.phone = "Vui lòng nhập số điện thoại";
@@ -94,9 +84,7 @@ const Login = () => {
       errors.phone =
         "Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 hoặc 11 số)";
     }
-
     if (!data.gender) errors.gender = "Vui lòng chọn giới tính";
-
     const pwd = data.password;
     if (!pwd) errors.password = "Vui lòng nhập mật khẩu";
     else if (pwd.length < 8)
@@ -109,43 +97,33 @@ const Login = () => {
       errors.password = "Mật khẩu phải có ít nhất một số";
     else if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd))
       errors.password = "Mật khẩu phải có ít nhất một ký tự đặc biệt";
-
     if (pwd !== data.confirmPassword)
       errors.confirmPassword = "Mật khẩu xác nhận không khớp";
-
     return errors;
   };
-
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-
     const validationErrors = validateRegisterData(registerData);
     setErrors(validationErrors);
-
     if (Object.keys(validationErrors).length > 0) {
       toast.error(Object.values(validationErrors).join(", "));
       return;
     }
-
     let genderEnum = null;
     if (registerData.gender === "male") genderEnum = "MALE";
     else if (registerData.gender === "female") genderEnum = "FEMALE";
     else if (registerData.gender === "other") genderEnum = "OTHER";
-
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("username", registerData.username);
       formData.append("phonenumber", registerData.phone);
       formData.append("password", registerData.password);
-      formData.append("firstname", registerData.firstName);
-      formData.append("lastname", registerData.lastName);
+      formData.append("name", registerData.name);
       formData.append("gender", genderEnum);
-
       const res = await publicApi.post(endpoints.register, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       if (res.data) {
         toast.success("Đăng ký thành công!");
         setActiveTab("login");
@@ -156,7 +134,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="relative h-screen w-screen flex overflow-hidden">
       {loading && (
@@ -164,7 +141,6 @@ const Login = () => {
           <Loading />
         </div>
       )}
-
       {/* Left Side */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col relative">
         <button
@@ -174,7 +150,6 @@ const Login = () => {
           <ArrowLeft size={20} />
           <span className="text-sm font-medium">Trang chủ</span>
         </button>
-
         <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24 max-w-[500px] mx-auto w-full">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-2">
@@ -184,7 +159,6 @@ const Login = () => {
               </span>
             </div>
           </div>
-
           <div className="flex gap-4 mb-8 border-b border-gray-200">
             <button
               onClick={() => setActiveTab("login")}
@@ -213,7 +187,6 @@ const Login = () => {
               )}
             </button>
           </div>
-
           {/* ---------- Login Form ---------- */}
           {activeTab === "login" && (
             <form onSubmit={handleLoginSubmit} className="space-y-6">
@@ -229,7 +202,6 @@ const Login = () => {
                   placeholder="Nhập Tên đăng nhập/Số điện thoại"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mật khẩu
@@ -251,7 +223,6 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
@@ -260,47 +231,26 @@ const Login = () => {
               </button>
             </form>
           )}
-
           {/* ---------- Register Form ---------- */}
           {activeTab === "register" && (
             <form onSubmit={handleRegisterSubmit} className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Họ
-                  </label>
-                  <input
-                    type="text"
-                    value={registerData.lastName}
-                    onChange={(e) =>
-                      setRegisterData({
-                        ...registerData,
-                        lastName: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-gray-400"
-                    placeholder="Nhập họ"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tên
-                  </label>
-                  <input
-                    type="text"
-                    value={registerData.firstName}
-                    onChange={(e) =>
-                      setRegisterData({
-                        ...registerData,
-                        firstName: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-gray-400"
-                    placeholder="Nhập tên"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên
+                </label>
+                <input
+                  type="text"
+                  value={registerData.name}
+                  onChange={(e) =>
+                    setRegisterData({
+                      ...registerData,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-gray-400"
+                  placeholder="Nhập tên đầy đủ"
+                />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tên đăng nhập
@@ -324,7 +274,6 @@ const Login = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Số điện thoại
@@ -348,7 +297,6 @@ const Login = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Giới tính
@@ -366,7 +314,6 @@ const Login = () => {
                   <option value="other">Khác</option>
                 </select>
               </div>
-
               {/* Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -400,7 +347,6 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-
               {/* Confirm Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -432,7 +378,6 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
@@ -443,7 +388,6 @@ const Login = () => {
           )}
         </div>
       </div>
-
       {/* Right Side Image */}
       <div className="hidden lg:flex w-1/2 relative bg-linear-to-br from-gray-900 to-black overflow-hidden">
         <img
@@ -468,5 +412,4 @@ const Login = () => {
     </div>
   );
 };
-
 export default Login;

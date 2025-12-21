@@ -38,7 +38,7 @@ const DoctorFeature = () => {
           return {
             id: dentist.id,
             avatar: dentist.avatar || "/default-doctor.png",
-            name: `${dentist.firstname} ${dentist.lastname}`,
+            name: `${dentist.name}`,
             description: profile?.introduction || "",
           };
         })

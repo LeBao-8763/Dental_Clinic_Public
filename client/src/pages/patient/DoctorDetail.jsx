@@ -414,7 +414,7 @@ const DoctorDetail = () => {
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                Bác sĩ {dentist?.firstname} {dentist?.lastname}
+                Bác sĩ {dentist?.name}
               </h1>
               <div className="flex items-center gap-2 text-gray-600 mb-2">
                 <User size={18} />

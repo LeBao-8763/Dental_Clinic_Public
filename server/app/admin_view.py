@@ -41,8 +41,7 @@ class StatsView(AuthenticatedBaseView):
 
         dentists = dao_stats.db.session.query(
             dao_stats.User.id,
-            dao_stats.User.firstname,
-            dao_stats.User.lastname
+            dao_stats.User.name,
         ).filter(dao_stats.User.role == dao_stats.RoleEnum.ROLE_DENTIST).all()
 
         # Nếu có chọn dentist thì thống kê theo ngày
@@ -66,8 +65,8 @@ class UserView(AuthenticatedModelView):
     can_view_details = True
     column_display_pk = True
     can_delete = False
-    column_filters = ['firstname', 'lastname', 'username']
-    column_searchable_list = ['firstname', 'lastname', 'username']
+    column_filters = ['name', 'username']
+    column_searchable_list = ['name', 'username']
 
     form_choices = {
         'gender': [
@@ -111,8 +110,7 @@ class UserView(AuthenticatedModelView):
     column_exclude_list = ['avatar', 'password']
     column_labels = {
         'id': 'Mã',
-        'firstname': 'Họ',
-        'lastname': 'Tên',
+        'name': 'Tên',
         'gender': 'Giới tính',
         'phone_number': 'Số điện thoại',
         'username': 'Tên đăng nhập',
@@ -143,7 +141,7 @@ class UserView(AuthenticatedModelView):
         'avatar': FileField
     }
     # Các field chung
-    common_fields = ('firstname', 'lastname', 'gender', 'username', 'phone_number', 'role', 'status', 'avatar')
+    common_fields = ('name', 'gender', 'username', 'phone_number', 'role', 'status', 'avatar')
 
     # Create form: có thêm password
     form_create_rules = common_fields + ('password',)
@@ -188,7 +186,7 @@ class DentistProfileView(AuthenticatedModelView):
     column_list = ('dentist', 'education', 'experience', 'created_at')
     form_columns = ('dentist', 'introduction', 'education', 'experience')
     form_ajax_refs = {
-        'dentist': {'fields': (User.firstname, User.lastname)}
+        'dentist': {'fields': (User.name,)}
     }
     column_labels = {
         'dentist': 'Bác sĩ',

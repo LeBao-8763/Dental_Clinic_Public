@@ -50,8 +50,7 @@ specialization_model = api.model('Specialization', {
 user_model = api.model('User', {
     'id': fields.Integer(readOnly=True, description='ID người dùng'),
     'specialization_id': fields.Integer(description='ID chuyên ngành nếu là bác sĩ'),
-    'firstname': fields.String(required=True, description='Tên'),
-    'lastname': fields.String(required=True, description='Họ'),
+    'name': fields.String(required=True, description='Họ và tên'),
     'gender': fields.String(enum=[e.value for e in GenderEnum], description='Giới tính'),
     'phone_number': fields.String(description='Số điện thoại'),
     'address': fields.String(description='Địa chỉ'),
@@ -64,8 +63,7 @@ user_model = api.model('User', {
 
 dentist_model = api.model('Dentist', {
     'id': fields.Integer(readOnly=True, description='ID người dùng'),
-    'firstname': fields.String(required=True, description='Tên'),
-    'lastname': fields.String(required=True, description='Họ'),
+    'name': fields.String(required=True, description='Họ và tên'),
     'gender': fields.String(enum=[e.value for e in GenderEnum], description='Giới tính'),
     'avatar': fields.String(description='URL avatar')
 })
@@ -156,8 +154,7 @@ appointment_with_user_model = api.model('AppointmentWithPatient', {
     'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
     'user': fields.Nested(api.model('PatientBasicInfo', {
         'id': fields.Integer(description='ID bệnh nhân'),
-        'firstname': fields.String(description='Tên'),
-        'lastname': fields.String(description='Họ'),
+        'name': fields.String(description='Họ và tên'),
         'gender': fields.String(description='Giới tính'),
         'phone_number': fields.String(description='Số điện thoại')
     }))
@@ -303,8 +300,7 @@ user_creation_parser = reqparse.RequestParser()
 user_creation_parser.add_argument('username', type=str, required=True, help='Tên người dùng là bắt buộc', location='form')
 user_creation_parser.add_argument('phonenumber', type=str, required=True, help='Số điện thoại là bắt buộc', location='form')
 user_creation_parser.add_argument('password', type=str, required=True, help='Password người dùng là bắt buộc', location='form')
-user_creation_parser.add_argument('firstname', type=str, required=True, help='Tên người dùng là bắt buộc', location='form')
-user_creation_parser.add_argument('lastname', type=str, required=True, help='Họ người dùng là bắt buộc', location='form')
+user_creation_parser.add_argument('name', type=str, required=True, help='Tên người dùng là bắt buộc', location='form')
 user_creation_parser.add_argument('role', type=str, required=False, help='Quyền (không bắt buộc)', location='form')
 user_creation_parser.add_argument('gender',type=str, required=True, help='Giới tính là bắt buộc', location='form')
 user_creation_parser.add_argument('avatar', type=FileStorage, required=False, help='Ảnh (không bắt buộc)', location='files')
