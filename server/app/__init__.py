@@ -10,7 +10,6 @@ def create_app():
     app.config.from_object(Config)
     CORS(app)
 
-    # Gắn extension
     db.init_app(app)
     jwt.init_app(app)
     admin.init_app(app)
@@ -19,7 +18,6 @@ def create_app():
     from .api_conf import api_bp
     app.register_blueprint(api_bp)
 
-    # Import routes
     from .api import (
         auth_api,
         user_api,
@@ -39,7 +37,6 @@ def create_app():
         stats_api
     )
 
-    # Khởi tạo admin sau khi app và db sẵn sàng
     with app.app_context():
         init_admin(admin)
 

@@ -1,12 +1,6 @@
-from alembic.util import status
-
 from app import db
 from app.models import Prescription, PrescriptionDetail, Medicine, PrescriptionStatusEnum
 
-
-# ------------------------------
-# 🔹 Toa thuốc
-# ------------------------------
 def get_all_prescriptions():
     return Prescription.query.all()
 
@@ -30,9 +24,6 @@ def delete_prescription(prescription_id):
     db.session.commit()
     return True
 
-# ------------------------------
-# 🔹 Chi tiết toa thuốc
-# ------------------------------
 def get_details_by_prescription(prescription_id):
     details = PrescriptionDetail.query.filter_by(prescription_id=prescription_id).all()
     result = []
@@ -50,7 +41,6 @@ def get_details_by_prescription(prescription_id):
     return result
 
 def get_prescription_by_appointment(appointment_id):
-    """Lấy toa thuốc và chi tiết thuốc theo appointment_id"""
     prescription = (
         db.session.query(Prescription)
         .filter(Prescription.appointment_id == appointment_id)
@@ -60,7 +50,6 @@ def get_prescription_by_appointment(appointment_id):
     if not prescription:
         return None
 
-    # Lấy chi tiết thuốc + thông tin thuốc
     details = (
         db.session.query(PrescriptionDetail, Medicine)
         .join(Medicine, PrescriptionDetail.medicine_id == Medicine.id)
@@ -68,7 +57,6 @@ def get_prescription_by_appointment(appointment_id):
         .all()
     )
 
-    # Đóng gói dữ liệu trả về
     result = {
         "id": prescription.id,
         "appointment_id": prescription.appointment_id,
@@ -95,23 +83,18 @@ def add_details(data):
     prescription_id = data['prescription_id']
     new_details = data['details']
 
-    # 🔹 0️⃣ Kiểm tra trạng thái toa thuốc
     prescription = Prescription.query.get(prescription_id)
     if not prescription:
         return {"error": "Không tìm thấy toa thuốc."}, 404
 
-    # ✅ Nếu toa đã xác nhận → không cho chỉnh sửa
     if prescription.status == PrescriptionStatusEnum.CONFIRMED:
         return {"error": "Toa thuốc đã được xác nhận, không thể chỉnh sửa."}, 400
 
-    # 1️⃣ Lấy tất cả chi tiết hiện có trong DB
     existing_details = PrescriptionDetail.query.filter_by(prescription_id=prescription_id).all()
     existing_map = {d.medicine_id: d for d in existing_details}
 
-    # 2️⃣ Tạo danh sách ID thuốc mới
     new_ids = [item['medicine_id'] for item in new_details]
 
-    # 3️⃣ Xử lý thêm hoặc cập nhật
     for item in new_details:
         medicine_id = int(item['medicine_id'])
         dosage = int(item['dosage'])
@@ -121,24 +104,20 @@ def add_details(data):
         medicine = Medicine.query.get(medicine_id)
 
         if medicine_id in existing_map:
-            # Đã tồn tại → kiểm tra thay đổi
             old_detail = existing_map[medicine_id]
             old_total = old_detail.dosage * old_detail.duration_days
-            diff = total_quantity - old_total  # dương: tăng, âm: giảm
+            diff = total_quantity - old_total
 
-            # Cập nhật toa
             old_detail.dosage = dosage
             old_detail.unit = item['unit']
             old_detail.duration_days = duration_days
             old_detail.note = item.get('note')
             old_detail.price = item['price']
 
-            # Cập nhật kho tạm
             if medicine:
                 medicine.reserved_quantity += diff
 
         else:
-            # Thuốc mới → thêm mới
             new_detail = PrescriptionDetail(
                 prescription_id=prescription_id,
                 medicine_id=medicine_id,
@@ -152,10 +131,8 @@ def add_details(data):
             if medicine:
                 medicine.reserved_quantity += total_quantity
 
-    # 4️⃣ Xóa thuốc bị gỡ khỏi toa
     for old_medicine_id, old_detail in existing_map.items():
         if old_medicine_id not in new_ids:
-            # Thuốc bị xóa khỏi toa
             old_total = old_detail.dosage * old_detail.duration_days
             medicine = Medicine.query.get(old_medicine_id)
             if medicine:
@@ -165,8 +142,6 @@ def add_details(data):
     db.session.commit()
     return True
 
-
-#huy-dev
 def update_prescription(prescription_id, args):
     prescription = Prescription.query.get(prescription_id)
     if not prescription:

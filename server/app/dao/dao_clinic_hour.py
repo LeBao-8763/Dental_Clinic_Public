@@ -1,7 +1,6 @@
 from app import db
 from app.models import ClinicHours, DayOfWeekEnum
 
-
 def create_clinic_hour(day_of_week, open_time, close_time,slot_duration_minutes=None):
     try:
         day_enum = DayOfWeekEnum(day_of_week)
@@ -25,7 +24,6 @@ def create_default_week_hours(default_open, default_close):
 def get_all_clinic_hours():
     return ClinicHours.query.all()
 
-#huy-dev
 def update_clinic_hour(clinic_hour_id, day_of_week=None, open_time=None, close_time=None, slot_duration_minutes=None):
     clinic_hour = ClinicHours.query.get(clinic_hour_id)
     if not clinic_hour:

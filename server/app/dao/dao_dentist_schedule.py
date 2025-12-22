@@ -9,12 +9,10 @@ def create_dentist_schedule(dentist_id, day_of_week, start_time, end_time):
     except ValueError:
         raise ValueError("day_of_week phải là 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY' hoặc 'SUNDAY'")
 
-    # Lấy giờ hoạt động phòng khám
     clinic_hour = ClinicHours.query.filter_by(day_of_week=day_enum).first()
     if not clinic_hour:
         raise ValueError(f"Chưa có giờ hoạt động cho ngày {day_of_week}")
 
-    # Check giờ nằm trong khung clinic
     if start_time < clinic_hour.open_time or end_time > clinic_hour.close_time:
         raise ValueError(
             f"Thời gian làm việc phải nằm trong khoảng {clinic_hour.open_time} - {clinic_hour.close_time}"
@@ -31,10 +29,6 @@ def create_dentist_schedule(dentist_id, day_of_week, start_time, end_time):
     return schedule
 
 def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
-    """
-    Tạo nhiều lịch làm việc cho một nha sĩ
-    schedules_data: list of dict [{'day_of_week': 'MONDAY', 'start_time': '09:00:00', 'end_time': '17:00:00'}, ...]
-    """
     try:
         schedule_list = []
         try:
@@ -42,12 +36,10 @@ def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
         except ValueError:
             raise ValueError("day_of_week phải là 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY' hoặc 'SUNDAY'")
 
-         # Lấy giờ hoạt động phòng khám
         clinic_hour = ClinicHours.query.filter_by(day_of_week=day_enum).first()
         if not clinic_hour:
             raise ValueError(f"Chưa có giờ hoạt động cho ngày {day_of_week}")
 
-        #Check xem có tôn tại lịch trước đó chưa
         existing_count = DentistSchedule.query.filter_by(
             dentist_id=dentist_id,
             day_of_week=day_enum
@@ -62,7 +54,6 @@ def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
 
             start_time=datetime.strptime(schedule_data['start_time'], "%H:%M:%S").time()
             end_time=datetime.strptime(schedule_data['end_time'], "%H:%M:%S").time()
-            # Check giờ nằm trong khung clinic
             if (start_time < clinic_hour.open_time or 
                 end_time > clinic_hour.close_time):
                 raise ValueError(
@@ -85,7 +76,6 @@ def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
         db.session.rollback()
         raise e
 
-# Lấy lịch làm việc của nha sĩ theo ngày trong tuần (nếu có)
 def get_dentist_schedules(dentist_id,day_of_week=None):
     query = DentistSchedule.query.filter_by(dentist_id=dentist_id)
     if day_of_week:
@@ -97,7 +87,6 @@ def get_dentist_schedules(dentist_id,day_of_week=None):
     return query.all()
 
 
-# Xoá lịch làm việc của nha sĩ theo ngày trong tuần
 def delete_dentist_schedules_by_day(dentist_id, day_of_week):
     try:
         day_enum = DayOfWeekEnum(day_of_week)
@@ -131,14 +120,11 @@ def get_base_schedules(dentist_id, appointment_date):
     ).all()
 
     if custom:
-        # Nếu có ngày nghỉ nguyên ngày
         if any(c.is_day_off for c in custom):
             return []
 
-        # Ngày custom nhưng có ca làm
         return custom
 
-    # Không có custom → dùng schedule thường
     return DentistSchedule.query.filter(
         DentistSchedule.dentist_id == dentist_id,
         DentistSchedule.day_of_week == day_of_week
@@ -168,9 +154,7 @@ def get_available_schedule_by_date(dentist_id, appointment_date):
             available_slots.append(slot)
     
     return available_slots
-    
-  
-#huy-dev
+
 def get_all_dentist_schedules():
     return DentistSchedule.query.all()
 

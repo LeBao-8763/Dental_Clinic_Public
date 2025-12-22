@@ -81,7 +81,7 @@ const AchievementFeature = () => {
 
       <div className="bg-white py-16 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
+
           <div className="text-center mb-12 animate-fade-in-up">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Thành tựu của chúng tôi
@@ -91,7 +91,7 @@ const AchievementFeature = () => {
             </p>
           </div>
 
-          {/* Achievement Cards */}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {achievements.map((achievement, index) => {
               const IconComponent = achievement.icon;
@@ -101,17 +101,17 @@ const AchievementFeature = () => {
                   className="flex flex-col items-center text-center animate-fade-in-up"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  {/* Icon Circle */}
+
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-gray-900 flex items-center justify-center mb-4 text-gray-900">
                     <IconComponent className="w-10 h-10 md:w-12 md:h-12" />
                   </div>
 
-                  {/* Number */}
+
                   <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                     {achievement.number}
                   </h3>
 
-                  {/* Description */}
+
                   <p className="text-gray-600 text-sm md:text-base">
                     {achievement.description}
                   </p>

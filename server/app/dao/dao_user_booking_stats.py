@@ -10,8 +10,7 @@ def create_user_booking_stats(user_id):
 
     if not user:
         raise ValueError("Không có user này tồn tại!")
-    
-   # Nếu user đã có stats thì bỏ qua
+
     if user.booking_stats:
         return user.booking_stats
 

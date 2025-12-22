@@ -24,7 +24,6 @@ def get_list_service():
 def get_service_by_id(id):
     return Service.query.filter_by(id=id).first()
 
-#huy-dev
 def update_service(service_id, name=None, price=None, description=None):
     service = Service.query.get(service_id)
     if not service:

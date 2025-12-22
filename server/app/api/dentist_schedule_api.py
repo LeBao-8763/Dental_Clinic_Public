@@ -1,20 +1,22 @@
+from app import db
 from app.dao import dao_dentist_schedule
-from flask import Flask, request, jsonify
+from flask import request
 from flask_restx import Resource
 from app.api_conf import dentist_shedule_model, dentist_shedule_parser, dentist_shedule_ns, multiple_schedule_model
 from flask_jwt_extended import jwt_required
 from app.utils.check_role import role_required
-from app.models import RoleEnum
+from app.models import RoleEnum, DentistSchedule
+
 
 @dentist_shedule_ns.route('/')
 class Dental_Schedule(Resource):
     @dentist_shedule_ns.doc('create_dentist_schedule')
-    @dentist_shedule_ns.expect(multiple_schedule_model)   # Định nghĩa định dạng request body cho Swagger UI
+    @dentist_shedule_ns.expect(multiple_schedule_model)
     @dentist_shedule_ns.marshal_with(multiple_schedule_model, code=201) 
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def post(self):
-        "Tạo lịch hẹn mới"
+
         data=request.get_json()
         dentist_id=data.get('dentist_id')
         day_of_week=data.get('day_of_week')
@@ -39,11 +41,11 @@ class Dental_Schedule(Resource):
 class DentistScheduleList(Resource):
     @dentist_shedule_ns.doc('get_dentist_schedules')
     @dentist_shedule_ns.param('day_of_week', "Ngày trong tuần để lọc lịch làm việc (tùy chọn)")
-    @dentist_shedule_ns.marshal_list_with(dentist_shedule_model) # Định nghĩa định dạng response
+    @dentist_shedule_ns.marshal_list_with(dentist_shedule_model)
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def get(self, dentist_id):
-        "Lấy danh sách lịch làm việc của nha sĩ theo ID và ngày trong tuần (nếu có)"
+
         day_of_week = request.args.get('day_of_week')
         schedules = dao_dentist_schedule.get_dentist_schedules(dentist_id, day_of_week)
         return schedules
@@ -54,7 +56,7 @@ class DentistScheduleList(Resource):
     @dentist_shedule_ns.doc('get_available_dentist_schedules')
     @dentist_shedule_ns.marshal_list_with(dentist_shedule_model)
     def get(self, dentist_id, date):
-        "Lấy danh sách lịch làm việc khả dụng của nha sĩ theo ngày"
+
         schedules=dao_dentist_schedule.get_available_schedule_by_date(dentist_id, date)
 
         if schedules:
@@ -69,16 +71,14 @@ class DentistScheduleByDay(Resource):
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def delete(self, dentist_id, day_of_week):
-        """
-        Xóa tất cả lịch làm việc của bác sĩ trong một ngày cụ thể
-        """
+
         try:
             deleted_count = dao_dentist_schedule.delete_dentist_schedules_by_day(
                 dentist_id, 
                 day_of_week.upper()
             )
             
-            # Trả về 200 cho cả trường hợp không có lịch để xóa
+
             return {
                 'message': f'Đã xóa {deleted_count} lịch làm việc' if deleted_count > 0 else 'Không có lịch làm việc nào để xóa',
                 'deleted_count': deleted_count
@@ -89,25 +89,24 @@ class DentistScheduleByDay(Resource):
         except Exception as e:
             return {'error': 'Lỗi server', 'detail': str(e)}, 500
 
-#huy-dev
-#Lấy tất cả lịch làm việc của tất cả nha sĩ
+
 @dentist_shedule_ns.route('/all')
 class AllDentistSchedules(Resource):
     @dentist_shedule_ns.doc('get_all_dentist_schedules')
     @dentist_shedule_ns.marshal_list_with(dentist_shedule_model)
     def get(self):
-        """Admin lấy tất cả lịch làm việc của mọi nha sĩ"""
+
         schedules = dao_dentist_schedule.get_all_dentist_schedules()
         return schedules, 200
 
-#Cập nhật lịch làm việc theo ID
+
 @dentist_shedule_ns.route('/update/<int:schedule_id>')
 class UpdateDentistSchedule(Resource):
     @dentist_shedule_ns.doc('update_dentist_schedule')
     @dentist_shedule_ns.expect(dentist_shedule_parser, validate=True)
     @dentist_shedule_ns.marshal_with(dentist_shedule_model, code=200)
     def patch(self, schedule_id):
-        """Admin cập nhật lịch làm việc theo ID"""
+
         args = dentist_shedule_parser.parse_args()
         updated_schedule = dao_dentist_schedule.update_dentist_schedule(
             schedule_id,
@@ -119,11 +118,11 @@ class UpdateDentistSchedule(Resource):
             return updated_schedule, 200
         return {"msg": "Không tìm thấy lịch làm việc"}, 404
 
-#Thống kê số lượng lịch làm việc theo nha sĩ
+
 @dentist_shedule_ns.route('/stats')
 class DentistScheduleStats(Resource):
     def get(self):
-        """Admin thống kê số lượng lịch làm việc theo nha sĩ"""
+
         from sqlalchemy import func
         stats = db.session.query(
             DentistSchedule.dentist_id,

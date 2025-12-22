@@ -19,7 +19,6 @@ def create_dentist_profile(dentist_id, introduction=None, education=None, experi
 def get_dentist_profile_by_dentist_id(dentist_id):
     return DentistProfile.query.filter_by(dentist_id=dentist_id).first()
 
-#huy-dev
 def update_dentist_profile(dentist_id, introduction=None, education=None, experience=None):
     profile = DentistProfile.query.filter_by(dentist_id=dentist_id).first()
     if not profile:

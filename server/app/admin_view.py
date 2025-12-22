@@ -35,8 +35,8 @@ class LogoutView(AuthenticatedBaseView):
 class StatsView(AuthenticatedBaseView):
     @expose('/')
     def index(self):
-        # Lấy tham số lọc
         month = request.args.get('month', type=int)
+        year = request.args.get('year', type=int)
         dentist_id = request.args.get('dentist_id', type=int)
 
         dentists = dao_stats.db.session.query(
@@ -44,20 +44,31 @@ class StatsView(AuthenticatedBaseView):
             dao_stats.User.name,
         ).filter(dao_stats.User.role == dao_stats.RoleEnum.ROLE_DENTIST).all()
 
-        # Nếu có chọn dentist thì thống kê theo ngày
         if dentist_id:
-            data = dao_stats.revenue_by_day(month=month, dentist_id=dentist_id)
-            mode = "day"
+            daily_revenue = dao_stats.revenue_by_day(month=month, year=year, dentist_id=dentist_id)
+            overall = dao_stats.overall_stats(month=month, year=year)
+            dentist_revenue = dao_stats.revenue_by_dentist(month=month)
+            top_services = dao_stats.top_services(month=month, year=year)
+            top_medicines = dao_stats.top_medicines(month=month, year=year)
         else:
-            data = dao_stats.revenue_by_dentist(month=month)
-            mode = "dentist"
+            daily_revenue = dao_stats.revenue_by_day(month=month, year=year)
+            overall = dao_stats.overall_stats(month=month, year=year)
+            dentist_revenue = dao_stats.revenue_by_dentist(month=month)
+            top_services = dao_stats.top_services(month=month, year=year)
+            top_medicines = dao_stats.top_medicines(month=month, year=year)
 
         return self.render(
             'admin/stats.html',
-            data=data,
-            mode=mode,
+            daily_revenue=daily_revenue,
+            total_revenue=overall["total_revenue"],
+            total_appointments=overall["total_appointments"],
+            avg_per_dentist=overall["avg_per_dentist"],
+            dentist_revenue=dentist_revenue,
+            top_services=top_services,
+            top_medicines=top_medicines,
             dentists=dentists,
             selected_month=month,
+            selected_year=year,
             selected_dentist=dentist_id
         )
 

@@ -1,7 +1,7 @@
-# app/api/invoice_api.py
+
 from flask_jwt_extended import jwt_required
 from flask_restx import Resource
-from flask import request
+
 
 from app.api_conf import invoice_ns, invoice_parser, invoice_model
 from app.dao import dao_invoice

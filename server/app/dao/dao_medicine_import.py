@@ -2,13 +2,11 @@ from app import db
 from app.models import Medicine, MedicineImport
 from datetime import datetime
 
-# Nhập thuốc vào kho
 def import_medicine(user_id, medicine_id, production_date, expiration_date, quantity, price):
     med = Medicine.query.get(medicine_id)
     if not med:
         return None
 
-    # Tạo bản ghi nhập thuốc
     import_record = MedicineImport(
         user_id=user_id,
         medicine_id=medicine_id,
@@ -23,11 +21,9 @@ def import_medicine(user_id, medicine_id, production_date, expiration_date, quan
     db.session.commit()
     return import_record
 
-# Lấy danh sách nhập thuốc
 def get_medicine_import_list():
     return MedicineImport.query.all()
 
-#huy-dev
 def get_import_by_id(import_id):
     return MedicineImport.query.get(import_id)
 

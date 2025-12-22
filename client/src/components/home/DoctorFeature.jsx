@@ -24,7 +24,7 @@ const DoctorFeature = () => {
           try {
             profile = await fetchDentistProfile(dentist.id);
           } catch (err) {
-            // nếu profile lỗi thì vẫn tiếp tục
+
             console.warn(
               "Không lấy được profile cho dentist:",
               dentist.id,
@@ -32,8 +32,6 @@ const DoctorFeature = () => {
             );
           }
 
-          // Nếu backend trả avatar là path, bạn có thể map thành full URL ở đây:
-          // const avatarUrl = `${process.env.REACT_APP_API_BASE_URL || ""}/${dentist.avatar}`
 
           return {
             id: dentist.id,
@@ -62,7 +60,7 @@ const DoctorFeature = () => {
 
   useEffect(() => {
     fetchDentist();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   useEffect(() => {
@@ -97,7 +95,7 @@ const DoctorFeature = () => {
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < maxStartIndex;
 
-  // số indicator tối thiểu 1 (tránh giá trị âm)
+
   const indicatorCount = Math.max(1, dentists.length - visibleCards + 1);
 
   return (
@@ -136,7 +134,7 @@ const DoctorFeature = () => {
 
       <div className="bg-white py-16 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
+
           <div className="text-center mb-12 animate-fade-in-up">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Đội ngũ bác sĩ
@@ -148,12 +146,12 @@ const DoctorFeature = () => {
             </p>
           </div>
 
-          {/* Carousel Container */}
+
           <div
             className="relative animate-fade-in-up px-6 md:px-12"
             style={{ animationDelay: "0.2s" }}
           >
-            {/* Navigation Buttons */}
+
             <button
               onClick={handlePrev}
               disabled={!canGoPrev}
@@ -200,7 +198,7 @@ const DoctorFeature = () => {
               </svg>
             </button>
 
-            {/* Carousel */}
+
             <div className="carousel-container" ref={containerRef}>
               <div
                 className="carousel-track"
@@ -216,12 +214,9 @@ const DoctorFeature = () => {
                     className="shrink-0 px-3"
                     style={{ width: `${100 / visibleCards}%` }}
                   >
-                    {/* 
-                      Thêm `group` để sử dụng group-hover cho ảnh,
-                      và thêm hiệu ứng nhảy + con trỏ bằng Tailwind classes:
-                    */}
+
                     <div className="group border border-gray-300 rounded-lg p-4 h-full shadow-sm transform transition-transform duration-300 hover:-translate-y-3 hover:shadow-lg cursor-pointer">
-                      {/* Image */}
+
                       <div className="bg-gray-200 rounded-lg mb-4 aspect-4/3 overflow-hidden">
                         <img
                           src={dentist.avatar}
@@ -230,7 +225,7 @@ const DoctorFeature = () => {
                         />
                       </div>
 
-                      {/* Doctor Info */}
+
                       <h3 className="text-lg font-bold text-gray-900 mb-2">
                         {dentist.name}
                       </h3>
@@ -243,7 +238,7 @@ const DoctorFeature = () => {
               </div>
             </div>
 
-            {/* Indicators */}
+
             <div className="flex justify-center gap-2 mt-6">
               {Array.from({ length: indicatorCount }).map((_, idx) => (
                 <button
