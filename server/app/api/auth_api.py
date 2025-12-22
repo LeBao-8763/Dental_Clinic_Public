@@ -1,15 +1,15 @@
 from app.dao import dao_user
-from flask import Flask, request, jsonify
+from flask import jsonify
 from flask_restx import Resource
 from app.api_conf import auth_ns, auth_parser
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token
 
 @auth_ns.route('/login')
 class Login(Resource):
     @auth_ns.doc('login_user')
     @auth_ns.expect(auth_parser)
     def post(self):
-        """ Đăng nhập """
+
         args = auth_parser.parse_args()
         account_identifier = args['account_identifier']
         password = args['password']

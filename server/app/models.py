@@ -1,13 +1,8 @@
-from email.policy import default
-
 from app import db
-from datetime import datetime, time, date
+from datetime import datetime
 import enum
 from flask_login import UserMixin
 
-# ------------------------------
-# 🔹 Enum Python
-# ------------------------------
 class GenderEnum(enum.Enum):
     MALE = "MALE"
     FEMALE = "FEMALE"
@@ -51,9 +46,6 @@ class PrescriptionStatusEnum(enum.Enum):
     CONFIRMED = 'CONFIRMED'
     CANCELLED = 'CANCELLED'
 
-# ------------------------------
-# 🔹 Bảng người dùng
-# ------------------------------
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
 
@@ -78,10 +70,6 @@ class User(db.Model, UserMixin):
     def __str__(self):
         return self.name
 
-
-# ------------------------------
-# 🔹 Bảng hồ sơ bác sĩ
-# ------------------------------
 class DentistProfile(db.Model):
     __tablename__ = 'dentist_profile'
 
@@ -100,10 +88,6 @@ class DentistProfile(db.Model):
     )
     dentist = db.relationship('User', backref=db.backref('dentist_profile', uselist=False), lazy=True)
 
-
-# ------------------------------
-# 🔹 Bảng thuốc
-# ------------------------------
 class Medicine(db.Model):
     __tablename__ = 'medicine'
 
@@ -121,10 +105,6 @@ class Medicine(db.Model):
     def __str__(self):
         return self.name or f"Thuốc {self.id}"
 
-
-# ------------------------------
-# 🔹 Bảng nhập thuốc
-# ------------------------------
 class MedicineImport(db.Model):
     __tablename__ = 'medicine_import'
 
@@ -137,10 +117,6 @@ class MedicineImport(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     stock_quantity = db.Column(db.Integer, nullable=False)
 
-
-# ------------------------------
-# 🔹 Bảng lịch hoạt động chung của phòng khám
-# ------------------------------
 class ClinicHours(db.Model):
     __tablename__ = 'clinic_hours'
 
@@ -150,10 +126,6 @@ class ClinicHours(db.Model):
     close_time = db.Column(db.Time, nullable=False)
     slot_duration_minutes = db.Column(db.Integer, nullable=False, default=30)
 
-
-# ------------------------------
-# 🔹 Bảng lịch làm việc của bác sĩ
-# ------------------------------
 class DentistSchedule(db.Model):
     __tablename__ = 'dentist_schedule'
 
@@ -162,38 +134,23 @@ class DentistSchedule(db.Model):
     day_of_week = db.Column(db.Enum(DayOfWeekEnum), nullable=False)
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
-
     effective_from = db.Column(db.Date,nullable=True)
 
     dentist = db.relationship('User', back_populates='dentist_schedules')
 
-
-# ------------------------------
-# 🔹 Bảng ngoại lệ — lịch cá nhân bác sĩ
-# ------------------------------
 class DentistCustomSchedule(db.Model):
     __tablename__ = 'dentist_custom_schedule'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
     custom_date = db.Column(db.Date, nullable=False)
-
-    # TRUE → nghỉ nguyên ngày
     is_day_off = db.Column(db.Boolean, default=False)
-
-    # Nếu không nghỉ nguyên ngày → có giờ bắt đầu/kết thúc
     start_time = db.Column(db.Time, nullable=True)
     end_time = db.Column(db.Time, nullable=True)
-
     note = db.Column(db.String(255))
 
     dentist = db.relationship('User', back_populates='dentist_custom_schedules')
 
-
-
-# ------------------------------
-# 🔹 Bảng lịch hẹn
-# ------------------------------
 class Appointment(db.Model):
     __tablename__ = 'appointments'
 
@@ -201,14 +158,12 @@ class Appointment(db.Model):
     dentist_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
     patient_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
 
-    # --- Guest booking ---
     patient_name = db.Column(db.String(255), nullable=True)
     patient_phone = db.Column(db.String(20), nullable=True)
     is_guest = db.Column(db.Boolean, default=False)
 
     date_of_birth = db.Column(db.Date, nullable=True)
     gender = db.Column(db.Enum(GenderEnum), nullable=True)
-
 
     appointment_date = db.Column(db.Date, nullable=False)
     start_time = db.Column(db.Time, nullable=False)
@@ -227,35 +182,18 @@ class Appointment(db.Model):
     prescriptions = db.relationship('Prescription', back_populates='appointment', lazy=True)
     invoice = db.relationship('Invoice', back_populates='appointment', uselist=False)
 
-
-
-# ------------------------------
-# 🔹 Bảng tracking việc hủy đơn của khách hàng
-# ------------------------------
 class UserBookingStats(db.Model):
     __tablename__ = 'user_booking_stats'
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
-
-    # số lần hủy trong ngày
     cancel_count_day = db.Column(db.Integer, default=0)
-
-    # thời điểm hủy cuối cùng
     last_cancel_at = db.Column(db.DateTime,nullable=True)
-
-    # nếu bị block → thời gian block theo giờ
     blocked_until = db.Column(db.DateTime, nullable=True)
-
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship('User', back_populates='booking_stats')
 
-
-
-# ------------------------------
-# 🔹 Bảng dịch vụ
-# ------------------------------
 class Service(db.Model):
     __tablename__ = 'service'
 
@@ -266,10 +204,6 @@ class Service(db.Model):
 
     treatments = db.relationship('TreatmentRecord', back_populates='service', lazy=True)
 
-
-# ------------------------------
-# 🔹 Bảng hồ sơ điều trị
-# ------------------------------
 class TreatmentRecord(db.Model):
     __tablename__ = 'treatment_record'
 
@@ -282,10 +216,6 @@ class TreatmentRecord(db.Model):
     appointment = db.relationship('Appointment', back_populates='treatments')
     service = db.relationship('Service', back_populates='treatments')
 
-
-# ------------------------------
-# 🔹 Bảng toa thuốc
-# ------------------------------
 class Prescription(db.Model):
     __tablename__ = 'prescriptions'
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
@@ -297,10 +227,6 @@ class Prescription(db.Model):
     details = db.relationship('PrescriptionDetail', back_populates='prescription')
     appointment = db.relationship('Appointment', back_populates='prescriptions')
 
-
-# ------------------------------
-# 🔹 Bảng chi tiết toa thuốc
-# ------------------------------
 class PrescriptionDetail(db.Model):
     __tablename__ = 'prescription_details'
     prescription_id = db.Column(db.BigInteger, db.ForeignKey('prescriptions.id'), primary_key=True)
@@ -314,9 +240,6 @@ class PrescriptionDetail(db.Model):
     prescription = db.relationship('Prescription', back_populates='details')
     medicine = db.relationship('Medicine', back_populates='details')
 
-# ------------------------------
-# 🔹 Bảng hóa đơn
-# ------------------------------
 class Invoice(db.Model):
     __tablename__ = 'invoice'
 
@@ -327,13 +250,8 @@ class Invoice(db.Model):
     total = db.Column(db.Numeric(10, 2), default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Quan hệ 1-1 với Appointment
     appointment = db.relationship('Appointment', back_populates='invoice', uselist=False)
 
-
-# ------------------------------
-# 🔹 Bảng bài viết / blog nha khoa
-# ------------------------------
 class Post(db.Model):
     __tablename__ = 'post'
 

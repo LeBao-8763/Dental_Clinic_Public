@@ -15,19 +15,15 @@ def create_invoice(appointment_id):
                 and appointment.status != AppointmentStatusEnum.CANCELLED):
             appointment.status = AppointmentStatusEnum.PAID
 
-        # 1️⃣ Lấy toa thuốc theo appointment_id (giả sử mỗi appointment chỉ có 1 prescription)
         prescription = Prescription.query.filter_by(appointment_id=appointment_id).first()
         if not prescription:
             return {"error": "Không tìm thấy toa thuốc của lịch hẹn này."}, 404
 
-        # 2️⃣ Xác nhận toa thuốc
         prescription.status = PrescriptionStatusEnum.CONFIRMED
 
-        # 3️⃣ Lấy tất cả thuốc trong toa
         details = PrescriptionDetail.query.filter_by(prescription_id=prescription.id).all()
         total_medicine_fee = Decimal(0)
 
-        # 4️⃣ Duyệt qua từng thuốc và cập nhật tồn kho
         for d in details:
             medicine = Medicine.query.get(d.medicine_id)
             if not medicine:
@@ -36,9 +32,8 @@ def create_invoice(appointment_id):
             total_medicine_fee += Decimal(d.price or 0) * Decimal(d.dosage or 0) * Decimal(d.duration_days or 1)
 
             qty_to_deduct = (d.dosage or 0) * (d.duration_days or 1)
-            qty_used = qty_to_deduct  # ✅ Giữ lại số lượng ban đầu để trừ reserved_quantity
+            qty_used = qty_to_deduct
 
-            # 🔹 Lấy các lô thuốc có cùng medicine_id, ưu tiên hạn sớm nhất (FEFO)
             imports = (
                 MedicineImport.query.filter_by(medicine_id=medicine.id)
                 .filter(MedicineImport.stock_quantity > 0)
@@ -59,23 +54,19 @@ def create_invoice(appointment_id):
             if qty_to_deduct > 0:
                 return {"error": f"Không đủ tồn kho cho thuốc {medicine.name}."}, 400
 
-            # 🔹 Cập nhật lại reserved_quantity trong bảng medicine (trừ lượng đã xuất)
             reserved_now = medicine.reserved_quantity or 0
             medicine.reserved_quantity = max(reserved_now - qty_used, 0)
             db.session.add(medicine)
 
-        # 5️⃣ Tính tổng tiền dịch vụ
         total_service_fee = Decimal(
             db.session.query(func.coalesce(func.sum(TreatmentRecord.price), 0))
             .filter(TreatmentRecord.appointment_id == appointment_id)
             .scalar()
         )
 
-        # 6️⃣ Tính VAT và tổng cộng
         vat = (total_service_fee + total_medicine_fee) * Decimal(0.1)
         total = total_service_fee + total_medicine_fee + vat
 
-        # 7️⃣ Tạo hóa đơn mới (hoặc cập nhật nếu đã có)
         invoice = Invoice.query.get(appointment_id)
         if invoice:
             invoice.total_service_fee = total_service_fee
@@ -92,7 +83,6 @@ def create_invoice(appointment_id):
             )
             db.session.add(invoice)
 
-        # 8️⃣ Lưu toàn bộ thay đổi
         db.session.commit()
 
         return {

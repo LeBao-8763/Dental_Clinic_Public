@@ -1,20 +1,22 @@
+from app import db
 from app.dao import dao_dentist_custom_schedule
-from flask import Flask, request, jsonify
+from flask import request
 from flask_restx import Resource
 from app.api_conf import dentist_custom_schedule_input_model,dentist_custom_schedule_model,dentist_custom_shedule_ns,multiple_dentist_custom_schedule_model
 from flask_jwt_extended import jwt_required
 from app.utils.check_role import role_required
-from app.models import RoleEnum
+from app.models import RoleEnum, DentistCustomSchedule
+
 
 @dentist_custom_shedule_ns.route('/')
 class Dentist_Custom_Schedule(Resource):
     @dentist_custom_shedule_ns.doc('create_dentist_custom_schedule')
-    @dentist_custom_shedule_ns.expect(multiple_dentist_custom_schedule_model)   # Định nghĩa định dạng request body cho Swagger UI
+    @dentist_custom_shedule_ns.expect(multiple_dentist_custom_schedule_model)
     @dentist_custom_shedule_ns.marshal_with(multiple_dentist_custom_schedule_model, code=201) 
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def post(self):
-        "Tạo lịch hẹn mới"
+
         data=request.get_json()
         dentist_id=data.get('dentist_id')
         custom_date=data.get('custom_date')
@@ -45,7 +47,7 @@ class Dentist_Custom_Schedule_By_Id(Resource):
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def get(self, dentist_id):
-        "Lấy danh sách lịch làm việc custome của nha sĩ theo ID "
+
         custom_schedules=dao_dentist_custom_schedule.get_custom_schedule_by_id(dentist_id)
         return custom_schedules
 
@@ -55,10 +57,6 @@ class Dentist_Custom_Schedule_Delete(Resource):
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def delete(self, dentist_id, custom_date):
-        """
-        Xoá custom schedule của nha sĩ theo ngày
-        custom_date format: YYYY-MM-DD
-        """
 
         try:
             deleted_count = dao_dentist_custom_schedule.delete_custom_schedule_by_date(
@@ -78,25 +76,22 @@ class Dentist_Custom_Schedule_Delete(Resource):
         except Exception as e:
             return {"error": "Lỗi server: " + str(e)}, 500
 
-#huy-dev
-#Lấy tất cả custom schedule của tất cả nha sĩ
 @dentist_custom_shedule_ns.route('/all')
 class AllDentistCustomSchedules(Resource):
     @dentist_custom_shedule_ns.doc('get_all_custom_schedules')
     @dentist_custom_shedule_ns.marshal_list_with(dentist_custom_schedule_model)
     def get(self):
-        """Admin lấy tất cả custom schedule của mọi nha sĩ"""
+
         schedules = dao_dentist_custom_schedule.get_all_custom_schedules()
         return schedules, 200
 
-#Cập nhật custom schedule theo ID
 @dentist_custom_shedule_ns.route('/update/<int:schedule_id>')
 class UpdateDentistCustomSchedule(Resource):
     @dentist_custom_shedule_ns.doc('update_custom_schedule')
     @dentist_custom_shedule_ns.expect(dentist_custom_schedule_input_model, validate=True)
     @dentist_custom_shedule_ns.marshal_with(dentist_custom_schedule_model, code=200)
     def patch(self, schedule_id):
-        """Admin cập nhật custom schedule theo ID"""
+
         data = request.get_json()
         updated_schedule = dao_dentist_custom_schedule.update_custom_schedule(
             schedule_id,
@@ -108,7 +103,7 @@ class UpdateDentistCustomSchedule(Resource):
             return updated_schedule, 200
         return {"msg": "Không tìm thấy lịch"}, 404
 
-#Thống kê số lượng custom schedule theo nha sĩ
+
 @dentist_custom_shedule_ns.route('/stats')
 class CustomScheduleStats(Resource):
     def get(self):

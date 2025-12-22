@@ -85,7 +85,7 @@ export const privateApi = axios.create({
   baseURL: BASE_URL,
 });
 
-// REQUEST INTERCEPTOR → tự gắn token vào header
+
 privateApi.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -99,7 +99,6 @@ privateApi.interceptors.request.use(
   }
 );
 
-// RESPONSE INTERCEPTOR → xử lý lỗi (401 → logout)
 privateApi.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -1,11 +1,8 @@
 from flask import Blueprint
 from flask_restx import Api, fields, reqparse
-from flask_jwt_extended.exceptions import NoAuthorizationError
 from werkzeug.datastructures import FileStorage
 from app.models import GenderEnum, RoleEnum, StatusEnum, MedicineTypeEnum, AppointmentStatusEnum, PrescriptionStatusEnum
 
-# Tạo một Blueprint cho API. Blueprint này sẽ được đăng ký với ứng dụng Flask chính.
-# url_prefix='/api' có nghĩa là tất cả các endpoint trong Blueprint này sẽ có tiền tố /api.
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 api = Api(
@@ -33,13 +30,6 @@ post_ns=api.namespace('post',description='Các thao tác liên quan đến bài 
 invoice_ns=api.namespace('invoice', description='Các thao tác liên quan đến hóa đơn')
 user_booking_stat_ns=api.namespace('user_booking_stat', description='Các thao tác liên quan đến thông số đặt lịch')
 stats_ns = api.namespace('stats', description='Statistics APIs')
-
-# ------------------------------
-# --- Định nghĩa Models cho Swagger UI ---
-# Các model này mô tả cấu trúc dữ liệu cho response.
-# Chúng giúp Swagger UI hiển thị ví dụ dữ liệu và validate input.
-# ------------------------------
-
 
 specialization_model = api.model('Specialization', {
     'id': fields.Integer(readOnly=True, description='ID chuyên ngành'),
@@ -136,7 +126,6 @@ appointment_model = api.model('Appointment', {
     'status': fields.String(enum=[e.value for e in AppointmentStatusEnum], description='Trạng thái'),
 })
 
-# Thêm model cho patient info trong appointment
 appointment_with_user_model = api.model('AppointmentWithPatient', {
     'id': fields.Integer(readOnly=True, description='ID lịch hẹn'),
     'dentist_id': fields.Integer(description='ID bác sĩ'),
@@ -203,14 +192,12 @@ treatment_record_model = api.model('TreatmentRecord', {
     'note': fields.String(description='Ghi chú')
 })
 
-# Model cho input (tạo treatment record)
 treatment_record_input_model = api.model('TreatmentRecordInput', {
     'service_id': fields.Integer(required=True, description='ID dịch vụ'),
     'price': fields.Float(required=False, description='Giá dịch vụ (để trống sẽ lấy từ Service)'),
     'note': fields.String(required=False, description='Ghi chú')
 })
 
-# Model cho request tạo nhiều treatment records
 treatment_records_create_model = api.model('TreatmentRecordsCreate', {
     'appointment_id': fields.Integer(required=True, description='ID lịch hẹn'),
     'services': fields.List(
@@ -220,7 +207,6 @@ treatment_records_create_model = api.model('TreatmentRecordsCreate', {
     )
 })
 
-#Model cho hồ sơ bác sĩ
 dentist_profile_model = api.model('DentistProfile', {
     'id': fields.Integer(readOnly=True, description='ID hồ sơ bác sĩ'),
     'dentist_id': fields.Integer(description='ID người dùng (bác sĩ)'),
@@ -229,7 +215,6 @@ dentist_profile_model = api.model('DentistProfile', {
     'experience': fields.String(description='Số năm kinh nghiệm')
 })
 
-#Model cho lịch làm việc đột xuất/nghỉ
 dentist_custom_schedule_input_model=api.model('DentistCustomSchedule',{
     'start_time': fields.String(required=True, description='Giờ bắt đầu HH:MM:SS'),
     'end_time': fields.String(required=True, description='Giờ kết thúc HH:MM:SS')
@@ -288,12 +273,6 @@ patient_appointment_pagination_res_model = appointment_ns.model("AppointmentResp
     "data": fields.List(fields.Nested(appointment_with_user_model)),
     "pagination": fields.Nested(pagination_model)
 })
-
-# ------------------------------
-# --- Định nghĩa Parsers cho Swagger UI ---
-# Parsers được sử dụng để định nghĩa các tham số đầu vào (query params, form data)
-# và giúp Swagger UI hiển thị các trường nhập liệu tương ứng.
-# ------------------------------
 
 ''' USER '''
 user_creation_parser = reqparse.RequestParser()

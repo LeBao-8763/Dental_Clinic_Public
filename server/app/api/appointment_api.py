@@ -1,11 +1,13 @@
-from flask import jsonify, request
+from flask import request
 from flask_restx import Resource
+
+from app import db
 from app.api_conf import appointment_ns, appointment_model, appointment_creation_parser,appointment_with_user_model,appointment_update_parser,patient_appointment_pagination_res_model
 from app.dao import dao_appointment
 from datetime import datetime
 from flask_jwt_extended import jwt_required
 from app.utils.check_role import role_required
-from app.models import RoleEnum
+from app.models import RoleEnum, Appointment
 
 
 @appointment_ns.route('/')
@@ -23,10 +25,10 @@ class AppointmentCreateResource(Resource):
                 start_time=data['start_time'],
                 end_time=data['end_time'],
 
-                # user booking
+
                 patient_id=data.get('patient_id'),
 
-                # guest booking (chưa dùng thì None)
+
                 patient_name=data.get('patient_name'),
                 patient_phone=data.get('patient_phone'),
                 date_of_birth=data.get('date_of_birth'),
@@ -71,7 +73,7 @@ class AppointmentCreateResource(Resource):
 class AppointmentById(Resource):
     @appointment_ns.marshal_list_with(appointment_with_user_model)
     def get(self, appointment_id):
-        """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân dựa theo id của cuộc hẹn"""
+
         appointments = dao_appointment.get_appointments_by_id(appointment_id)
 
         appointments.user = appointments.patient
@@ -83,7 +85,7 @@ class AppointmentById(Resource):
     @appointment_ns.marshal_with(appointment_model,code=201)
     @jwt_required()
     def patch(self, appointment_id):
-        """Cập nhật một cuộc hẹn theo id"""
+
         args = appointment_update_parser.parse_args()
 
         appointment = dao_appointment.update_appointment(appointment_id, **args)
@@ -99,7 +101,7 @@ class AppointmentByDentistResource(Resource):
     @jwt_required()
     @role_required([RoleEnum.ROLE_DENTIST.value])
     def get(self, dentist_id):
-        """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân"""
+
 
         status = request.args.get('status')
         date_str = request.args.get('date')
@@ -126,13 +128,13 @@ class AppointmentByDentistResource(Resource):
 @appointment_ns.route('/check-max/<int:dentist_id>/<string:date>')
 class CheckMaxAppointment(Resource):
     def get(self, dentist_id, date):
-        """Check xem bác sĩ đã có 5 lịch trên ngày hay chưa"""
+
         return dao_appointment.check_max_dentist_schedule(dentist_id, date)
 
 @appointment_ns.route('/check-weekly-booking/<int:patient_id>/<string:date>')
 class CheckMaxAppointment(Resource):
     def get(self, patient_id,date):
-        """Check xem trong tuần đó bệnh nhân đã có lịch hay chưa"""
+
         target_date = datetime.strptime(date, "%Y-%m-%d").date() if date else None
         blocked = dao_appointment.has_unfinished_appointment_in_current_week(
             patient_id=patient_id,
@@ -146,7 +148,7 @@ class AppointmentByPatientResource(Resource):
     @appointment_ns.marshal_list_with(patient_appointment_pagination_res_model)
     @jwt_required()
     def get(self, patient_id):
-        """Lấy danh sách lịch hẹn của bác sĩ kèm thông tin bệnh nhân"""
+
 
         status = request.args.get('status')
         start_date_str=request.args.get('start_date')
@@ -187,31 +189,29 @@ class AppointmentByPatientResource(Resource):
             }
         }, 200
 
-#huy-dev 
-#Lấy tất cả lịch hẹn không giới hạn bác sĩ
+
 @appointment_ns.route('/all')
 class AllAppointments(Resource):
     @appointment_ns.marshal_list_with(appointment_with_user_model)
     def get(self):
-        """Admin lấy tất cả lịch hẹn"""
+
         appointments = dao_appointment.get_all_appointments()
         return appointments, 200
 
-#Xóa lịch hẹn theo ID
+
 @appointment_ns.route('/<int:appointment_id>/delete')
 class DeleteAppointment(Resource):
     def delete(self, appointment_id):
-        """Admin xóa lịch hẹn theo ID"""
+
         success = dao_appointment.delete_appointment(appointment_id)
         if success:
             return {"message": "Đã xóa lịch hẹn"}, 200
         return {"message": "Không tìm thấy lịch hẹn"}, 404
 
-#Thống kê số lượng lịch hẹn theo ngày
+
 @appointment_ns.route('/stats/by-date')
 class AppointmentStats(Resource):
     def get(self):
-        """Admin thống kê số lượng lịch hẹn theo ngày"""
         from sqlalchemy import func
         stats = db.session.query(
             Appointment.appointment_date,

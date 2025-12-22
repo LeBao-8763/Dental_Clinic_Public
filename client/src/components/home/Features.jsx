@@ -16,7 +16,6 @@ const Features = () => {
 
       setPosts(data);
 
-      // Initialize image indexes for each post
       const initialIndexes = {};
       data.forEach((post) => {
         initialIndexes[post.id] = 0;
@@ -60,7 +59,7 @@ const Features = () => {
     };
   }, [posts, visibleItems]);
 
-  // Safe parse
+
   const parseImages = (img) => {
     if (!img) return [];
     try {
@@ -142,7 +141,7 @@ const Features = () => {
                   animationDelay: `${index * 0.2}s`,
                 }}
               >
-                {/* Content Side */}
+
                 <div className="flex-1 max-w-xl">
                   <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                     {post.title}
@@ -160,7 +159,6 @@ const Features = () => {
                   </button>
                 </div>
 
-                {/* Image Side with Carousel */}
                 <div className="flex-1 w-full max-w-xl flex items-center">
                   <div className="relative bg-gray-200 rounded-lg aspect-video overflow-hidden w-full">
                     {images.length > 0 ? (
@@ -171,7 +169,6 @@ const Features = () => {
                           className="w-full h-full object-cover"
                         />
 
-                        {/* Navigation Buttons */}
                         {images.length > 1 && (
                           <>
                             <button
@@ -218,7 +215,6 @@ const Features = () => {
                               </svg>
                             </button>
 
-                            {/* Image Indicators */}
                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                               {images.map((_, idx) => (
                                 <button

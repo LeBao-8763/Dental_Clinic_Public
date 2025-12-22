@@ -11,9 +11,6 @@ import Loading from "../../components/common/Loading";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
-// NOTE: This is a single-file React component (Tailwind CSS assumed available).
-// It replaces the plain <input type="date"> with a visual, interactive month calendar.
-
 const ScheduleArrange = () => {
   const [activeTab, setActiveTab] = useState("weekly");
   const [expandedDay, setExpandedDay] = useState(null);
@@ -22,7 +19,7 @@ const ScheduleArrange = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [showScheduleDetail, setShowScheduleDetail] = useState(false);
 
-  // New states for "xin nghỉ" feature
+
   const [showDayOffDialog, setShowDayOffDialog] = useState(false);
   const [dayOffReason, setDayOffReason] = useState("");
   const [dayOffLoading, setDayOffLoading] = useState(false);
@@ -36,13 +33,13 @@ const ScheduleArrange = () => {
   const [dentistScheduleData, setDentistScheduleData] = useState([]);
   const [customSchedules, setCustomSchedules] = useState([]);
 
-  // Calendar current month state (used for the visual calendar)
+
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
-  // Mapping day_of_week từ API sang tiếng Việt
+
   const dayMapping = {
     "DayOfWeekEnum.MONDAY": "Thứ 2",
     "DayOfWeekEnum.TUESDAY": "Thứ 3",
@@ -109,7 +106,7 @@ const ScheduleArrange = () => {
     }
   }, [user]);
 
-  // ---------- Time slot helpers ----------
+
   function generateTimeSlots(openTime, closeTime, slotDuration) {
     const slots = [];
     const [openHour, openMinute] = openTime.split(":").map(Number);
@@ -162,7 +159,6 @@ const ScheduleArrange = () => {
     return dayEnum ? getTimeSlotsForDayEnum(dayEnum) : [];
   }
 
-  // parse YYYY-MM-DD thành Date (local)
   const parseYMD = (ymd) => {
     if (!ymd) return null;
     const parts = ymd.split("-");
@@ -172,43 +168,21 @@ const ScheduleArrange = () => {
     return new Date(y, m - 1, d);
   };
 
-  /**
-   * Trả về danh sách schedule (mảng) áp dụng cho dayOfWeek tại ngày tham chiếu refDate.
-   * Logic:
-   * - Lấy tất cả records có day_of_week === dayOfWeek
-   * - Nếu record không có effective_from -> coi như effective_from = 1970-01-01 (dùng làm fallback base)
-   * - Nhóm theo effective_from
-   * - Chọn nhóm có effective_from là lớn nhất nhưng <= refDate (nếu có).
-   * - Nếu không có nhóm <= refDate, fallback: chọn nhóm tương lai gần nhất (> refDate).
-   */
-  // Trả về danh sách schedule (mảng) áp dụng cho dayOfWeek tại ngày tham chiếu refDate.
-  // Logic:
-  // - Lấy tất cả records có day_of_week === dayOfWeek
-  // - Nếu record không có effective_from -> coi như effective_from = 1970-01-01 (dùng làm fallback base)
-  // - Nhóm theo effective_from
-  // - Chọn nhóm có effective_from là lớn nhất nhưng <= refDate (nếu có).
-  // - Nếu không có nhóm <= refDate, fallback: chọn nhóm tương lai gần nhất (> refDate).
-  //
-  // IMPORTANT: This function is used BOTH for weekly view (pass refDate = new Date())
-  // and for specific-date view (pass refDate = that specific date). That ensures
-  // when the user opens a weekday editor for a particular date, we select the
-  // effective_from group that applies to that exact date (e.g. Mondays from
-  // 2025-12-13 use the 13/12 group; Mondays from 2025-12-20 use the 20/12 group).
   const getApplicableSchedulesForDay = (dayOfWeek, refDate = new Date()) => {
     if (!dentistScheduleData || dentistScheduleData.length === 0) return [];
 
-    // Collect schedules for that day
+
     const list = dentistScheduleData
       .filter((s) => s.day_of_week === dayOfWeek)
       .map((s) => {
-        const eff = s.effective_from || "1970-01-01"; // default base
+        const eff = s.effective_from || "1970-01-01"; 
         const _effDate = parseYMD(eff) || new Date(0);
         return { ...s, effective_from: eff, _effDate };
       });
 
     if (list.length === 0) return [];
 
-    // Group by effective_from string
+
     const groups = list.reduce((acc, s) => {
       const key = s.effective_from;
       if (!acc[key]) acc[key] = [];
@@ -218,7 +192,7 @@ const ScheduleArrange = () => {
 
     const keys = Object.keys(groups);
 
-    // find the group with _effDate <= refDate and maximal
+
     let chosenKey = null;
     let maxDate = null;
     keys.forEach((k) => {
@@ -233,7 +207,7 @@ const ScheduleArrange = () => {
 
     if (chosenKey) return groups[chosenKey];
 
-    // fallback: earliest future effective_from > refDate
+
     let minFutureKey = null;
     let minFutureDate = null;
     keys.forEach((k) => {
@@ -255,13 +229,13 @@ const ScheduleArrange = () => {
     const slotsForDay = getTimeSlotsForDayEnum(dayOfWeek);
     if (!slotsForDay || slotsForDay.length === 0) return [];
 
-    // Lấy schedule áp dụng cho ngày tham chiếu
+
     const applicable = getApplicableSchedulesForDay(dayOfWeek, refDate);
     if (!applicable || applicable.length === 0) return [];
 
     const indices = [];
 
-    // applicable có thể chứa nhiều bản ghi (time ranges) từ cùng 1 effective_from
+
     applicable.forEach((schedule) => {
       const startTime = (schedule.start_time || "").slice(0, 5);
       const endTime = (schedule.end_time || "").slice(0, 5);
@@ -290,16 +264,15 @@ const ScheduleArrange = () => {
     });
   }
 
-  // ---------- End time slot helpers ----------
 
   const handleConfirm = async (dayId) => {
     setLoading(true);
     try {
-      // dayEnum extraction (works only for numeric dayId like 2..8)
+
       const dayEnum = dayEnums[dayId - 2];
       const dayEnumValue = dayEnum.split(".")[1];
 
-      // Thêm lịch mới nếu có
+
       const newSlots = tempSelectedSlots[dayId] || [];
       if (newSlots.length > 0) {
         const slotsForDay = getTimeSlotsForDayEnum(dayEnum);
@@ -359,7 +332,7 @@ const ScheduleArrange = () => {
     .map((dayEnum, index) => {
       const dayId = index + 2;
       const slotsForDay = getTimeSlotsForDayEnum(dayEnum);
-      // Use today's date to decide which effective_from group applies for weekly view
+
       const scheduleSlotIndices = getSlotIndicesForSchedule(
         dayEnum,
         new Date()
@@ -421,7 +394,6 @@ const ScheduleArrange = () => {
     } else {
       setExpandedDay(dayId);
 
-      // Nếu là weekday (numeric), lấy existing slots từ schedule
       if (typeof dayId === "number") {
         const dayEnum = dayEnums[dayId - 2];
         const existingSlotIndices = getSlotIndicesForSchedule(
@@ -434,13 +406,12 @@ const ScheduleArrange = () => {
         ];
         setTempSelectedSlots({ [dayId]: mergedSlots });
       } else {
-        // dayId dạng "date-YYYY-MM-DD"
-        // If we already have tempSelectedSlots for this date (e.g. from calendar pick), keep them.
+
         const existingTemp = tempSelectedSlots[dayId];
         if (existingTemp && existingTemp.length > 0) {
           setTempSelectedSlots({ [dayId]: [...new Set(existingTemp)] });
         } else {
-          // Prefer saved selectedSlots; if none, prefer custom slots; otherwise fallback to weekly schedule
+
           const currentSlots = selectedSlots[dayId] || [];
           if (currentSlots && currentSlots.length > 0) {
             setTempSelectedSlots({ [dayId]: [...new Set(currentSlots)] });
@@ -464,8 +435,7 @@ const ScheduleArrange = () => {
   };
 
   const toggleSlot = (dayId, slotIndex) => {
-    // dayId can be number or "date-YYYY-MM-DD"
-    // Prevent toggling slots for a day-off custom date
+
     if (typeof dayId === "string" && dayId.startsWith("date-")) {
       const iso = dayId.replace("date-", "");
       const dateObj = new Date(iso);
@@ -491,14 +461,12 @@ const ScheduleArrange = () => {
     });
   };
 
-  // New: open dialog to confirm day off (triggered by checkbox click)
   const openDayOffDialog = () => {
     if (!selectedDate) {
       toast.error("Vui lòng chọn ngày trước khi xin nghỉ");
       return;
     }
 
-    // If this date is already a day-off, show remove dialog instead
     const dateObj = new Date(selectedDate);
     if (isCustomDayOff(dateObj)) {
       setShowRemoveDayOffDialog(true);
@@ -510,12 +478,12 @@ const ScheduleArrange = () => {
   const resetToWeeklyForSelectedDate = async () => {
     if (!selectedDate) return;
     try {
-      // Delete custom schedule for this date
+
       await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
 
-      // Restore weekly schedule slots to tempSelectedSlots
+
       const dateObj = new Date(selectedDate);
       const dayEnum = dayEnumForJSDate(dateObj);
       const weeklyIndices = dayEnum
@@ -525,7 +493,7 @@ const ScheduleArrange = () => {
         [`date-${selectedDate}`]: [...new Set(weeklyIndices)],
       });
 
-      // Refresh custom schedules
+
       await fetchCustomSchedule(user.id);
       toast.info("Quay lại lịch cố định");
     } catch (err) {
@@ -542,12 +510,11 @@ const ScheduleArrange = () => {
   const confirmDayOff = async () => {
     setDayOffLoading(true);
     try {
-      // First, delete any existing custom schedule for this date (including time-based ones)
+
       await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
 
-      // Then create new day-off custom schedule
       await privateApi.post(endpoints.custom_schedule.create, {
         dentist_id: user.id,
         custom_date: selectedDate,
@@ -559,7 +526,7 @@ const ScheduleArrange = () => {
       toast.success("Xin nghỉ thành công cho ngày đã chọn");
       setShowDayOffDialog(false);
       setDayOffReason("");
-      // refresh schedule
+
       await fetchDentistScheduleById(user.id);
       await fetchCustomSchedule(user.id);
     } catch (err) {
@@ -577,14 +544,14 @@ const ScheduleArrange = () => {
   const confirmRemoveDayOff = async () => {
     setRemoveDayOffLoading(true);
     try {
-      // Delete the day-off custom schedule
+
       await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
 
       toast.success("Đã bỏ xin nghỉ cho ngày này");
       setShowRemoveDayOffDialog(false);
-      // Refresh custom schedules
+
       await fetchCustomSchedule(user.id);
     } catch (err) {
       console.error("Lỗi khi bỏ xin nghỉ:", err);
@@ -594,7 +561,7 @@ const ScheduleArrange = () => {
     }
   };
 
-  // Save custom schedule (create or update)
+
   const saveCustomSchedule = async (dateStr, slotIndices) => {
     try {
       if (slotIndices.length === 0) {

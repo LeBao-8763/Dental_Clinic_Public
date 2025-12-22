@@ -69,7 +69,7 @@ const PaymentDetail = () => {
 
   const fetchTreatmentRecordByAptId = async (appointmentId) => {
     try {
-      const res = await publicApi.get(
+      const res = await privateApi.get(
         endpoints.treatment_record.list_by_aptId(appointmentId)
       );
       console.log("Dữ liệu treatment records", res.data);
@@ -429,24 +429,7 @@ const PaymentDetail = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-5">
           <div className="max-w-6xl mx-auto px-6">
             <div className="flex justify-between items-center">
-              <div>
-                <div className="flex justify-between gap-4 text-gray-700 mb-1">
-                  <span>Tổng dịch vụ:</span>
-                  <span>{totalServicePrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between gap-4 text-gray-700 mb-1">
-                  <span>Tổng thuốc:</span>
-                  <span>{totalMedicationPrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between gap-4 text-gray-700 border-t border-dashed pt-2 mb-1">
-                  <span>VAT (10%):</span>
-                  <span>{vat.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between gap-4 text-gray-900 font-bold">
-                  <span>Tổng cộng:</span>
-                  <span>{grandTotal.toLocaleString("vi-VN")} đ</span>
-                </div>
-              </div>
+              
               <button
                 onClick={handlePayment}
                 disabled={loading}

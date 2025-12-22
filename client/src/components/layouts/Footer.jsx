@@ -4,17 +4,16 @@ const Footer = () => {
   return (
     <footer className="bg-white border-t border-gray-200 py-6 px-4 sm:px-10">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-        {/* Left - Logo */}
+
         <div className="text-xl md:text-2xl font-bold text-gray-900">LOGO</div>
 
-        {/* Center - Copyright */}
+
         <div className="text-gray-600 text-sm md:text-base text-center">
           Copyright © 2025 Website. Authors Loi, Bao, Huy.
         </div>
 
-        {/* Right - Social Icons */}
         <div className="flex items-center gap-4">
-          {/* Facebook */}
+
           <a
             href="#"
             className="w-8 h-8 flex items-center justify-center border border-gray-900 rounded hover:bg-gray-100 transition-colors"
@@ -25,7 +24,7 @@ const Footer = () => {
             </svg>
           </a>
 
-          {/* Instagram */}
+
           <a
             href="#"
             className="w-8 h-8 flex items-center justify-center border border-gray-900 rounded hover:bg-gray-100 transition-colors"
@@ -36,7 +35,6 @@ const Footer = () => {
             </svg>
           </a>
 
-          {/* LinkedIn */}
           <a
             href="#"
             className="w-8 h-8 flex items-center justify-center border border-gray-900 rounded hover:bg-gray-100 transition-colors"

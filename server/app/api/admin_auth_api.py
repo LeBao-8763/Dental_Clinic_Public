@@ -1,19 +1,17 @@
-#huy-dev
+
 from flask import request
 from flask_restx import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.api_conf import auth_ns
 from app.dao import dao_user
-from app.models import User, RoleEnum
-from app.auth_utils import is_admin
 
-#Đăng ký tài khoản (chỉ admin mới có quyền tạo bác sĩ và admin khác)
+
 @auth_ns.route('/register')
 class Register(Resource):
     @jwt_required()
     def post(self):
-        """Admin tạo tài khoản mới"""
+
         current_user_id = get_jwt_identity()
         current_user = dao_user.get_user_by_id(current_user_id)
 
@@ -30,12 +28,12 @@ class Register(Resource):
             return {"msg": "Tạo tài khoản thành công", "user_id": new_user.id}, 201
         return {"msg": "Lỗi khi tạo tài khoản"}, 500
 
-#Xem danh sách người dùng
+
 @auth_ns.route('/users')
 class UserList(Resource):
     @jwt_required()
     def get(self):
-        """Admin xem danh sách tất cả người dùng"""
+
         current_user_id = get_jwt_identity()
         current_user = dao_user.get_user_by_id(current_user_id)
 
@@ -45,12 +43,12 @@ class UserList(Resource):
         users = dao_user.get_all_users()
         return [{"id": u.id, "username": u.username, "role": u.role.value} for u in users], 200
 
-#Cập nhật quyền người dùng
+
 @auth_ns.route('/users/<int:user_id>/role')
 class UpdateUserRole(Resource):
     @jwt_required()
     def patch(self, user_id):
-        """Admin cập nhật quyền của người dùng"""
+
         current_user_id = get_jwt_identity()
         current_user = dao_user.get_user_by_id(current_user_id)
 

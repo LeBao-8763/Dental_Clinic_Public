@@ -1,17 +1,25 @@
 {% extends 'admin/base.html' %}
 {% block body %}
 
+<div class="container-fluid mt-4">
+
+  <h3 class="mb-4"><strong>Thống Kê Doanh Thu</strong></h3>
+
 <form method="get" class="form-inline mb-4">
   <label for="month" class="mr-2">Tháng:</label>
   <input type="number" id="month" name="month" min="1" max="12"
          value="{{ selected_month or '' }}" class="form-control mr-3">
+
+  <label for="year" class="mr-2">Năm:</label>
+  <input type="number" id="year" name="year" min="2024" max="2100"
+         value="{{ selected_year or current_year }}" class="form-control mr-3">
 
   <label for="dentist_id" class="mr-2">Bác sĩ:</label>
   <select id="dentist_id" name="dentist_id" class="form-control mr-3">
     <option value="">-- Tất cả --</option>
     {% for d in dentists %}
       <option value="{{ d.id }}" {% if selected_dentist == d.id %}selected{% endif %}>
-        {{d.name}}
+        {{ d.name }}
       </option>
     {% endfor %}
   </select>
@@ -19,52 +27,134 @@
   <button type="submit" class="btn btn-primary">Lọc</button>
 </form>
 
-<canvas id="revenueChart" height="100"></canvas>
+  <div class="row text-center mb-4">
+    <div class="col-md-4">
+      <div class="card p-3 shadow-sm border-0">
+        <h6 class="text-muted">Tổng Doanh Thu</h6>
+        <h3 class="text-primary mt-2">{{ "{:,.0f}".format(total_revenue or 0) }} đ</h3>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3 shadow-sm border-0">
+        <h6 class="text-muted">Lượt Khám</h6>
+        <h3 class="text-success mt-2">{{ total_appointments or 0 }}</h3>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3 shadow-sm border-0">
+        <h6 class="text-muted">Doanh Thu TB/Bác Sĩ</h6>
+        <h3 class="text-info mt-2">{{ "{:,.0f}".format(avg_per_dentist or 0) }} đ</h3>
+      </div>
+    </div>
+  </div>
 
-<table class="table table-striped mt-4">
-  <thead>
-    <tr>
-      {% if mode == 'dentist' %}
-        <th>Bác sĩ</th>
-      {% else %}
-        <th>Ngày</th>
-      {% endif %}
-      <th>Doanh thu (VNĐ)</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for row in data %}
-      <tr>
-        <td>
-          {% if mode == 'dentist' %}
-            {{ row.dentist_name }}
-          {% else %}
-            {{ row.date.strftime('%d/%m/%Y') }}
-          {% endif %}
-        </td>
-        <td>{{ "{:,.0f}".format(row.total_revenue or 0) }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h5 class="mb-3">Doanh Thu Theo Ngày</h5>
+          <canvas id="revenueChart" height="120"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h5 class="mb-3">Doanh Thu Theo Bác Sĩ</h5>
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Bác Sĩ</th>
+                <th>Doanh Thu (VNĐ)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dentist_revenue %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.dentist_name }}</td>
+                <td>{{ "{:,.0f}".format(row.total_revenue or 0) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <h5 class="mb-3">Top Dịch Vụ</h5>
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Dịch Vụ</th>
+                <th>Doanh Thu (VNĐ)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in top_services %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ s.service_name }}</td>
+                <td>{{ "{:,.0f}".format(s.revenue or 0) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <h5 class="mb-3">Top Thuốc</h5>
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Thuốc</th>
+                <th>Doanh Thu (VNĐ)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in top_medicines %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ m.medicine_name }}</td>
+                <td>{{ "{:,.0f}".format(m.revenue or 0) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const ctx = document.getElementById('revenueChart').getContext('2d');
 const labels = [
-  {% for row in data %}
-    {% if mode == 'dentist' %}
-      "{{ row.dentist_name }}",
-    {% else %}
-      "{{ row.date.strftime('%d/%m') }}",
-    {% endif %}
+  {% for row in daily_revenue %}
+    "{{ row.date.strftime('%d/%m') }}",
   {% endfor %}
 ];
 const dataValues = [
-  {% for row in data %}
+  {% for row in daily_revenue %}
     {{ row.total_revenue or 0 }},
   {% endfor %}
 ];
+
 new Chart(ctx, {
   type: 'bar',
   data: {
@@ -72,16 +162,15 @@ new Chart(ctx, {
     datasets: [{
       label: 'Doanh thu (VNĐ)',
       data: dataValues,
-      backgroundColor: 'rgba(54, 162, 235, 0.6)',
+      backgroundColor: 'rgba(54, 162, 235, 0.7)',
       borderColor: 'rgba(54, 162, 235, 1)',
       borderWidth: 1,
-
-      // 🔹 Chỉnh chiều ngang (độ dày cột) ở đây:
-      barPercentage: 0.5,        // 0.1 = rất mảnh, 1.0 = đầy hết khoảng
-      categoryPercentage: 0.7    // điều chỉnh khoảng cách giữa các cột
+      barPercentage: 0.1,
+      categoryPercentage: 0.7
     }]
   },
   options: {
+    responsive: true,
     scales: {
       y: {
         beginAtZero: true,
@@ -90,14 +179,10 @@ new Chart(ctx, {
             return value.toLocaleString('vi-VN');
           }
         }
-      },
-      x: {
-        ticks: { autoSkip: false } // tránh ẩn nhãn nếu có nhiều label
       }
     }
   }
 });
-
 </script>
 
 {% endblock %}

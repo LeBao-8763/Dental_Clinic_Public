@@ -1,10 +1,7 @@
 from sqlalchemy import func
-
 from app import db
 from app.models import Medicine, MedicineImport
 
-
-# Thêm loại thuốc mới vào danh mục
 def create_medicine(name, type, amount_per_unit, retail_unit, selling_price):
     med = Medicine.query.filter_by(name=name).first()
     if med:
@@ -21,8 +18,6 @@ def create_medicine(name, type, amount_per_unit, retail_unit, selling_price):
     db.session.commit()
     return med
 
-
-# Lấy danh sách thuốc
 def get_medicine_list():
     query = (
         db.session.query(
@@ -35,7 +30,6 @@ def get_medicine_list():
 
     return query.all()
 
-#huy-dev
 def update_medicine(medicine_id, name=None, production_date=None, expiration_date=None,
                     type=None, amount_per_unit=None, retail_unit=None):
     medicine = Medicine.query.get(medicine_id)

@@ -2,7 +2,6 @@ from app import db
 from app.models import TreatmentRecord, Appointment, Service
 
 def create_treatment_record(appointment_id, service_id, price, note):
-    """Tạo một treatment record"""
 
     if not Appointment.query.get(appointment_id):
         raise ValueError(f"Appointment with id {appointment_id} does not exist.")
@@ -21,15 +20,11 @@ def create_treatment_record(appointment_id, service_id, price, note):
         db.session.commit()
         return treatment
     except Exception as e:
-        db.session.rollback() # Hoàn tác nếu có lỗi xảy ra trong quá trình thêm
+        db.session.rollback()
         raise e
 
 
 def create_multiple_treatment_records(appointment_id, services_data):
-    """
-    Tạo nhiều treatment records cho một appointment
-    services_data: list of dict [{'service_id': 1, 'price': 100000, 'note': 'abc'}, ...]
-    """
 
     if not Appointment.query.get(appointment_id):
         raise ValueError(f"Appointment with id {appointment_id} does not exist.")
@@ -39,7 +34,6 @@ def create_multiple_treatment_records(appointment_id, services_data):
         treatment_records = []
         for service_data in services_data:
 
-            #Check xem service có tồn tại không
             service = Service.query.get(service_data['service_id'])
             if not service:
                 raise ValueError(f"Service with id {service_data['service_id']} does not exist.")
@@ -80,7 +74,6 @@ def delete_treatment_records_by_aptId(appointment_id):
     db.session.commit()
     return deleted_count
 
-#huy-dev
 def get_all_treatment_records():
     return TreatmentRecord.query.all()
 

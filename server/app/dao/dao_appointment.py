@@ -1,14 +1,8 @@
 from app import db
 from app.models import Appointment, User, UserBookingStats, AppointmentStatusEnum
-from app.models import GenderEnum, RoleEnum, StatusEnum
-from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 from . import dao_user_booking_stats
-from sqlalchemy import func
-from unidecode import unidecode
-from sqlalchemy import or_
-from sqlalchemy import and_
 
 def create_appointment(
     dentist_id,
@@ -16,10 +10,8 @@ def create_appointment(
     start_time,
     end_time,
 
-    # user booking
     patient_id=None,
 
-    # guest booking
     patient_name=None,
     patient_phone=None,
     date_of_birth=None,
@@ -27,16 +19,10 @@ def create_appointment(
 
     note=None
 ):
-    # -----------------------
-    # 1️Kiểm tra dentist
-    # -----------------------
     dentist = User.query.get(dentist_id)
     if not dentist:
         raise ValueError("Bác sĩ không tồn tại!")
 
-    # -----------------------
-    # Convert date 
-    # -----------------------
     if isinstance(appointment_date, str):
         try:
             appointment_date = datetime.strptime(
@@ -45,13 +31,9 @@ def create_appointment(
         except ValueError:
             raise ValueError("Sai định dạng ngày! (YYYY-MM-DD)")
 
-    # -----------------------
-    # Phân loại user / guest
-    # -----------------------
     is_guest = patient_id is None
 
     if is_guest:
-        # Validate guest
         if not patient_name or not patient_phone:
             raise ValueError("Khách chưa có tài khoản phải nhập tên và số điện thoại!")
 
@@ -68,7 +50,6 @@ def create_appointment(
         if not patient:
             raise ValueError("Bệnh nhân không tồn tại!")
 
-        # 1 user chỉ được 1 lịch / ngày
         if Appointment.query.filter(
             Appointment.patient_id == patient_id,
             Appointment.appointment_date == appointment_date,
@@ -76,8 +57,6 @@ def create_appointment(
         ).first():
             raise ValueError("Bạn chỉ được đặt 1 lịch hẹn mỗi ngày!")
 
-
-        # Giới hạn 1 lịch / tuần nếu chưa hoàn thành
         today = datetime.utcnow().date()
         start_of_week = today - timedelta(days=today.weekday())
         end_of_week = start_of_week + timedelta(days=6)
@@ -95,16 +74,12 @@ def create_appointment(
                     "Bạn đã có lịch trong tuần này chưa hoàn thành!"
                 )
 
-        # Check block spam
         stats = UserBookingStats.query.filter_by(user_id=patient_id).first()
         if stats and stats.blocked_until and datetime.utcnow() < stats.blocked_until:
             raise ValueError(
                 f"Bạn bị hạn chế đặt lịch đến {stats.blocked_until.strftime('%H:%M %d/%m/%Y')}"
             )
 
-    # -----------------------
-    # Giới hạn bác sĩ / ngày
-    # -----------------------
     if Appointment.query.filter(
         Appointment.dentist_id == dentist_id,
         Appointment.appointment_date == appointment_date,
@@ -112,10 +87,6 @@ def create_appointment(
     ).count() >= 5:
         raise ValueError("Bác sĩ đã đủ số lịch trong ngày!")
 
-
-    # -----------------------
-    # Check trùng giờ
-    # -----------------------
     overlap = Appointment.query.filter(
         Appointment.dentist_id == dentist_id,
         Appointment.appointment_date == appointment_date,
@@ -128,9 +99,6 @@ def create_appointment(
     if overlap:
         raise ValueError("Khung giờ đã có lịch hẹn!")
 
-    # -----------------------
-    # Tạo appointment
-    # -----------------------
     appointment = Appointment(
         dentist_id=dentist_id,
         patient_id=None if is_guest else patient_id,
@@ -170,15 +138,12 @@ def get_appointments_by_dentist(dentist_id, status=None, appointment_date=None, 
 
     if keyword:
         keyword = keyword.strip()
-        # Dùng outerjoin để không bỏ sót guest appointments
         query = (
             query
             .outerjoin(Appointment.patient)
             .filter(
                 db.or_(
-                    # Tìm trong tên của User (patient đã đăng ký)
                     User.name.ilike(f"%{keyword}%"),
-                    # Tìm trong patient_name (guest)
                     Appointment.patient_name.ilike(f"%{keyword}%")
                 )
             )
@@ -206,7 +171,6 @@ def get_appointments_by_patient(patient_id, status=None, start_date=None, end_da
             User.name.ilike(f'%{keyword}%')
         )
 
-    # Nếu có page & per_page, dùng paginate
     if page and per_page:
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         return {
@@ -217,7 +181,6 @@ def get_appointments_by_patient(patient_id, status=None, start_date=None, end_da
             "total_pages": pagination.pages
         }
     else:
-        # Không phân trang
         return {
             "items": query.all(),
             "total": len(query.all()),
@@ -245,7 +208,6 @@ def get_all_appointment_with_filter(status=None, appointment_date=None, start_da
 
     if keyword:
         keyword = keyword.strip()
-        # Dùng outerjoin để không bỏ sót guest appointments
         query = (
             query
             .outerjoin(Appointment.patient)
@@ -279,10 +241,9 @@ def update_appointment(appointment_id, **kwargs):
 
     if "start_time" in kwargs or "end_time" in kwargs or "appointment_date" in kwargs:
 
-        # Nếu cập nhật thời gian thì check trùng lịch
         overlapping = Appointment.query.filter(
             Appointment.dentist_id == appointment.dentist_id,
-            Appointment.id != appointment.id,  # bỏ chính nó
+            Appointment.id != appointment.id,
             Appointment.appointment_date == appointment.appointment_date,
             Appointment.status != AppointmentStatusEnum.CANCELLED,
             Appointment.start_time < appointment.end_time,
@@ -295,7 +256,6 @@ def update_appointment(appointment_id, **kwargs):
             
 
     if "status" in kwargs and kwargs["status"] == "CANCELLED":
-        # Ghép date + time thành datetime
         appointment_time = datetime.combine(
             appointment.appointment_date,
             appointment.start_time
@@ -318,7 +278,6 @@ def get_booked_slots(dentist_id, appointment_date):
         Appointment.status != AppointmentStatusEnum.CANCELLED
     ).all()
 
-#Hàm check xem bác sĩ đã có 5 lịch 1 ngày chưa
 def check_max_dentist_schedule(dentist_id, date):
     count = Appointment.query.filter(
         Appointment.dentist_id == dentist_id,
@@ -348,8 +307,6 @@ def has_unfinished_appointment_in_current_week(patient_id=None,  target_date=Non
     return bool(query)
 
 
-
-#huy-dev
 def get_all_appointments():
     return Appointment.query.options(
         joinedload(Appointment.patient),
@@ -364,9 +321,5 @@ def delete_appointment(appointment_id):
     db.session.commit()
     return True
 
-
-    db.session.commit()
-
-    return appointment
 
 

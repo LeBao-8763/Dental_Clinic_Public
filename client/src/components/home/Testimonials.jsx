@@ -65,7 +65,7 @@ const Testimonials = () => {
 
       <div className="bg-gray-50 py-16 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
+
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               Đánh giá từ khách hàng
@@ -75,9 +75,8 @@ const Testimonials = () => {
             </p>
           </div>
 
-          {/* Testimonial Card */}
           <div className="relative flex items-start justify-between gap-8">
-            {/* Previous Button */}
+
             <button
               onClick={handlePrev}
               className="shrink-0 w-12 h-12 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors mt-20"
@@ -98,12 +97,11 @@ const Testimonials = () => {
               </svg>
             </button>
 
-            {/* Content */}
             <div
               className="flex-1 testimonial-content text-center"
               key={currentTestimonial.id}
             >
-              {/* Avatar */}
+      
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
                   <svg
@@ -122,7 +120,7 @@ const Testimonials = () => {
                 </div>
               </div>
 
-              {/* Rating */}
+        
               <div className="flex justify-center gap-1 mb-4">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <svg
@@ -139,12 +137,11 @@ const Testimonials = () => {
                 ))}
               </div>
 
-              {/* Review Text */}
+  
               <p className="text-gray-600 text-base leading-relaxed mb-6">
                 {currentTestimonial.content}
               </p>
 
-              {/* Customer Info */}
               <div>
                 <p className="text-gray-900 font-semibold text-lg">
                   {currentTestimonial.name}
@@ -155,7 +152,6 @@ const Testimonials = () => {
               </div>
             </div>
 
-            {/* Next Button */}
             <button
               onClick={handleNext}
               className="shrink-0 w-12 h-12 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors mt-20"
@@ -177,7 +173,6 @@ const Testimonials = () => {
             </button>
           </div>
 
-          {/* Dots Indicator */}
           <div className="flex justify-center gap-2 mt-8">
             {testimonials.map((_, index) => (
               <button

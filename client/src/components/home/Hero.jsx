@@ -39,7 +39,7 @@ const Hero = () => {
 
       <div className="bg-gray-50 py-16 px-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-12">
-          {/* Left Content */}
+
           <div className="flex-1 max-w-xl animate-fade-in-up">
             <h1
               className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 animate-fade-in-up"
@@ -72,13 +72,12 @@ const Hero = () => {
             </div>
           </div>
 
-          {/* Right Image Slider */}
           <div
             className="flex-1 max-w-2xl w-full animate-fade-in-right"
             style={{ animationDelay: "0.2s" }}
           >
             <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-              {/* Placeholder Image Icon */}
+
               <div className="text-gray-400">
                 <svg
                   className="w-32 h-32"
@@ -95,7 +94,6 @@ const Hero = () => {
                 </svg>
               </div>
 
-              {/* Navigation Arrows */}
               <button className="absolute left-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 p-3 rounded-full shadow-md transition-all">
                 <svg
                   className="w-6 h-6 text-gray-700"

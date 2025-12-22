@@ -1,13 +1,11 @@
-import hashlib
-
 from app import db
 from app.models import User, DentistSchedule, Appointment
 from app.models import GenderEnum, RoleEnum, StatusEnum, DayOfWeekEnum
 import bcrypt
 from .dao_user_booking_stats import create_user_booking_stats
-from datetime import datetime, timedelta
+from datetime import datetime
 
-def create_user(name, gender,username, password, phone_number, specialization_id=None,address=None,role=None, avatar=None):
+def create_user(name, gender,username, password, phone_number,role=None, avatar=None):
     user=User.query.filter_by(phone_number=phone_number).first()
 
     if user is not None:
@@ -42,7 +40,6 @@ def create_user(name, gender,username, password, phone_number, specialization_id
     db.session.add(user)
     db.session.flush()
 
-    #Check xem bệnh nhân có đặt lịch bên bệnh viện lúc chưa có tài khoản hay chưa
     guest_appointments = Appointment.query.filter(
         Appointment.is_guest == True,
         Appointment.patient_phone == user.phone_number
@@ -53,7 +50,6 @@ def create_user(name, gender,username, password, phone_number, specialization_id
         appt.is_guest = False
         appt.patient_phone = None
 
-    # Nếu là bệnh nhân -> tạo stats
     if user.role == RoleEnum.ROLE_PATIENT:
         create_user_booking_stats(user.id)
 
@@ -82,10 +78,10 @@ def check_login(username, password):
 def get_user_by_id(user_id):
     return User.query.get(user_id)
 
-def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=None, dayOfWeek=None,  page=None,
+def get_user_list(role, gender=None, from_time_str=None, to_time_str=None, dayOfWeek=None,  page=None,
     per_page=None):
     try:
-        role_enum = RoleEnum(role)   # convert string -> Enum
+        role_enum = RoleEnum(role)
     except ValueError:
         raise ValueError("Invalid role")
 
@@ -125,20 +121,8 @@ def get_user_list(role, name=None, gender=None, from_time_str=None, to_time_str=
         "total_pages": pagination.pages
     }
 
-#huy-dev
-# def get_user_by_id(user_id):
-#     return User.query.get(user_id)
-
 def get_all_users():
     return User.query.all()
-
-# def create_user(username, password, role):
-#     user = User(username=username,
-#                 #password=hash_password(password),
-#                 role=RoleEnum[role])
-#     db.session.add(user)
-#     db.session.commit()
-#     return user
 
 def update_user_role(user_id, new_role):
     user = User.query.get(user_id)
@@ -148,10 +132,7 @@ def update_user_role(user_id, new_role):
     db.session.commit()
     return user
 
-# def get_all_users():
-#     return User.query.all()
-
-def update_user(user_id, username=None, phone_number=None, name=None, role=None, gender=None, password=None):
+def update_user(user_id, username=None, phone_number=None, name=None, role=None, gender=None):
     user = User.query.get(user_id)
     if not user:
         return None
@@ -160,7 +141,6 @@ def update_user(user_id, username=None, phone_number=None, name=None, role=None,
     if name: user.name = name
     if role: user.role = role
     if gender: user.gender = gender
-    #if password: user.password = hash_password(password)  # nếu có hàm hash
     db.session.commit()
     return user
 
