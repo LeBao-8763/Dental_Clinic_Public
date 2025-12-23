@@ -19,7 +19,6 @@ const ScheduleArrange = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [showScheduleDetail, setShowScheduleDetail] = useState(false);
 
-
   const [showDayOffDialog, setShowDayOffDialog] = useState(false);
   const [dayOffReason, setDayOffReason] = useState("");
   const [dayOffLoading, setDayOffLoading] = useState(false);
@@ -33,12 +32,10 @@ const ScheduleArrange = () => {
   const [dentistScheduleData, setDentistScheduleData] = useState([]);
   const [customSchedules, setCustomSchedules] = useState([]);
 
-
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-
 
   const dayMapping = {
     "DayOfWeekEnum.MONDAY": "Thứ 2",
@@ -106,7 +103,6 @@ const ScheduleArrange = () => {
     }
   }, [user]);
 
-
   function generateTimeSlots(openTime, closeTime, slotDuration) {
     const slots = [];
     const [openHour, openMinute] = openTime.split(":").map(Number);
@@ -171,17 +167,15 @@ const ScheduleArrange = () => {
   const getApplicableSchedulesForDay = (dayOfWeek, refDate = new Date()) => {
     if (!dentistScheduleData || dentistScheduleData.length === 0) return [];
 
-
     const list = dentistScheduleData
       .filter((s) => s.day_of_week === dayOfWeek)
       .map((s) => {
-        const eff = s.effective_from || "1970-01-01"; 
+        const eff = s.effective_from || "1970-01-01";
         const _effDate = parseYMD(eff) || new Date(0);
         return { ...s, effective_from: eff, _effDate };
       });
 
     if (list.length === 0) return [];
-
 
     const groups = list.reduce((acc, s) => {
       const key = s.effective_from;
@@ -191,7 +185,6 @@ const ScheduleArrange = () => {
     }, {});
 
     const keys = Object.keys(groups);
-
 
     let chosenKey = null;
     let maxDate = null;
@@ -206,7 +199,6 @@ const ScheduleArrange = () => {
     });
 
     if (chosenKey) return groups[chosenKey];
-
 
     let minFutureKey = null;
     let minFutureDate = null;
@@ -229,12 +221,10 @@ const ScheduleArrange = () => {
     const slotsForDay = getTimeSlotsForDayEnum(dayOfWeek);
     if (!slotsForDay || slotsForDay.length === 0) return [];
 
-
     const applicable = getApplicableSchedulesForDay(dayOfWeek, refDate);
     if (!applicable || applicable.length === 0) return [];
 
     const indices = [];
-
 
     applicable.forEach((schedule) => {
       const startTime = (schedule.start_time || "").slice(0, 5);
@@ -264,14 +254,11 @@ const ScheduleArrange = () => {
     });
   }
 
-
   const handleConfirm = async (dayId) => {
     setLoading(true);
     try {
-
       const dayEnum = dayEnums[dayId - 2];
       const dayEnumValue = dayEnum.split(".")[1];
-
 
       const newSlots = tempSelectedSlots[dayId] || [];
       if (newSlots.length > 0) {
@@ -406,12 +393,10 @@ const ScheduleArrange = () => {
         ];
         setTempSelectedSlots({ [dayId]: mergedSlots });
       } else {
-
         const existingTemp = tempSelectedSlots[dayId];
         if (existingTemp && existingTemp.length > 0) {
           setTempSelectedSlots({ [dayId]: [...new Set(existingTemp)] });
         } else {
-
           const currentSlots = selectedSlots[dayId] || [];
           if (currentSlots && currentSlots.length > 0) {
             setTempSelectedSlots({ [dayId]: [...new Set(currentSlots)] });
@@ -435,7 +420,6 @@ const ScheduleArrange = () => {
   };
 
   const toggleSlot = (dayId, slotIndex) => {
-
     if (typeof dayId === "string" && dayId.startsWith("date-")) {
       const iso = dayId.replace("date-", "");
       const dateObj = new Date(iso);
@@ -478,11 +462,9 @@ const ScheduleArrange = () => {
   const resetToWeeklyForSelectedDate = async () => {
     if (!selectedDate) return;
     try {
-
       await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
-
 
       const dateObj = new Date(selectedDate);
       const dayEnum = dayEnumForJSDate(dateObj);
@@ -492,7 +474,6 @@ const ScheduleArrange = () => {
       setTempSelectedSlots({
         [`date-${selectedDate}`]: [...new Set(weeklyIndices)],
       });
-
 
       await fetchCustomSchedule(user.id);
       toast.info("Quay lại lịch cố định");
@@ -510,7 +491,6 @@ const ScheduleArrange = () => {
   const confirmDayOff = async () => {
     setDayOffLoading(true);
     try {
-
       await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
@@ -544,7 +524,6 @@ const ScheduleArrange = () => {
   const confirmRemoveDayOff = async () => {
     setRemoveDayOffLoading(true);
     try {
-
       await privateApi.delete(
         endpoints.custom_schedule.delete_by_date(user.id, selectedDate)
       );
@@ -561,27 +540,22 @@ const ScheduleArrange = () => {
     }
   };
 
-
   const saveCustomSchedule = async (dateStr, slotIndices) => {
     try {
       if (slotIndices.length === 0) {
-        // No slots selected → delete custom schedule for this date if it exists
         await privateApi.delete(
           endpoints.custom_schedule.delete_by_date(user.id, dateStr)
         );
         toast.info("Đã xóa lịch custom cho ngày này");
       } else {
-        // Convert slot indices to time ranges
         const dateObj = new Date(dateStr);
         const slotsForDate = getTimeSlotsForDate(dateObj);
         const schedules = convertSlotsToTimeRanges(slotIndices, slotsForDate);
 
-        // First, delete any existing custom schedule for this date
         await privateApi.delete(
           endpoints.custom_schedule.delete_by_date(user.id, dateStr)
         );
 
-        // Then create new custom schedule with the selected slots
         await privateApi.post(endpoints.custom_schedule.create, {
           dentist_id: user.id,
           custom_date: dateStr,
@@ -593,7 +567,6 @@ const ScheduleArrange = () => {
         toast.success("Lịch custom đã được lưu thành công");
       }
 
-      // Refresh custom schedules
       await fetchCustomSchedule(user.id);
     } catch (err) {
       console.error("Lỗi khi lưu lịch custom:", err);
@@ -602,12 +575,9 @@ const ScheduleArrange = () => {
     }
   };
 
-  // ---- New calendar helpers ----
-  // dayEnums: MON..SUN where index 0 => MONDAY, ... 6 => SUNDAY
-  // JS getDay: 0 => SUN, 1 => MON, ... 6 => SAT
   const dayEnumForJSDate = (dateObj) => {
     const jsDow = dateObj.getDay();
-    const idx = (jsDow + 6) % 7; // shift so Monday=0
+    const idx = (jsDow + 6) % 7;
     return dayEnums[idx];
   };
 
@@ -618,7 +588,6 @@ const ScheduleArrange = () => {
   };
 
   const getISODate = (dateObj) => {
-    // Build YYYY-MM-DD in local timezone (avoid toISOString which converts to UTC and can shift the day)
     const y = dateObj.getFullYear();
     const m = String(dateObj.getMonth() + 1).padStart(2, "0");
     const d = String(dateObj.getDate()).padStart(2, "0");
@@ -627,7 +596,6 @@ const ScheduleArrange = () => {
 
   const selectedDateObj = selectedDate ? new Date(selectedDate) : null;
 
-  // Custom schedule helpers
   const getCustomForDate = (dateObj) => {
     if (!dateObj) return [];
     const iso = getISODate(dateObj);
@@ -662,7 +630,6 @@ const ScheduleArrange = () => {
     return indices.sort((a, b) => a - b);
   };
 
-  // Helper to get circle style/class for calendar day
   const getCalendarDayStyle = (dateObj) => {
     const customList = getCustomForDate(dateObj) || [];
     const customDayOff = customList.some((c) => c.is_day_off === true);
@@ -695,11 +662,10 @@ const ScheduleArrange = () => {
   };
 
   const calendarGrid = useMemo(() => {
-    // produce array of Date objects for a 6x7 calendar starting Monday
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     const firstOfMonth = new Date(year, month, 1);
-    const startOffset = (firstOfMonth.getDay() + 6) % 7; // how many days from prev month to show
+    const startOffset = (firstOfMonth.getDay() + 6) % 7;
     const startDate = new Date(year, month, 1 - startOffset);
 
     const grid = [];
@@ -714,26 +680,23 @@ const ScheduleArrange = () => {
     return grid;
   }, [calendarMonth]);
 
-  // When user clicks a date on the calendar
   const handlePickDateFromCalendar = (dateObj) => {
     const iso = getISODate(dateObj);
-    // enforce clinic open days only
+
     if (!isClinicOpenOnDate(dateObj)) {
       toast.error("Phòng khám đóng vào ngày này");
       return;
     }
 
     setSelectedDate(iso);
-    // open expanded editor for that date
+
     setExpandedDay(`date-${iso}`);
 
-    // If this date is explicitly a day-off via custom schedule, clear prefilled slots and open editor in day-off mode
     if (isCustomDayOff(dateObj)) {
       setTempSelectedSlots({ [`date-${iso}`]: [] });
       return;
     }
 
-    // Prefill tempSelectedSlots: use custom slots if present, otherwise prefill weekly slots merged with any saved selections
     const customIndices = getCustomSlotIndices(dateObj);
     if (customIndices && customIndices.length > 0) {
       setTempSelectedSlots({ [`date-${iso}`]: [...new Set(customIndices)] });
@@ -747,8 +710,6 @@ const ScheduleArrange = () => {
       setTempSelectedSlots({ [`date-${iso}`]: merged });
     }
   };
-
-  // ---- End calendar helpers ----
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
@@ -994,7 +955,6 @@ const ScheduleArrange = () => {
         </div>
       ) : (
         <div>
-          {/* VISUAL Date Picker - calendar UI */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <div className="bg-white p-4 rounded-lg border border-gray-200">
@@ -1041,7 +1001,6 @@ const ScheduleArrange = () => {
                     const disabled =
                       iso < minDateString || !isClinicOpenOnDate(d);
 
-                    // NEW: custom checks & styles
                     const calStyle = getCalendarDayStyle(d);
 
                     return (
@@ -1143,7 +1102,6 @@ const ScheduleArrange = () => {
                 <div className="mt-4">
                   <button
                     onClick={() => {
-                      // Quick select: choose next available date in calendarMonth that is open and >= minDate
                       const found = calendarGrid.find(
                         (d) =>
                           getISODate(d) >= minDateString &&
@@ -1164,7 +1122,6 @@ const ScheduleArrange = () => {
             </div>
           </div>
 
-          {/* Selected Date Schedule (same as before, reused) */}
           {selectedDate && (
             <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
               <div className="p-4 flex items-center justify-between">
@@ -1179,7 +1136,7 @@ const ScheduleArrange = () => {
                         } khung giờ`
                       : "Chưa chọn thời gian"}
                   </p>
-                  {/* Show weekly/default slots for the weekday of selectedDate as subtle highlights */}
+
                   {(() => {
                     const dateObj = selectedDate
                       ? new Date(selectedDate)
@@ -1223,7 +1180,6 @@ const ScheduleArrange = () => {
                       );
                     }
 
-                    // fallback to weekly slots when no custom exists
                     const dayEnum = dateObj ? dayEnumForJSDate(dateObj) : null;
                     const weeklyIndices = dayEnum
                       ? getSlotIndicesForSchedule(dayEnum, dateObj)
@@ -1287,7 +1243,6 @@ const ScheduleArrange = () => {
                       </span>
                     </p>
 
-                    {/* NEW: Xin nghỉ checkbox (bấm sẽ mở dialog confirm với ô nhập lí do) */}
                     <div className="flex items-center gap-2">
                       <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input
@@ -1349,8 +1304,6 @@ const ScheduleArrange = () => {
                         const isCustom =
                           hasCustom && customIndices.includes(idx);
 
-                        // If editor is open and tempSelectedSlots exists, respect user selections only.
-                        // Do NOT fallback to weekly highlight for slots the user removed.
                         const isFromSchedule =
                           !hasCustom &&
                           !isEditingWithTemp &&
@@ -1411,7 +1364,6 @@ const ScheduleArrange = () => {
                           tempSelectedSlots[`date-${selectedDate}`] || [];
                         await saveCustomSchedule(selectedDate, slotIndices);
 
-                        // Update local state after successful API call
                         setSelectedSlots((prev) => ({
                           ...prev,
                           [`date-${selectedDate}`]: slotIndices,
@@ -1419,7 +1371,6 @@ const ScheduleArrange = () => {
                         setExpandedDay(null);
                         setTempSelectedSlots({});
                       } catch (e) {
-                        // Error already handled in saveCustomSchedule
                         console.error(e);
                       }
                     }}
@@ -1433,7 +1384,6 @@ const ScheduleArrange = () => {
         </div>
       )}
 
-      {/* Day-off confirmation dialog */}
       {showDayOffDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">
@@ -1505,7 +1455,6 @@ const ScheduleArrange = () => {
         </div>
       )}
 
-      {/* Remove day-off confirmation dialog */}
       {showRemoveDayOffDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">

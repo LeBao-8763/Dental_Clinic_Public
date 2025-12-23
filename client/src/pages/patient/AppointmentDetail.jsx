@@ -60,7 +60,7 @@ const AppointmentDetail = () => {
         endpoints.treatment_record.list_by_aptId(appointmentId)
       );
       console.log("Dữ liệu treatment records", res.data);
-      // Lấy thông tin service cho từng treatment record
+
       if (res.data && res.data.length > 0) {
         const servicesData = await Promise.all(
           res.data.map(async (treatment) => {
@@ -68,7 +68,7 @@ const AppointmentDetail = () => {
             return {
               id: treatment.id,
               name: serviceInfo?.name || "Dịch vụ không xác định",
-              price: treatment.price, // Lấy giá từ treatment record
+              price: treatment.price,
               serviceId: treatment.service_id,
               note: treatment.note,
             };
@@ -107,8 +107,9 @@ const AppointmentDetail = () => {
       fetchPrescription(appointmentId);
       fetchInvoiceByAptid(appointmentId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentId]);
-  // Loading state
+
   if (loading && !appointment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -119,7 +120,7 @@ const AppointmentDetail = () => {
       </div>
     );
   }
-  // Error state - no appointment data
+
   if (!appointment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -151,7 +152,6 @@ const AppointmentDetail = () => {
     : appointment.user?.phone_number;
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-4 flex items-center shadow-sm">
         <button className="mr-3" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -162,9 +162,7 @@ const AppointmentDetail = () => {
         </h1>
       </div>
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Patient and Doctor Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Patient Info */}
           <div className="bg-blue-50 rounded-xl p-6 border-2 border-blue-100 shadow-sm">
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
@@ -199,7 +197,7 @@ const AppointmentDetail = () => {
               </div>
             </div>
           </div>
-          {/* Doctor Info */}
+
           <div className="bg-teal-50 rounded-xl p-6 border-2 border-teal-100 shadow-sm">
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center mr-3">
@@ -231,7 +229,7 @@ const AppointmentDetail = () => {
             </div>
           </div>
         </div>
-        {/* Service Details */}
+
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -286,7 +284,7 @@ const AppointmentDetail = () => {
             )}
           </div>
         </div>
-        {/* Medication Details */}
+
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -351,7 +349,7 @@ const AppointmentDetail = () => {
             </div>
           </div>
         </div>
-        {/* Tổng kết giá */}
+
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
             <h2 className="text-lg font-semibold text-gray-900">

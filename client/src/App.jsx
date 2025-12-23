@@ -40,7 +40,6 @@ function App() {
         navigate("/staff", { replace: true });
       }
     } else {
-      // patient
       if (path.startsWith("/dentist") || path.startsWith("/staff")) {
         navigate("/", { replace: true });
       }

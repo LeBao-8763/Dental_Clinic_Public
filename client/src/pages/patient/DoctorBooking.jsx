@@ -9,13 +9,12 @@ const DoctorBooking = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Filter states
   const [selectedGender, setSelectedGender] = useState("");
   const [selectedDays, setSelectedDays] = useState([]);
-  const [timeRange, setTimeRange] = useState([8, 18]); // Default from 8:00 to 18:00 (in hours)
+  const [timeRange, setTimeRange] = useState([8, 18]);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [perPage] = useState(2); // Default 10, có thể thay đổi
+  const [perPage] = useState(2);
   const [pagination, setPagination] = useState({
     total: 0,
     total_pages: 1,
@@ -29,14 +28,14 @@ const DoctorBooking = () => {
       const res = await publicApi.get(endpoints.get_dentist_list, {
         params: {
           ...filters,
-          page: currentPage, // Thêm page
-          per_page: perPage, // Thêm per_page
+          page: currentPage,
+          per_page: perPage,
         },
       });
       if (res.data) {
         console.log("Danh sách bác sĩ:", res.data);
         setDentists(res.data.data);
-        setPagination(res.data.pagination); // Lưu pagination info
+        setPagination(res.data.pagination);
       }
     } catch (err) {
       console.log("Đã có lỗi xảy ra khi lấy danh sách bác sĩ:", err);
@@ -47,6 +46,7 @@ const DoctorBooking = () => {
 
   useEffect(() => {
     fetchDentistList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatGender = (gender) => {
@@ -62,19 +62,17 @@ const DoctorBooking = () => {
 
   const [layout, setLayout] = useState("list");
 
-  // Handle day selection
   const handleDayChange = (day) => {
     setSelectedDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   };
 
-  // Handle time range change (assuming a simple dual input for now, can replace with slider library like react-slider)
   const handleTimeChange = (index, value) => {
     const newRange = [...timeRange];
     newRange[index] = parseInt(value, 10);
     if (newRange[0] > newRange[1]) {
-      newRange.reverse(); // Ensure from < to
+      newRange.reverse();
     }
     setTimeRange(newRange);
   };
@@ -94,9 +92,8 @@ const DoctorBooking = () => {
     "Chủ Nhật": "SUNDAY",
   };
 
-  // Apply filters (you may need to implement actual filtering logic here or in fetch)
   const applyFilters = () => {
-    setCurrentPage(1); // Reset về page 1 khi apply filter
+    setCurrentPage(1);
     const params = {};
     if (selectedGender) {
       params.gender = genderMap[selectedGender];
@@ -110,20 +107,18 @@ const DoctorBooking = () => {
     fetchDentistList(params);
   };
 
-  // Reset filters and refetch
   const resetFilters = () => {
     setSelectedGender("");
     setSelectedDays([]);
     setTimeRange([8, 18]);
-    setCurrentPage(1); // Reset page
-    fetchDentistList(); // Fetch full list
+    setCurrentPage(1);
+    fetchDentistList();
   };
 
-  //Hàm này được gọi khi chuyển trang , fetch lại dữ liệu từ db và giữ nguyên các filter đã lọc trước đó
   const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > pagination.total_pages) return; // Giới hạn
+    if (newPage < 1 || newPage > pagination.total_pages) return;
     setCurrentPage(newPage);
-    // Refetch với filters hiện tại (cần lấy filters từ state)
+
     const params = {};
     if (selectedGender) {
       params.gender = genderMap[selectedGender];
@@ -136,11 +131,9 @@ const DoctorBooking = () => {
     fetchDentistList(params);
   };
 
-  //Đảm bảo fetch lại dữ liệu khi có sự thay đổi trang hiện tại
   useEffect(() => {
-    // Chỉ fetch nếu currentPage thay đổi (sau lần đầu)
     if (currentPage !== pagination.page) {
-      const params = {}; // Lấy filters hiện tại (tương tự applyFilters)
+      const params = {};
       if (selectedGender) {
         params.gender = genderMap[selectedGender];
       }
@@ -151,6 +144,7 @@ const DoctorBooking = () => {
       }
       fetchDentistList(params);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
   return (
@@ -172,8 +166,7 @@ const DoctorBooking = () => {
             để có số thứ tự và khung giờ khám trước.
           </p>
         </div>
-        {/* Decorative elements - distributed across the banner */}
-        {/* Top row */}
+
         <div className="absolute left-[5%] top-8 w-20 h-20 opacity-25 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -275,7 +268,7 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-        {/* Middle row - left side */}
+
         <div className="absolute left-[3%] top-[35%] w-18 h-18 opacity-21 transform rotate-45">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -327,7 +320,7 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-        {/* Middle row - right side */}
+
         <div className="absolute right-[3%] top-[38%] w-26 h-26 opacity-27 transform -rotate-15">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <circle
@@ -378,7 +371,7 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-        {/* Bottom row */}
+
         <div className="absolute left-[7%] bottom-12 w-24 h-24 opacity-26 transform rotate-35">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <path
@@ -480,7 +473,7 @@ const DoctorBooking = () => {
             />
           </svg>
         </div>
-        {/* Additional scattered icons */}
+
         <div className="absolute left-[35%] top-[25%] w-16 h-16 opacity-20 transform rotate-50">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect
@@ -544,10 +537,8 @@ const DoctorBooking = () => {
       </section>
       <section className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-6">
-          {/* Sidebar Filters */}
           <aside className="w-72 shrink-0">
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden sticky top-4">
-              {/* Header */}
               <div className="bg-linear-to-r from-[#009688] to-[#00796b] p-4">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <svg
@@ -567,7 +558,6 @@ const DoctorBooking = () => {
                 </h3>
               </div>
               <div className="p-5">
-                {/* Gender Filter */}
                 <div className="mb-6 pb-6 border-b border-gray-200">
                   <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                     <span className="text-[#009688]">●</span>
@@ -595,7 +585,7 @@ const DoctorBooking = () => {
                     ))}
                   </div>
                 </div>
-                {/* Days Filter */}
+
                 <div className="mb-6 pb-6 border-b border-gray-200">
                   <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                     <span className="text-[#009688]">●</span>
@@ -630,7 +620,7 @@ const DoctorBooking = () => {
                     ))}
                   </div>
                 </div>
-                {/* Time Range Filter */}
+
                 <div className="mb-6">
                   <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                     <span className="text-[#009688]">●</span>
@@ -670,14 +660,13 @@ const DoctorBooking = () => {
                     </p>
                   )}
                 </div>
-                {/* Buttons: Reset + Apply */}
+
                 <div className="flex items-center gap-3">
                   <button
                     onClick={resetFilters}
                     className="flex-1 border border-gray-200 bg-white text-gray-700 py-3 rounded-lg hover:shadow-sm transition-all duration-150 font-medium"
                     title="Đặt lại bộ lọc"
                   >
-                    {/* simple reset icon + text */}
                     <span className="inline-flex items-center gap-2 justify-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -706,9 +695,8 @@ const DoctorBooking = () => {
               </div>
             </div>
           </aside>
-          {/* Main Content */}
+
           <main className="flex-1">
-            {/* Header with toggle */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
                 Danh sách bác sĩ
@@ -718,7 +706,7 @@ const DoctorBooking = () => {
               </h2>
               <GridListToggle layout={layout} setLayout={setLayout} />
             </div>
-            {/* Doctor List */}
+
             <div
               className={
                 layout === "grid"
@@ -732,18 +720,15 @@ const DoctorBooking = () => {
                   className="bg-white rounded-xl border-2 border-gray-100 hover:border-[#009688] hover:shadow-xl transition-all duration-300 group overflow-hidden"
                 >
                   {layout === "grid" ? (
-                    // Grid Layout
                     <div className="flex flex-col p-5">
-                      {/* Avatar - Smaller */}
                       <div className="relative w-20 h-20 mx-auto mb-4">
-                        {/* Avatar hình ảnh */}
                         <img
                           src={doctor.avatar}
                           alt={doctor?.name || "Bác sĩ"}
                           className="w-full h-full rounded-full object-cover"
                         />
                       </div>
-                      {/* Info - Bottom */}
+
                       <div className="text-center">
                         <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-[#009688] transition-colors">
                           {doctor.name}
@@ -811,18 +796,15 @@ const DoctorBooking = () => {
                       </div>
                     </div>
                   ) : (
-                    // List Layout
                     <div className="flex gap-5 items-center p-6">
-                      {/* Avatar */}
                       <div className="relative">
-                        {/* Avatar hình ảnh */}
                         <img
-                          src={doctor.avatar} // link avatar
+                          src={doctor.avatar}
                           alt={doctor?.name || "Bác sĩ"}
                           className="w-24 h-24 rounded-full shrink-0 object-cover ring-4 ring-gray-100 group-hover:ring-[#009688]/20 transition-all"
                         />
                       </div>
-                      {/* Info */}
+
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[#009688] transition-colors">
                           {doctor.name}
@@ -881,7 +863,7 @@ const DoctorBooking = () => {
                           </p>
                         </div>
                       </div>
-                      {/* Button for list view */}
+
                       <button
                         onClick={() =>
                           navigate("/patient/doctor-detail", {

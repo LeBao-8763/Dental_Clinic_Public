@@ -151,6 +151,8 @@ class DentistCustomSchedule(db.Model):
 
     dentist = db.relationship('User', back_populates='dentist_custom_schedules')
 
+    
+
 class Appointment(db.Model):
     __tablename__ = 'appointments'
 

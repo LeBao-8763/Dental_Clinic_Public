@@ -23,7 +23,7 @@ const DoctorDetail = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isButtonSticky, setIsButtonSticky] = useState(false);
   const [description, setDescription] = useState("");
-  const [isDayFull, setIsDayFull] = useState(false); // flag ngày đã đầy
+  const [isDayFull, setIsDayFull] = useState(false);
   const DESCRIPTION_MAX = 300;
   const buttonRef = React.useRef(null);
   const location = useLocation();
@@ -34,13 +34,12 @@ const DoctorDetail = () => {
 
   const patient = useSelector((state) => state.auth.user);
 
-  // Helper: format date as local YYYY-MM-DD to avoid timezone shifts
   const formatDateLocal = (date) => {
     if (!date) return null;
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`; // YYYY-MM-DD (local)
+    return `${y}-${m}-${d}`;
   };
 
   const fetchAvailableDentisstSchedule = async (dentist_id, date) => {
@@ -50,24 +49,9 @@ const DoctorDetail = () => {
         endpoints.dentist_schedule.get_available_schedule(dentist_id, date)
       );
 
-      // Xử lý lọc lịch dựa trên effective_from
-      const targetDateStr = formatDateLocal(new Date(date));
-      const filteredSlots = res.data.filter((slot) => {
-        return slot.effective_from <= targetDateStr;
-      });
+      console.log("Lịch làm việc khả dụng của bác sĩ", res.data);
 
-      if (filteredSlots.length > 0) {
-        const maxEffectiveFrom = filteredSlots.reduce((max, slot) => {
-          return slot.effective_from > max ? slot.effective_from : max;
-        }, filteredSlots[0].effective_from);
-
-        const latestSchedule = filteredSlots.filter(
-          (slot) => slot.effective_from === maxEffectiveFrom
-        );
-        setSelectedDaySchedule(latestSchedule);
-      } else {
-        setSelectedDaySchedule([]);
-      }
+      setSelectedDaySchedule(res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu lịch khả dụng", err);
       setSelectedDaySchedule([]);
@@ -97,7 +81,6 @@ const DoctorDetail = () => {
     }
   };
 
-  // Lấy thông tin giới thiệu bác sĩ
   const fetchDentistProfileById = async (id) => {
     setLoading(true);
     try {
@@ -113,7 +96,6 @@ const DoctorDetail = () => {
     }
   };
 
-  // Lấy thông tin bác sĩ theo id
   const fetchDentistById = async (id) => {
     setLoading(true);
     try {
@@ -142,7 +124,6 @@ const DoctorDetail = () => {
     }
   };
 
-  // === SIMPLE version: assume API returns boolean (true/false) directly ===
   const checkMaxAppointment = async (dentist_id, dateStr) => {
     if (!dentist_id || !dateStr) {
       setIsDayFull(false);
@@ -154,7 +135,6 @@ const DoctorDetail = () => {
         dateStr
       );
       const res = await publicApi.get(path);
-      // expects backend trả true/false trực tiếp
       setIsDayFull(Boolean(res.data));
     } catch (err) {
       console.log("Có lỗi khi kiểm tra số lượng lịch của bác sĩ:", err);
@@ -196,7 +176,6 @@ const DoctorDetail = () => {
     }
   };
 
-  // Generate next 8 days (today + 7)
   const generateMonthDays = () => {
     const days = [];
     const today = new Date();
@@ -218,16 +197,6 @@ const DoctorDetail = () => {
 
   const monthDays = generateMonthDays();
 
-  const isToday = (someDate) => {
-    const today = new Date();
-    return (
-      someDate.getDate() === today.getDate() &&
-      someDate.getMonth() === today.getMonth() &&
-      someDate.getFullYear() === today.getFullYear()
-    );
-  };
-
-  // Parse education data
   const parseEducation = (educationString) => {
     if (!educationString) return [];
     return educationString
@@ -245,7 +214,6 @@ const DoctorDetail = () => {
       });
   };
 
-  // Parse experience data
   const parseExperience = (experienceString) => {
     if (!experienceString) return [];
     return experienceString
@@ -296,7 +264,7 @@ const DoctorDetail = () => {
       return;
     }
 
-    const appointmentDate = formatDateLocal(monthDays[selectedDate].fullDate); // YYYY-MM-DD (local)
+    const appointmentDate = formatDateLocal(monthDays[selectedDate].fullDate);
 
     setLoading(true);
     try {
@@ -314,7 +282,6 @@ const DoctorDetail = () => {
       setSelectedTime(null);
       setDescription("");
 
-      // refresh and re-check
       await fetchAvailableDentisstSchedule(doctorId, appointmentDate);
       await checkMaxAppointment(doctorId, appointmentDate);
     } catch (error) {
@@ -395,7 +362,6 @@ const DoctorDetail = () => {
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 to-teal-50">
       <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <div className="flex items-start gap-6">
             <div className="w-32 h-32 rounded-full overflow-hidden shadow-xl">
@@ -421,7 +387,6 @@ const DoctorDetail = () => {
           </div>
         </div>
 
-        {/* Schedule */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           {pendingAppointments.length > 0 && (
             <p className="text-teal-600 font-semibold mb-4">
@@ -497,24 +462,9 @@ const DoctorDetail = () => {
             )}
 
             {(() => {
-              const selectedDateObj = monthDays[selectedDate]?.fullDate;
               if (selectedDaySchedule.length > 0) {
                 let filteredSchedule = selectedDaySchedule;
-                if (isToday(selectedDateObj)) {
-                  const now = new Date();
-                  const currentHours = now.getHours();
-                  const currentMinutes = now.getMinutes();
-                  filteredSchedule = selectedDaySchedule.filter((slot) => {
-                    const [h, m] = slot.start_time
-                      .slice(0, 5)
-                      .split(":")
-                      .map(Number);
-                    return (
-                      h > currentHours ||
-                      (h === currentHours && m > currentMinutes)
-                    );
-                  });
-                }
+
                 if (filteredSchedule.length > 0) {
                   return (
                     <>
@@ -601,7 +551,6 @@ const DoctorDetail = () => {
           </div>
         </div>
 
-        {/* Introduction */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Giới thiệu</h2>
           <div className="space-y-4 text-gray-700 leading-relaxed">
@@ -618,7 +567,6 @@ const DoctorDetail = () => {
           </div>
         </div>
 
-        {/* Expertise */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Chuyên khám</h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -637,7 +585,6 @@ const DoctorDetail = () => {
           </div>
         </div>
 
-        {/* Education */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             Quá trình đào tạo
@@ -667,7 +614,6 @@ const DoctorDetail = () => {
           </div>
         </div>
 
-        {/* Experience */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Kinh nghiệm</h2>
           <div className="space-y-3">
@@ -689,7 +635,6 @@ const DoctorDetail = () => {
           </div>
         </div>
 
-        {/* Booking Button */}
         <div ref={buttonRef} className="mt-6">
           <button
             onClick={handleBookingClick}
@@ -699,7 +644,6 @@ const DoctorDetail = () => {
           </button>
         </div>
 
-        {/* Sticky Booking Button */}
         {isButtonSticky && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-linear-to-t from-white via-white to-transparent z-50">
             <div className="max-w-6xl mx-auto">
@@ -714,7 +658,6 @@ const DoctorDetail = () => {
         )}
       </div>
 
-      {/* Confirmation Dialog */}
       {showConfirmDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">

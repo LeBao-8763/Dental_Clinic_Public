@@ -18,7 +18,7 @@ const WorkingAppointmentDetail = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [nextStep, setNextStep] = useState(null);
   const [treatmentRecord, setTreatmentRecord] = useState([]);
-  // Medicine prescription states
+
   const [prescription, setPrescription] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
@@ -32,7 +32,6 @@ const WorkingAppointmentDetail = () => {
   const { appointmentId } = location.state || {};
   const [initialDiagnosis, setInitialDiagnosis] = useState("");
 
-  // Hàm so sánh hai mảng (sử dụng để kiểm tra thay đổi)
   const arraysEqual = (a, b) => {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
@@ -41,7 +40,6 @@ const WorkingAppointmentDetail = () => {
     return true;
   };
 
-  // Kiểm tra xem selectedServices có thay đổi so với initial không
   const hasServiceChanges = () => {
     const currentIds = selectedServices.map((s) => s.id).sort((a, b) => a - b);
     const initialIds = initialSelectedServices
@@ -50,7 +48,6 @@ const WorkingAppointmentDetail = () => {
     return !arraysEqual(currentIds, initialIds);
   };
 
-  //Kiểm tra xem bác sĩ có chỉnh sửa cái ô chuẩn đoán không
   const hasDiagnosisChanges = () => {
     return diagnosis.trim() !== initialDiagnosis.trim();
   };
@@ -59,7 +56,6 @@ const WorkingAppointmentDetail = () => {
     return hasServiceChanges() || hasDiagnosisChanges();
   };
 
-  //Hàm lấy dữ liệu cuộc hẹn theo id
   const fetchAppointmentById = async (apt_id) => {
     setLoading(true);
     try {
@@ -67,9 +63,9 @@ const WorkingAppointmentDetail = () => {
         endpoints.appointment.get_by_id(apt_id)
       );
       setAppointment(response.data);
-      //Check nếu đã hoàn thành chọn bước 1 thì chuyển luôn sang bước 2 cho lần vào tiếp theo
+
       if (response.data.status === "AppointmentStatusEnum.CONSULTING") {
-        setCurrentStep(1); // Nhảy sang bước kê thuốc
+        setCurrentStep(1);
       } else if (
         response.data.status === "AppointmentStatusEnum.PRESCRIPTION"
       ) {
@@ -86,21 +82,21 @@ const WorkingAppointmentDetail = () => {
       setLoading(false);
     }
   };
-  //Hàm lấy các dịch vụ
+
   const fetchServices = async () => {
     setLoading(true);
     try {
       const response = await privateApi.get(endpoints.service.list);
       setServices(response.data);
     } catch (err) {
-      console.log("Lỗi chi tiết:", err.response); // Xem lỗi chi tiết từ backend
+      console.log("Lỗi chi tiết:", err.response);
       console.log("Status:", err.response?.status);
       console.log("Message:", err.response?.data);
     } finally {
       setLoading(false);
     }
   };
-  //Hàm lấy các phương pháp điều trị đã chọn
+
   const fetchTreatmentRecord = async (apt_id) => {
     setLoading(true);
     try {
@@ -115,7 +111,7 @@ const WorkingAppointmentDetail = () => {
       setLoading(false);
     }
   };
-  //Hàm thêm vào một hoặc nhiều phương pháp điều trị
+
   const addTreatmentRecord = async () => {
     if (!selectedServices || selectedServices.length === 0) {
       console.log("Bạn chưa chọn dịch vụ nào!");
@@ -138,28 +134,23 @@ const WorkingAppointmentDetail = () => {
       setLoading(false);
     }
   };
-  //Hàm cập nhật phương pháp điều trị
+
   const updateAppointment = async (step) => {
     setLoading(true);
     try {
       let status = null;
       let payload = {};
 
-      // Nếu ở bước 0 sẽ cập nhật trạng thái sang CONSULTING và thêm diagnosis
       if (step === 0) {
         status = "CONSULTING";
         payload = {
           status,
-          diagnosis: diagnosis || "Không có chẩn đoán", // ✅ Thêm diagnosis ở bước 0
+          diagnosis: diagnosis || "Không có chẩn đoán",
         };
-      }
-      // Nếu ở bước 1 (kê thuốc) thì chỉ cập nhật status
-      else if (step === 1) {
+      } else if (step === 1) {
         status = "PRESCRIPTION";
         payload = { status };
-      }
-      // Nếu ở bước 2 (tóm tắt) thì cập nhật trạng thái thành COMPLETED
-      else if (step === 2) {
+      } else if (step === 2) {
         status = "COMPLETED";
         payload = { status };
       }
@@ -174,7 +165,7 @@ const WorkingAppointmentDetail = () => {
       setLoading(false);
     }
   };
-  //Hàm xóa các treatment record theo cái id cuộc hẹn
+
   const deleteTreatmentRecord = async () => {
     setLoading(true);
     try {
@@ -196,7 +187,7 @@ const WorkingAppointmentDetail = () => {
       await privateApi.patch(endpoints.appointment.update(appointmentId), {
         diagnosis: diagnosis,
       });
-      setInitialDiagnosis(diagnosis); // Cập nhật lại giá trị ban đầu
+      setInitialDiagnosis(diagnosis);
       toast.success("Đã cập nhật chuẩn đoán!");
     } catch (err) {
       console.log("Lỗi cập nhật chuẩn đoán:", err);
@@ -204,19 +195,15 @@ const WorkingAppointmentDetail = () => {
     }
   };
 
-  //Hàm lưu và cập nhật
   const handleSaveAndUpdate = async (step) => {
     setLoading(true);
     try {
-      //Nếu đang ở bước 2 hoặc bước 3 mà nếu bác sĩ muốn chỉnh lại phương pháp điều trị
-      // thì sẽ vào trường hợp này
       if ((treatmentRecord && treatmentRecord.length > 0) || diagnosis != "") {
-        // Đã có record trước đó => chỉ xóa và tạo mới
         const serviceChanged = hasServiceChanges();
         const diagnosisChanged = hasDiagnosisChanges();
 
         if (serviceChanged) {
-          await deleteTreatmentRecord(); // silent
+          await deleteTreatmentRecord();
           await addTreatmentRecord();
         }
 
@@ -225,13 +212,11 @@ const WorkingAppointmentDetail = () => {
         }
         toast.success("Đã cập nhật dịch vụ chữa trị!");
       } else {
-        // Ngược lại nếu lânf đầu tạo record thì thêm vào bảng rồi nhớ gọi hàm updateAppointment(step) và cập nhật lại trạng thái cuộc hẹn
         await addTreatmentRecord();
-        await updateAppointment(step); // chỉ chạy lần đầu
+        await updateAppointment(step);
         toast.success("Đã lưu dịch vụ chữa trị!");
       }
-      // Sau khi lưu thành công, refresh dữ liệu treatmentRecord từ server
-      // và cập nhật initialSelectedServices để trạng thái 'không thay đổi' phản ánh đúng
+
       try {
         await fetchTreatmentRecord(appointmentId);
         setInitialSelectedServices(selectedServices);
@@ -245,57 +230,51 @@ const WorkingAppointmentDetail = () => {
       setLoading(false);
     }
   };
-  //Hàm xử lý chuyển bước
+
   const handleNext = async () => {
-    // Nếu đang ở bước 0 và không có thay đổi dịch vụ thì chuyển bước ngay (không hiện dialog)
     if (currentStep === 0 && !hasChanges()) {
       setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1));
       return;
     }
 
-    // Ngược lại: Mở dialog xác nhận
     setNextStep(currentStep);
     setShowConfirmDialog(true);
   };
-  //Hàm xác nhận chuyển bước
+
   const confirmNext = async () => {
     setLoading(true);
     try {
-      // Nếu đang ở bước 0 và có thay đổi, gọi API lưu trước
       if (currentStep === 0 && hasChanges()) {
         await handleSaveAndUpdate(currentStep);
       }
 
-      // 🟢 Nếu đang ở bước kê thuốc (step 1)
       if (currentStep === 1) {
         try {
           let prescriptionId;
           if (prescription) {
             console.log("Đang cập nhật toa thuốc hiện có:", prescription.id);
-            // Đã có toa thuốc -> chỉ thêm thuốc mới vào
+
             prescriptionId = prescription.id;
             await addPrescriptionDetails(prescriptionId);
           } else {
-            // Chưa có toa -> tạo mới, rồi thêm thuốc
             prescriptionId = await createPrescription();
             await addPrescriptionDetails(prescriptionId);
             setPrescription({ id: prescriptionId });
           }
           console.log("có chạy đây không");
-          await updateAppointment(currentStep); // chuyển trạng thái -> PRESCRIPTION
+          await updateAppointment(currentStep);
         } catch (err) {
           console.error("Lỗi khi lưu toa thuốc:", err);
           toast.error("Có lỗi khi lưu toa thuốc!");
         }
       }
       if (currentStep === 2) {
-        // Ở bước tóm tắt, khi nhấn hoàn thành, cập nhật trạng thái cuộc hẹn thành COMPLETED
         await updateAppointment(currentStep);
         return navigate("/dentist/working-appointment");
       }
-      // Chuyển bước
+
       setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1));
-      //Đóng diglog
+
       setShowConfirmDialog(false);
       setNextStep(null);
     } catch (err) {
@@ -304,13 +283,12 @@ const WorkingAppointmentDetail = () => {
       setLoading(false);
     }
   };
-  //Hàm hủy chuyển bước
+
   const cancelNext = () => {
     setShowConfirmDialog(false);
     setNextStep(null);
   };
 
-  // Mapping giữa loại thuốc và đơn vị gợi ý
   const unitOptionsByType = {
     PILL: ["Viên/ngày", "Viên/lần"],
     CREAM: ["Tuýp/ngày", "Lần/ngày"],
@@ -318,11 +296,9 @@ const WorkingAppointmentDetail = () => {
     DEFAULT: ["Đơn vị/ngày"],
   };
 
-  // Medicine prescription functions
   const handleSelectMedicine = (medicine) => {
     setSelectedMedicine(medicine);
 
-    // Nếu type có trong mapping, lấy đơn vị đầu tiên làm mặc định
     const options =
       unitOptionsByType[medicine.type] || unitOptionsByType.DEFAULT;
     setUnit(options[0]);
@@ -349,28 +325,24 @@ const WorkingAppointmentDetail = () => {
     };
 
     setPrescribedMedicines((prev) => {
-      // 🔹 Kiểm tra xem thuốc đã có trong danh sách chưa
       const existingIndex = prev.findIndex(
         (m) => m.medicine_id === selectedMedicine.id
       );
 
       if (existingIndex !== -1) {
-        // 🔸 Nếu có, cập nhật liều, ngày, đơn vị, giá mới
         const updated = [...prev];
         updated[existingIndex] = {
           ...updated[existingIndex],
-          ...newPrescription, // ghi đè thông tin mới
+          ...newPrescription,
         };
         toast.info(`Đã cập nhật thuốc ${selectedMedicine.name}`);
         return updated;
       } else {
-        // 🔸 Nếu chưa có, thêm mới
         toast.success(`Đã thêm thuốc ${selectedMedicine.name} vào toa!`);
         return [...prev, newPrescription];
       }
     });
 
-    // Reset form
     setSelectedMedicine(null);
     setDosage("");
     setDays("");
@@ -388,17 +360,15 @@ const WorkingAppointmentDetail = () => {
     toast.success("Đã xóa thuốc khỏi đơn!");
   };
 
-  // Tạo toa thuốc mới
   const createPrescription = async () => {
     const payload = {
       appointment_id: appointmentId,
       note: diagnosis || "Không có chẩn đoán",
     };
     const res = await privateApi.post(endpoints.prescription.create, payload);
-    return res.data.id; // giả sử server trả về { id: ... }
+    return res.data.id;
   };
 
-  // Thêm thuốc vào toa
   const addPrescriptionDetails = async (prescriptionId) => {
     console.log("Thêm chi tiết toa thuốc cho ID:", prescribedMedicines);
     const payload = {
@@ -464,10 +434,9 @@ const WorkingAppointmentDetail = () => {
   useEffect(() => {
     const value = appointment?.diagnosis ?? "";
     setDiagnosis(value);
-    setInitialDiagnosis(value); // snapshot ban đầu
+    setInitialDiagnosis(value);
   }, [appointment]);
 
-  // Đây là hàm đánh dấu lại những cái dịch vụ nào đã được chọn (nếu đã qua bước 1)
   useEffect(() => {
     if (services.length > 0 && treatmentRecord.length > 0) {
       const selectedServiceIds = treatmentRecord.map((tr) => tr.service_id);
@@ -475,11 +444,11 @@ const WorkingAppointmentDetail = () => {
         selectedServiceIds.includes(service.id)
       );
       setSelectedServices(selectedServiceList);
-      // Lưu initialSelectedServices chỉ một lần khi load
+
       setInitialSelectedServices(selectedServiceList);
     }
   }, [services, treatmentRecord]);
-  //Hàm format tiền sang tiền việt
+
   const formatVND = (value) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -590,7 +559,7 @@ const WorkingAppointmentDetail = () => {
           <Loading />
         </div>
       )}
-      {/* Sticky Header */}
+
       <div className="sticky top-0 z-50 bg-white shadow-md border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -630,10 +599,8 @@ const WorkingAppointmentDetail = () => {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Stepper */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8 mb-6">
           <div className="flex items-center justify-between relative">
-            {/* Progress Line */}
             <div
               className="absolute top-6 left-0 right-0 h-1 bg-gray-200 -z-10"
               style={{ margin: "0 5%" }}
@@ -683,10 +650,9 @@ const WorkingAppointmentDetail = () => {
             ))}
           </div>
         </div>
-        {/* Content Area */}
+
         {currentStep === 0 && (
           <div className="space-y-6">
-            {/* Patient Information */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                 <svg
@@ -801,7 +767,7 @@ const WorkingAppointmentDetail = () => {
                 </div>
               </div>
             </div>
-            {/* Patient Notes */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                 <svg
@@ -827,7 +793,7 @@ const WorkingAppointmentDetail = () => {
                 </p>
               </div>
             </div>
-            {/* Doctor Diagnosis Section */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                 <svg
@@ -865,7 +831,7 @@ const WorkingAppointmentDetail = () => {
                 />
               </div>
             </div>
-            {/* Service Selection */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                 <svg
@@ -893,7 +859,7 @@ const WorkingAppointmentDetail = () => {
                   </div>
                 </div>
               </div>
-              {/* Search Bar */}
+
               <div className="mb-6">
                 <div className="relative">
                   <input
@@ -918,9 +884,8 @@ const WorkingAppointmentDetail = () => {
                   </svg>
                 </div>
               </div>
-              {/* Services Grid Container with Border and Shadow */}
+
               <div className="border border-gray-200 rounded-xl shadow-sm bg-white p-4">
-                {/* Scrollable Services Grid */}
                 <div className="max-h-[400px] overflow-y-auto">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {services
@@ -976,12 +941,10 @@ const WorkingAppointmentDetail = () => {
             </div>
           </div>
         )}
-        {/* Step 1 - Prescription */}
+
         {currentStep === 1 && (
           <div className="space-y-6">
-            {/* Medicine List and Prescription Form */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Side - Medicine List */}
               <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                   <svg
@@ -1001,7 +964,7 @@ const WorkingAppointmentDetail = () => {
                     Danh Sách Thuốc
                   </h2>
                 </div>
-                {/* Search Bar */}
+
                 <div className="mb-6">
                   <div className="relative">
                     <input
@@ -1026,7 +989,7 @@ const WorkingAppointmentDetail = () => {
                     </svg>
                   </div>
                 </div>
-                {/* Medicine Items */}
+
                 <div className="space-y-3 max-h-[500px] overflow-y-auto">
                   {filteredMedicines.map((medicine) => (
                     <div
@@ -1046,11 +1009,13 @@ const WorkingAppointmentDetail = () => {
                           <p className="text-sm text-gray-600">
                             Tồn kho:{" "}
                             <span className="font-semibold">
-                              {medicine.total_stock - medicine.reserved_quantity}{" "}
-                              {medicine.retail_unit === "ml" ? "chai" : medicine.retail_unit}
+                              {medicine.total_stock -
+                                medicine.reserved_quantity}{" "}
+                              {medicine.retail_unit === "ml"
+                                ? "chai"
+                                : medicine.retail_unit}
                             </span>
                           </p>
-
                         </div>
                         {selectedMedicine?.id === medicine.id && (
                           <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#009688] text-white text-sm font-bold">
@@ -1062,7 +1027,7 @@ const WorkingAppointmentDetail = () => {
                   ))}
                 </div>
               </div>
-              {/* Right Side - Prescription Form */}
+
               <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                   <svg
@@ -1082,7 +1047,7 @@ const WorkingAppointmentDetail = () => {
                     Thông Tin Liều Dùng
                   </h2>
                 </div>
-                {/* Selected Medicine Display */}
+
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Thuốc Đã Chọn
@@ -1099,7 +1064,7 @@ const WorkingAppointmentDetail = () => {
                     )}
                   </div>
                 </div>
-                {/* Dosage Input */}
+
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Liều Dùng
@@ -1112,8 +1077,7 @@ const WorkingAppointmentDetail = () => {
                     className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm"
                   />
                 </div>
-                {/* Unit Selection */}
-                {/* Unit Selection */}
+
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Đơn Vị
@@ -1134,7 +1098,6 @@ const WorkingAppointmentDetail = () => {
                     ))}
                   </select>
 
-                  {/* Gợi ý hiển thị loại thuốc */}
                   {selectedMedicine && (
                     <p className="text-xs text-gray-500 mt-1">
                       Loại thuốc:{" "}
@@ -1145,7 +1108,6 @@ const WorkingAppointmentDetail = () => {
                   )}
                 </div>
 
-                {/* Days Input */}
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Số Ngày Sử Dụng
@@ -1159,7 +1121,6 @@ const WorkingAppointmentDetail = () => {
                   />
                 </div>
 
-                {/* Medicine Note Input */}
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Ghi chú về loại thuốc
@@ -1172,7 +1133,7 @@ const WorkingAppointmentDetail = () => {
                     className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm resize-none"
                   />
                 </div>
-                {/* Add Button */}
+
                 <button
                   onClick={handleAddMedicine}
                   className="w-full py-3 bg-[#009688] text-white rounded-xl font-semibold hover:bg-[#00796B] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
@@ -1194,7 +1155,7 @@ const WorkingAppointmentDetail = () => {
                 </button>
               </div>
             </div>
-            {/* Prescribed Medicine List */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -1219,7 +1180,7 @@ const WorkingAppointmentDetail = () => {
                   {prescribedMedicines.length}
                 </div>
               </div>
-              {/* Table */}
+
               {prescribedMedicines.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -1318,10 +1279,9 @@ const WorkingAppointmentDetail = () => {
             </div>
           </div>
         )}
-        {/* Step 2 - Summary */}
+
         {currentStep === 2 && (
           <div className="space-y-6">
-            {/* Patient Information Summary */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                 <svg
@@ -1376,7 +1336,7 @@ const WorkingAppointmentDetail = () => {
                 </div>
               </div>
             </div>
-            {/* Doctor Diagnosis Summary */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
                 <svg
@@ -1402,7 +1362,7 @@ const WorkingAppointmentDetail = () => {
                 </p>
               </div>
             </div>
-            {/* Selected Services Summary */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -1482,7 +1442,7 @@ const WorkingAppointmentDetail = () => {
                 </div>
               )}
             </div>
-            {/* Prescription Summary */}
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -1573,7 +1533,7 @@ const WorkingAppointmentDetail = () => {
                 </div>
               )}
             </div>
-            {/* Final Summary Box */}
+
             <div className="bg-linear-to-r from-[#009688] to-[#00796B] rounded-2xl shadow-lg p-6 text-white">
               <div className="flex items-center justify-between">
                 <div>
@@ -1601,7 +1561,7 @@ const WorkingAppointmentDetail = () => {
             </div>
           </div>
         )}
-        {/* Bottom Actions */}
+
         {appointment.status !== "AppointmentStatusEnum.PAID" && (
           <div className="sticky bottom-0 bg-white border-t border-gray-100 shadow-2xl rounded-t-2xl p-6 mt-6">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -1646,11 +1606,10 @@ const WorkingAppointmentDetail = () => {
           </div>
         )}
       </div>
-      {/* Confirmation Dialog */}
+
       {showConfirmDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-100 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-[scale-in_0.2s_ease-out]">
-            {/* Icon */}
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center">
                 {nextStep === steps.length - 1 ? (
@@ -1684,13 +1643,13 @@ const WorkingAppointmentDetail = () => {
                 )}
               </div>
             </div>
-            {/* Title */}
+
             <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
               {nextStep === steps.length - 1
                 ? "Hoàn Thành Cuộc Hẹn Khám"
                 : "Lưu Và Tiếp Tục"}
             </h3>
-            {/* Content */}
+
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-gray-700 text-center">
                 {nextStep === steps.length - 1
@@ -1698,7 +1657,7 @@ const WorkingAppointmentDetail = () => {
                   : "Bạn có chắc chắn muốn lưu và tiếp tục không?"}
               </p>
             </div>
-            {/* Buttons */}
+
             <div className="flex gap-3">
               <button
                 onClick={cancelNext}

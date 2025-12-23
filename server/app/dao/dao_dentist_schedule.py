@@ -50,10 +50,35 @@ def create_multiple_dentist_schedules(dentist_id,day_of_week, schedules_data):
         else:
             effective_from = date.today() + timedelta(days=7)
 
+        latest_schedules = (
+            DentistSchedule.query
+            .filter(
+                DentistSchedule.dentist_id == dentist_id,
+                DentistSchedule.day_of_week == day_enum
+            )
+            .order_by(DentistSchedule.effective_from.desc())
+            .all()
+        )
+
+        latest_effective = latest_schedules[0].effective_from if latest_schedules else None
+
+        old_slots = set()
+
+        if latest_effective:
+            old_slots = {
+                (s.start_time, s.end_time)
+                for s in latest_schedules
+                if s.effective_from == latest_effective
+        }
+
         for schedule_data in schedules_data:
 
             start_time=datetime.strptime(schedule_data['start_time'], "%H:%M:%S").time()
             end_time=datetime.strptime(schedule_data['end_time'], "%H:%M:%S").time()
+
+            if (start_time, end_time) in old_slots:
+                continue
+
             if (start_time < clinic_hour.open_time or 
                 end_time > clinic_hour.close_time):
                 raise ValueError(
@@ -122,13 +147,26 @@ def get_base_schedules(dentist_id, appointment_date):
     if custom:
         if any(c.is_day_off for c in custom):
             return []
-
         return custom
 
-    return DentistSchedule.query.filter(
-        DentistSchedule.dentist_id == dentist_id,
-        DentistSchedule.day_of_week == day_of_week
-    ).all()
+    schedules = (
+        DentistSchedule.query
+        .filter(
+            DentistSchedule.dentist_id == dentist_id,
+            DentistSchedule.day_of_week == day_of_week,
+            DentistSchedule.effective_from <= appointment_date
+        )
+        .order_by(DentistSchedule.effective_from.desc())
+        .all()
+    )
+
+    if not schedules:
+        return []
+
+    latest_effective_date = schedules[0].effective_from
+    
+    return [s for s in schedules if s.effective_from == latest_effective_date]
+
 
 def get_available_schedule_by_date(dentist_id, appointment_date):
 
@@ -146,9 +184,15 @@ def get_available_schedule_by_date(dentist_id, appointment_date):
 
     available_slots=[]
 
+    today = date.today()
+    now_time = datetime.now().time()
+
     for slot in base_slots:
         start=slot.start_time
         end=slot.end_time
+
+        if appointment_date == today and start <= now_time:
+            continue
 
         if not is_slot_booked(start, end, booked):
             available_slots.append(slot)

@@ -4,17 +4,17 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 const WorkingAppointment = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  // Mặc định là ngày hôm nay
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
-    return today.toLocaleDateString("en-CA"); // ISO format YYYY-MM-DD theo local
+    return today.toLocaleDateString("en-CA");
   });
   const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
-  // selectedStatus lưu ENUM (ví dụ: "", "PENDING", "IN_PROGRESS", "PAID", "CANCELED")
+
   const [selectedStatus, setSelectedStatus] = React.useState("");
   const [loading, setLoading] = useState(false);
   const [appointment, setAppointment] = useState(null);
-  // Tính toán max date (hôm nay + 7 ngày)
+
   const getMaxDate = () => {
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 7);
@@ -22,25 +22,25 @@ const WorkingAppointment = () => {
   };
   const maxDate = getMaxDate();
   const navigate = useNavigate();
-  // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
+
   const STATUS_OPTIONS = [
     { label: "Tất cả", value: "" },
     { label: "Chưa khám", value: "PENDING" },
-    { label: "Đang khám", value: "IN_PROGRESS" }, // key trung gian
+    { label: "Đang khám", value: "IN_PROGRESS" },
     { label: "Đã khám", value: "PAID" },
     { label: "Hủy", value: "CANCELED" },
   ];
-  // Map frontend key -> real backend statuses (dùng khi gửi params)
+
   const STATUS_FILTER_MAP = {
     IN_PROGRESS: ["CONSULTING", "PRESCRIPTION", "COMPLETED"],
   };
-  // Helper: normalize status (hỗ trợ "AppointmentStatusEnum.PENDING" hoặc "PENDING")
+
   const normalizeStatus = (status) => {
     if (!status) return "";
     if (typeof status !== "string") return "";
     return status.includes(".") ? status.split(".").pop() : status;
   };
-  // Map enum -> label hiển thị
+
   const STATUS_TEXT = {
     PENDING: "Chưa khám",
     CONSULTING: "Đang khám",
@@ -50,7 +50,7 @@ const WorkingAppointment = () => {
     CANCELLED: "Hủy",
     CANCELED: "Hủy",
   };
-  // Map enum -> css class
+
   const STATUS_CLASS = {
     PENDING: "bg-blue-100 text-blue-700",
     CONSULTING: "bg-yellow-100 text-yellow-700",
@@ -65,16 +65,15 @@ const WorkingAppointment = () => {
     setLoading(true);
     try {
       const params = {};
-      // selectedStatus bây giờ có thể là key trung gian (IN_PROGRESS) hoặc enum thật
+
       if (selectedStatus) {
         if (STATUS_FILTER_MAP[selectedStatus]) {
-          // gửi nhiều status thành chuỗi phân cách bằng dấu phẩy
           params.status = STATUS_FILTER_MAP[selectedStatus].join(",");
         } else {
           params.status = selectedStatus;
         }
       }
-      // Truyền date theo format YYYY-MM-DD
+
       if (selectedDate) {
         params.date = selectedDate;
       }
@@ -99,7 +98,7 @@ const WorkingAppointment = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedStatus, selectedDate]);
-  // debounce cho searchTerm
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (user) fetchDentistWorkingScheduleById(user.id);
@@ -107,7 +106,7 @@ const WorkingAppointment = () => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, user]);
-  // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
+
   const getStatusText = (status) => {
     const s = normalizeStatus(status);
     return STATUS_TEXT[s] || "Không xác định";
@@ -116,29 +115,27 @@ const WorkingAppointment = () => {
     const s = normalizeStatus(status);
     return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
   };
-  // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
+
   const selectedLabel =
     STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
-  // Tính toán ngày hiện tại (YYYY-MM-DD)
+
   const currentDate = new Date().toLocaleDateString("en-CA");
   const isCurrentDate = selectedDate === currentDate;
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Lịch khám</h1>
           <p className="text-gray-600">
             Bạn có thể kiểm tra lịch khám hàng ngày, hàng tuần tại đây.
           </p>
         </div>
-        {/* Search and Filter Section */}
+
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">
             Tìm kiếm và lọc
           </h2>
           <div className="flex flex-wrap gap-4">
-            {/* Search Input */}
             <div className="flex-1 min-w-[250px]">
               <div className="relative group">
                 <input
@@ -163,7 +160,7 @@ const WorkingAppointment = () => {
                 </svg>
               </div>
             </div>
-            {/* Date Picker */}
+
             <div className="flex items-center gap-2">
               <div className="relative group">
                 <input
@@ -188,7 +185,7 @@ const WorkingAppointment = () => {
                 </svg>
               </div>
             </div>
-            {/* Status Filter Dropdown */}
+
             <div className="relative">
               <button
                 onClick={() => setShowStatusDropdown(!showStatusDropdown)}
@@ -224,14 +221,14 @@ const WorkingAppointment = () => {
                   />
                 </svg>
               </button>
-              {/* Dropdown Menu */}
+
               {showStatusDropdown && (
                 <div className="absolute top-full mt-2 right-0 bg-white border-2 border-[#009688] rounded-lg shadow-lg z-10 min-w-[180px] overflow-hidden">
                   {STATUS_OPTIONS.map((opt, index) => (
                     <button
                       key={index}
                       onClick={() => {
-                        setSelectedStatus(opt.value); // lưu enum (value hoặc key trung gian)
+                        setSelectedStatus(opt.value);
                         setShowStatusDropdown(false);
                       }}
                       className={`w-full px-4 py-3 text-left hover:bg-[#E0F2F1] transition-colors ${
@@ -269,14 +266,14 @@ const WorkingAppointment = () => {
             </div>
           </div>
         </div>
-        {/* Loading State */}
+
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#009688]"></div>
             <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
           </div>
         )}
-        {/* Empty State */}
+
         {!loading && (!appointment || appointment.length === 0) && (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <svg
@@ -295,11 +292,10 @@ const WorkingAppointment = () => {
             <p className="mt-4 text-gray-600">Không có lịch hẹn nào</p>
           </div>
         )}
-        {/* Appointments Grid */}
+
         {!loading && appointment && appointment.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {appointment.map((item) => {
-              // Xác định thông tin hiển thị dựa trên is_guest
               const patientName = item.is_guest
                 ? item.patient_name
                 : `${item.user.name} `;
@@ -325,7 +321,6 @@ const WorkingAppointment = () => {
                   key={item.id}
                   className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg hover:border-[#009688] hover:-translate-y-2 transition-all duration-300 cursor-pointer"
                 >
-                  {/* Header */}
                   <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-[#009688] rounded-full flex items-center justify-center">
@@ -408,7 +403,7 @@ const WorkingAppointment = () => {
                       {getStatusText(item.status)}
                     </span>
                   </div>
-                  {/* Note Section */}
+
                   <div className="bg-[#E0F2F1] rounded-lg p-4 mb-4 border-l-4 border-[#009688]">
                     <div className="flex items-start gap-2">
                       <svg
@@ -434,7 +429,7 @@ const WorkingAppointment = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Action Button */}
+
                   <button
                     onClick={() =>
                       !isDisabled &&

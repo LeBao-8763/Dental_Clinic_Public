@@ -56,12 +56,12 @@ class DentistScheduleList(Resource):
     @dentist_shedule_ns.doc('get_available_dentist_schedules')
     @dentist_shedule_ns.marshal_list_with(dentist_shedule_model)
     def get(self, dentist_id, date):
+        schedules = dao_dentist_schedule.get_available_schedule_by_date(
+            dentist_id, date
+        )
 
-        schedules=dao_dentist_schedule.get_available_schedule_by_date(dentist_id, date)
+        return schedules, 200
 
-        if schedules:
-            return schedules, 201
-        return 500
 
 @dentist_shedule_ns.route('/<int:dentist_id>/<string:day_of_week>')
 class DentistScheduleByDay(Resource):

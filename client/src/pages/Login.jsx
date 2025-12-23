@@ -9,12 +9,12 @@ import { loginSuccess } from "../store/slices/authSlice";
 import { toast } from "react-toastify";
 
 const Login = () => {
-  const [activeTab, setActiveTab] = useState("login"); // 'login' or 'register'
+  const [activeTab, setActiveTab] = useState("login");
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  // Register fields
+
   const [registerData, setRegisterData] = useState({
     name: "",
     username: "",
@@ -23,13 +23,13 @@ const Login = () => {
     confirmPassword: "",
     gender: "",
   });
-  // Show/hide password states
+
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  // ---------- Login ----------
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!account || !password) {
@@ -71,7 +71,6 @@ const Login = () => {
     }
   };
 
-  // ---------- Register ----------
   const validateRegisterData = (data) => {
     const errors = {};
     if (!data.name.trim()) errors.name = "Vui lòng nhập tên";
@@ -142,7 +141,7 @@ const Login = () => {
           <Loading />
         </div>
       )}
-      {/* Left Side */}
+
       <div className="w-full lg:w-1/2 bg-white flex flex-col relative">
         <button
           onClick={() => navigate(-1)}
@@ -188,7 +187,7 @@ const Login = () => {
               )}
             </button>
           </div>
-          {/* ---------- Login Form ---------- */}
+
           {activeTab === "login" && (
             <form onSubmit={handleLoginSubmit} className="space-y-6">
               <div>
@@ -232,7 +231,7 @@ const Login = () => {
               </button>
             </form>
           )}
-          {/* ---------- Register Form ---------- */}
+
           {activeTab === "register" && (
             <form onSubmit={handleRegisterSubmit} className="space-y-5">
               <div>
@@ -315,7 +314,7 @@ const Login = () => {
                   <option value="other">Khác</option>
                 </select>
               </div>
-              {/* Password */}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mật khẩu
@@ -348,7 +347,7 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-              {/* Confirm Password */}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Xác nhận mật khẩu
@@ -389,7 +388,7 @@ const Login = () => {
           )}
         </div>
       </div>
-      {/* Right Side Image */}
+
       <div className="hidden lg:flex w-1/2 relative bg-linear-to-br from-gray-900 to-black overflow-hidden">
         <img
           src={bgImage}

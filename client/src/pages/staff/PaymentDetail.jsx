@@ -74,7 +74,6 @@ const PaymentDetail = () => {
       );
       console.log("Dữ liệu treatment records", res.data);
 
-      // Lấy thông tin service cho từng treatment record
       if (res.data && res.data.length > 0) {
         const servicesData = await Promise.all(
           res.data.map(async (treatment) => {
@@ -82,7 +81,7 @@ const PaymentDetail = () => {
             return {
               id: treatment.id,
               name: serviceInfo?.name || "Dịch vụ không xác định",
-              price: treatment.price, // Lấy giá từ treatment record
+              price: treatment.price,
               serviceId: treatment.service_id,
               note: treatment.note,
             };
@@ -122,39 +121,38 @@ const PaymentDetail = () => {
       fetchAppointmentById(appointmentId);
       fetchPrescription(appointmentId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentId]);
 
   const totalServicePrice = servicesWithPrice.reduce(
     (sum, service) => sum + service.price,
     0
   );
-const totalMedicationPrice = medications.reduce((sum, med) => {
-  if (!med) return sum;
+  const totalMedicationPrice = medications.reduce((sum, med) => {
+    if (!med) return sum;
 
-  const dosage = med.dosage || 0;
-  const days = med.duration_days || 0;
-  const price = med.price || 0;
-  const capacity = med.medicine_capacity_per_unit || 1;
-  const type = med.medicine_type || "PILL";
+    const dosage = med.dosage || 0;
+    const days = med.duration_days || 0;
+    const price = med.price || 0;
+    const capacity = med.medicine_capacity_per_unit || 1;
+    const type = med.medicine_type || "PILL";
 
-  const totalDose = dosage * days;
-  let qtyToDeduct = totalDose;
+    const totalDose = dosage * days;
+    let qtyToDeduct = totalDose;
 
-  if (type === "CREAM" || type === "LIQUID") {
-    qtyToDeduct = Math.ceil(totalDose / capacity);
-  }
+    if (type === "CREAM" || type === "LIQUID") {
+      qtyToDeduct = Math.ceil(totalDose / capacity);
+    }
 
-  // Tổng tiền mỗi loại thuốc
-  const totalMedPrice = qtyToDeduct * price;
+    const totalMedPrice = qtyToDeduct * price;
 
-  return sum + totalMedPrice;
-}, 0);
+    return sum + totalMedPrice;
+  }, 0);
 
   const vat = (Number(totalServicePrice) + Number(totalMedicationPrice)) * 0.1;
 
   const grandTotal = totalServicePrice + totalMedicationPrice + vat;
 
-  // Loading state
   if (loading && !appointment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -166,7 +164,6 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
     );
   }
 
-  // Error state - no appointment data
   if (!appointment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -199,7 +196,6 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-4 flex items-center shadow-sm">
         <button className="mr-3" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -211,9 +207,7 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
       </div>
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Patient and Doctor Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Patient Info */}
           <div className="bg-blue-50 rounded-xl p-6 border-2 border-blue-100 shadow-sm">
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
@@ -249,7 +243,6 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
             </div>
           </div>
 
-          {/* Doctor Info */}
           <div className="bg-teal-50 rounded-xl p-6 border-2 border-teal-100 shadow-sm">
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center mr-3">
@@ -282,7 +275,6 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
           </div>
         </div>
 
-        {/* Service Details */}
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -340,7 +332,6 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
           </div>
         </div>
 
-        {/* Medication Details */}
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -370,34 +361,41 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
               </thead>
               <tbody>
                 {medications.map((medication, index) => {
-                    const dosage = medication.dosage || 0;
-                    const days = medication.duration_days || 0;
-                    const price = medication.price || 0;
-                    const capacity = medication.medicine_capacity_per_unit || 1;
-                    const type = medication.medicine_type || "PILL";
+                  const dosage = medication.dosage || 0;
+                  const days = medication.duration_days || 0;
+                  const price = medication.price || 0;
+                  const capacity = medication.medicine_capacity_per_unit || 1;
+                  const type = medication.medicine_type || "PILL";
 
-                    const totalDose = dosage * days;
-                    let qtyToDeduct = totalDose;
+                  const totalDose = dosage * days;
+                  let qtyToDeduct = totalDose;
 
-                    if (type === "CREAM" || type === "LIQUID") {
-                      qtyToDeduct = Math.ceil(totalDose / capacity);
-                    }
+                  if (type === "CREAM" || type === "LIQUID") {
+                    qtyToDeduct = Math.ceil(totalDose / capacity);
+                  }
 
-                    const totalPrice = qtyToDeduct * price;
+                  const totalPrice = qtyToDeduct * price;
 
-                    return (
-                      <tr key={index} className="border-b border-gray-200">
-                        <td className="py-4 text-gray-900">{medication.medicine_name}</td>
-                        <td className="py-4 text-center text-gray-900">{dosage}</td>
-                        <td className="py-4 text-center text-gray-900">{medication.unit}</td>
-                        <td className="py-4 text-center text-gray-900">{days} ngày</td>
-                        <td className="py-3 text-right font-medium text-gray-900">
-                          {totalPrice.toLocaleString("vi-VN")} đ
-                        </td>
-                      </tr>
-                    );
-                  })}
-
+                  return (
+                    <tr key={index} className="border-b border-gray-200">
+                      <td className="py-4 text-gray-900">
+                        {medication.medicine_name}
+                      </td>
+                      <td className="py-4 text-center text-gray-900">
+                        {dosage}
+                      </td>
+                      <td className="py-4 text-center text-gray-900">
+                        {medication.unit}
+                      </td>
+                      <td className="py-4 text-center text-gray-900">
+                        {days} ngày
+                      </td>
+                      <td className="py-3 text-right font-medium text-gray-900">
+                        {totalPrice.toLocaleString("vi-VN")} đ
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
@@ -412,7 +410,6 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
           </div>
         </div>
 
-        {/* Tổng kết giá */}
         <div className="bg-white rounded-xl shadow-md border-2 border-gray-300">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-xl">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -447,12 +444,10 @@ const totalMedicationPrice = medications.reduce((sum, med) => {
         </div>
       </div>
 
-      {/* Footer - Total Payment */}
       {appointment.status !== "AppointmentStatusEnum.PAID" && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-5">
           <div className="max-w-6xl mx-auto px-6">
             <div className="flex justify-between items-center">
-              
               <button
                 onClick={handlePayment}
                 disabled={loading}

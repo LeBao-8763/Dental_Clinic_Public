@@ -32,7 +32,6 @@ const ScheduleSupport = () => {
   const [isWeekBooked, setIsWeekBooked] = useState(false);
   const [pendingAppointments, setPendingAppointments] = useState([]);
 
-  // Thêm state cho bệnh nhân mới
   const [newPatient, setNewPatient] = useState({
     fullName: "",
     phone: "",
@@ -40,7 +39,6 @@ const ScheduleSupport = () => {
     gender: "",
   });
 
-  // Helper: format date as local YYYY-MM-DD
   const formatDateLocal = (date) => {
     if (!date) return null;
     const y = date.getFullYear();
@@ -56,24 +54,7 @@ const ScheduleSupport = () => {
         endpoints.dentist_schedule.get_available_schedule(dentist_id, date)
       );
 
-      // Xử lý lọc lịch dựa trên effective_from
-      const targetDateStr = formatDateLocal(new Date(date));
-      const filteredSlots = res.data.filter((slot) => {
-        return slot.effective_from <= targetDateStr;
-      });
-
-      if (filteredSlots.length > 0) {
-        const maxEffectiveFrom = filteredSlots.reduce((max, slot) => {
-          return slot.effective_from > max ? slot.effective_from : max;
-        }, filteredSlots[0].effective_from);
-
-        const latestSchedule = filteredSlots.filter(
-          (slot) => slot.effective_from === maxEffectiveFrom
-        );
-        setSelectedDaySchedule(latestSchedule);
-      } else {
-        setSelectedDaySchedule([]);
-      }
+      setSelectedDaySchedule(res.data);
     } catch (err) {
       console.log("Có lỗi xảy ra khi lấy dữ liệu lịch khả dụng", err);
       setSelectedDaySchedule([]);
@@ -93,7 +74,7 @@ const ScheduleSupport = () => {
         dateStr
       );
       const res = await publicApi.get(path);
-      // expects backend trả true/false trực tiếp
+
       setIsDayFull(Boolean(res.data));
     } catch (err) {
       console.log("Có lỗi khi kiểm tra số lượng lịch của bác sĩ:", err);
@@ -192,18 +173,6 @@ const ScheduleSupport = () => {
     fetchDentist();
   }, []);
 
-  useEffect(() => {
-    if (!selectedDoctor) return;
-
-    // Fetch schedule for today when doctor is selected
-    const today = new Date();
-    const todayStr = formatDateLocal(today);
-    fetchAvailableDentisstSchedule(selectedDoctor.id, todayStr);
-
-    setSelectedDate(null);
-    setSelectedTime(null);
-  }, [selectedDoctor]);
-
   const quickNotes = [
     "+ Tái khám theo lịch hẹn",
     "+ Khám sức khỏe định kỳ",
@@ -211,7 +180,6 @@ const ScheduleSupport = () => {
     "+ Cần tư vấn thêm",
   ];
 
-  // Generate next 8 days (today + 7)
   const generateMonthDays = () => {
     const days = [];
     const today = new Date();
@@ -233,16 +201,6 @@ const ScheduleSupport = () => {
 
   const monthDays = generateMonthDays();
 
-  const isToday = (someDate) => {
-    const today = new Date();
-    return (
-      someDate.getDate() === today.getDate() &&
-      someDate.getMonth() === today.getMonth() &&
-      someDate.getFullYear() === today.getFullYear()
-    );
-  };
-
-  // helper to remove diacritics & lowercase for more robust search
   const normalize = (str = "") =>
     str
       .normalize?.("NFD")
@@ -303,9 +261,8 @@ const ScheduleSupport = () => {
     }
   };
 
-  // Compute step completion for header/progress
   const step1Complete = isNewPatient
-    ? newPatient.fullName && newPatient.phone // Kiểm tra required fields
+    ? newPatient.fullName && newPatient.phone
     : !!selectedPatient;
   const step1 = step1Complete;
   const step2 = !!selectedDoctor;
@@ -325,7 +282,6 @@ const ScheduleSupport = () => {
     userBookingStat.blocked_until &&
     new Date(userBookingStat.blocked_until) > new Date();
 
-  // Hàm confirmAppointment tương tự như trong DoctorDetail
   const confirmAppointment = async () => {
     if (isBlocked) {
       toast.error(
@@ -350,16 +306,12 @@ const ScheduleSupport = () => {
       const selectedFullDate = monthDays[selectedDate].fullDate;
       const appointmentDate = formatDateLocal(selectedFullDate);
 
-      // Find selected time slot
       const slot = selectedDaySchedule.find((s) => s.id === selectedTime);
       if (!slot) {
         toast.error("Không tìm thấy khung giờ đã chọn");
         return;
       }
 
-      // -------------------------
-      // Payload chung
-      // -------------------------
       const payload = {
         dentist_id: selectedDoctor.id,
         appointment_date: appointmentDate,
@@ -368,11 +320,7 @@ const ScheduleSupport = () => {
         note: notes || "",
       };
 
-      // -------------------------
-      // Phân nhánh user / guest
-      // -------------------------
       if (isNewPatient) {
-        // 👉 Guest booking
         if (!newPatient.fullName || !newPatient.phone) {
           toast.error("Vui lòng nhập đầy đủ thông tin khách hàng mới");
           return;
@@ -382,15 +330,13 @@ const ScheduleSupport = () => {
         payload.patient_phone = newPatient.phone;
 
         if (newPatient.dob) {
-          payload.date_of_birth = newPatient.dob; // YYYY-MM-DD
+          payload.date_of_birth = newPatient.dob;
         }
 
         if (newPatient.gender) {
           payload.gender = newPatient.gender.toUpperCase();
-          // MALE / FEMALE / OTHER
         }
       } else {
-        // 👉 User đã có tài khoản
         if (!selectedPatient) {
           toast.error("Vui lòng chọn bệnh nhân");
           return;
@@ -399,17 +345,12 @@ const ScheduleSupport = () => {
         payload.patient_id = selectedPatient.id;
       }
 
-      // -------------------------
-      // 🔹 Call API
-      // -------------------------
       await privateApi.post(endpoints.appointment.create, payload);
 
       toast.success("Đặt lịch thành công!");
 
-      // Refresh schedule for selected date
       await fetchAvailableDentisstSchedule(selectedDoctor.id, appointmentDate);
 
-      // Reset form
       setSelectedDate(null);
       setSelectedTime(null);
       setNotes("");
@@ -439,21 +380,18 @@ const ScheduleSupport = () => {
     }
   };
 
-  // Hàm handle change cho new patient form
   const handleNewPatientChange = (field, value) => {
     setNewPatient((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Loading overlay */}
       {loading && (
         <div className="absolute inset-0 bg-white/70 flex justify-center items-center z-50">
           <Loading />
         </div>
       )}
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <Calendar className="w-8 h-8 text-teal-600" />
@@ -466,9 +404,7 @@ const ScheduleSupport = () => {
           </p>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form Section */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Step 1: Thông tin khách hàng */}
             <div className="bg-white rounded-lg border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
@@ -554,7 +490,7 @@ const ScheduleSupport = () => {
                           ✕
                         </button>
                       )}
-                      {/* Suggestions Dropdown */}
+
                       {showPatientSuggestions &&
                         filteredPatients.length > 0 &&
                         !selectedPatient && (
@@ -581,7 +517,7 @@ const ScheduleSupport = () => {
                           </div>
                         )}
                     </div>
-                    {/* Selected Patient Info */}
+
                     {selectedPatient && (
                       <div className="mt-4 bg-teal-50 rounded-lg p-4 border border-teal-200">
                         <div className="flex items-start gap-2 mb-3">
@@ -686,7 +622,7 @@ const ScheduleSupport = () => {
                 )}
               </div>
             </div>
-            {/* Step 2: Chọn bác sĩ */}
+
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
@@ -748,7 +684,7 @@ const ScheduleSupport = () => {
                 </div>
               </div>
             </div>
-            {/* Step 3: Chọn ngày và giờ khám */}
+
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
@@ -790,11 +726,10 @@ const ScheduleSupport = () => {
                           .join(", ")}
                       </p>
                     )}
-                    {/* Days Selection - Horizontal Scroll */}
+
                     <div className="flex gap-3 overflow-x-auto pb-2">
                       {monthDays.map((item, index) => {
                         const isSelected = selectedDate === index;
-                        const isTodayDate = isToday(item.fullDate);
                         return (
                           <button
                             key={index}
@@ -802,8 +737,6 @@ const ScheduleSupport = () => {
                             className={`shrink-0 flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 min-w-[110px] ${
                               isSelected
                                 ? "border-teal-500 bg-teal-50 shadow-md hover:-translate-y-1"
-                                : isTodayDate
-                                ? "border-teal-300 bg-white hover:border-teal-400 hover:bg-teal-50 hover:-translate-y-1 hover:shadow-lg"
                                 : "border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50 hover:-translate-y-1 hover:shadow-lg"
                             }`}
                           >
@@ -820,7 +753,6 @@ const ScheduleSupport = () => {
                       })}
                     </div>
 
-                    {/* Time Slots */}
                     <div>
                       <div className="flex items-center gap-2 mb-4 text-gray-600">
                         <Clock className="w-5 h-5" />
@@ -830,7 +762,7 @@ const ScheduleSupport = () => {
                             ? `ngày ${monthDays[selectedDate].date}`
                             : ""}
                         </span>
-                        {/* Thông báo ngày full */}
+
                         {isDayFull && (
                           <span className="ml-2 text-red-500 text-sm font-medium">
                             Ngày này đã đầy lịch
@@ -847,9 +779,6 @@ const ScheduleSupport = () => {
 
                       {selectedDate !== null ? (
                         (() => {
-                          const selectedFullDate =
-                            monthDays[selectedDate].fullDate;
-
                           if (selectedDaySchedule.length === 0) {
                             return (
                               <div className="text-center py-12">
@@ -863,25 +792,7 @@ const ScheduleSupport = () => {
                             );
                           }
 
-                          // Filter out past time slots if today
                           let filteredSchedule = selectedDaySchedule;
-                          if (isToday(selectedFullDate)) {
-                            const now = new Date();
-                            const currentHours = now.getHours();
-                            const currentMinutes = now.getMinutes();
-                            filteredSchedule = selectedDaySchedule.filter(
-                              (slot) => {
-                                const [h, m] = slot.start_time
-                                  .slice(0, 5)
-                                  .split(":")
-                                  .map(Number);
-                                return (
-                                  h > currentHours ||
-                                  (h === currentHours && m > currentMinutes)
-                                );
-                              }
-                            );
-                          }
 
                           if (filteredSchedule.length === 0) {
                             return (
@@ -899,10 +810,14 @@ const ScheduleSupport = () => {
                           return (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                               {filteredSchedule.map((slot) => {
-                                const timeLabel = `${slot.start_time.slice(
-                                  0,
-                                  5
-                                )} - ${slot.end_time.slice(0, 5)}`;
+                                const timeLabel =
+                                  slot.start_time && slot.end_time
+                                    ? `${slot.start_time.slice(
+                                        0,
+                                        5
+                                      )} - ${slot.end_time.slice(0, 5)}`
+                                    : "Không hợp lệ";
+
                                 const isSelected = selectedTime === slot.id;
                                 const isDisabled =
                                   isDayFull || isWeekBooked || isBlocked;
@@ -969,7 +884,7 @@ const ScheduleSupport = () => {
                 )}
               </div>
             </div>
-            {/* Step 4: Ghi chú cuộc hẹn (textarea bound to notes) */}
+
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300">
               <div className="bg-teal-50 px-6 py-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
@@ -1014,16 +929,15 @@ const ScheduleSupport = () => {
               </div>
             </div>
           </div>
-          {/* Summary Sidebar */}
+
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg overflow-hidden border border-gray-300 sticky top-6">
-              {/* Header with only the top segmented progress (no tabs below) */}
               <div className="bg-teal-600 text-white px-6 py-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-semibold">Tóm tắt đặt lịch</h3>
                   <div className="text-sm">Hoàn thành {completed}/4 bước</div>
                 </div>
-                {/* Segmented progress (4 segments) */}
+
                 <div className="mt-3 flex gap-2">
                   {Array.from({ length: 4 }).map((_, idx) => (
                     <div
@@ -1036,7 +950,6 @@ const ScheduleSupport = () => {
                 </div>
               </div>
               <div className="p-6">
-                {/* Details */}
                 <div className="space-y-3 border-t border-gray-200 pt-4">
                   <div className="flex items-start gap-3">
                     <User className="w-5 h-5 mt-0.5 shrink-0 text-gray-400" />
@@ -1179,24 +1092,23 @@ const ScheduleSupport = () => {
           </div>
         </div>
       </div>
-      {/* Confirmation Dialog */}
+
       {showConfirmDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full relative">
-            {/* Close button */}
             <button
               onClick={() => setShowConfirmDialog(false)}
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
             >
               <X size={20} />
             </button>
-            {/* Icon */}
+
             <AlertCircle className="w-12 h-12 text-teal-600 mx-auto mb-4" />
-            {/* Title */}
+
             <h3 className="text-xl font-bold text-center mb-4">
               Xác nhận đặt lịch
             </h3>
-            {/* Content */}
+
             <p className="text-center mb-6">
               Bạn có chắc chắn muốn đặt lịch khám vào: <br />
               {formatSelectedDate()} <br />
@@ -1209,7 +1121,7 @@ const ScheduleSupport = () => {
                     .end_time.slice(0, 5)}`
                 : ""}
             </p>
-            {/* Buttons */}
+
             <div className="flex gap-4">
               <button
                 onClick={() => setShowConfirmDialog(false)}

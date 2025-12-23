@@ -19,10 +19,9 @@ const PaymentPage = () => {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const [dentists, setDentists] = useState({}); // Lưu thông tin bác sĩ theo id
+  const [dentists, setDentists] = useState({});
   const navigate = useNavigate();
 
-  // options dùng cho dropdown: label hiển thị, value là enum gửi API / lưu state
   const STATUS_OPTIONS = [
     { label: "Tất cả", value: "" },
     { label: "Chưa khám", value: "PENDING" },
@@ -32,19 +31,16 @@ const PaymentPage = () => {
     { label: "Hủy", value: "CANCELLED" },
   ];
 
-  // Map frontend key -> real backend statuses (dùng khi gửi params)
   const STATUS_FILTER_MAP = {
     IN_PROGRESS: ["CONSULTING", "PRESCRIPTION"],
   };
 
-  // Helper: normalize status (hỗ trợ "AppointmentStatusEnum.PENDING" hoặc "PENDING")
   const normalizeStatus = (status) => {
     if (!status) return "";
     if (typeof status !== "string") return "";
     return status.includes(".") ? status.split(".").pop() : status;
   };
 
-  // Map enum -> label hiển thị
   const STATUS_TEXT = {
     PENDING: "Chưa khám",
     CONSULTING: "Đang khám",
@@ -54,7 +50,6 @@ const PaymentPage = () => {
     CANCELLED: "Hủy",
   };
 
-  // Map enum -> css class
   const STATUS_CLASS = {
     PENDING: "bg-blue-100 text-blue-700",
     CONSULTING: "bg-yellow-100 text-yellow-700",
@@ -64,7 +59,6 @@ const PaymentPage = () => {
     PAID: "bg-green-100 text-green-700",
   };
 
-  // Lấy text hiển thị từ appointment.status (hỗ trợ enum đầy đủ)
   const getStatusText = (status) => {
     const s = normalizeStatus(status);
     return STATUS_TEXT[s] || "Chưa xác định";
@@ -75,16 +69,14 @@ const PaymentPage = () => {
     return STATUS_CLASS[s] || "bg-gray-100 text-gray-700";
   };
 
-  // Lấy label hiển thị cho nút dropdown dựa trên selectedStatus
   const selectedLabel =
     STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label || "Tất cả";
 
-  // Fetch appointments
   const fetchAppointment = async () => {
     setLoading(true);
     try {
       const today = new Date();
-      const formattedDate = today.toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+      const formattedDate = today.toLocaleDateString("en-CA");
       const params = {
         date: formattedDate,
       };
@@ -101,7 +93,7 @@ const PaymentPage = () => {
       const res = await privateApi.get(endpoints.appointment.all, { params });
       console.log("Dữ liệu cuộc hẹn", res.data);
       setAppointments(res.data);
-      // Fetch thông tin bác sĩ cho mỗi appointment
+
       const uniqueDentistIds = [
         ...new Set(res.data.map((apt) => apt.dentist_id)),
       ];
@@ -119,7 +111,7 @@ const PaymentPage = () => {
         publicApi.get(endpoints.get_user_info(id))
       );
       const dentistResponses = await Promise.all(dentistPromises);
-      // Tạo object map dentist_id -> thông tin bác sĩ
+
       const dentistMap = {};
       dentistResponses.forEach((res) => {
         dentistMap[res.data.id] = res.data;
@@ -131,7 +123,6 @@ const PaymentPage = () => {
     }
   };
 
-  // Hàm format ngày giờ
   const formatDateTime = (date, startTime, endTime) => {
     const [year, month, day] = date.split("-");
     const startTimeFormatted = startTime.substring(0, 5);
@@ -141,20 +132,20 @@ const PaymentPage = () => {
 
   useEffect(() => {
     fetchAppointment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStatus]);
 
-  // debounce cho searchTerm
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchAppointment();
     }, 500);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <Calendar className="w-8 h-8 text-teal-600" />
@@ -166,13 +157,12 @@ const PaymentPage = () => {
             Quản lý và xử lý thanh toán cho các cuộc hẹn
           </p>
         </div>
-        {/* Search and Filter Section */}
+
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">
             Tìm kiếm và lọc
           </h2>
           <div className="flex flex-wrap gap-4">
-            {/* Search Input */}
             <div className="flex-1 min-w-[300px]">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -185,7 +175,7 @@ const PaymentPage = () => {
                 />
               </div>
             </div>
-            {/* Status Filter Dropdown */}
+
             <div className="relative min-w-[150px]">
               <button
                 onClick={() => setShowStatusDropdown(!showStatusDropdown)}
@@ -225,14 +215,14 @@ const PaymentPage = () => {
             </div>
           </div>
         </div>
-        {/* Loading State */}
+
         {loading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
             <p className="text-gray-500 mt-4">Đang tải dữ liệu...</p>
           </div>
         )}
-        {/* Appointments Grid */}
+
         {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {appointments.map((apt) => {
@@ -244,7 +234,6 @@ const PaymentPage = () => {
                   key={apt.id}
                   className="bg-white rounded-lg border border-gray-300 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  {/* Card Header */}
                   <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-start justify-between">
                       <h3 className="text-xl font-bold text-gray-800">
@@ -262,10 +251,8 @@ const PaymentPage = () => {
                       </span>
                     </div>
                   </div>
-                  {/* Card Body */}
                   <div className="px-6 py-4">
                     <div className="grid grid-cols-2 gap-4">
-                      {/* Left Column */}
                       <div className="space-y-3">
                         <div className="flex items-start gap-2">
                           <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
@@ -294,7 +281,7 @@ const PaymentPage = () => {
                           </div>
                         </div>
                       </div>
-                      {/* Right Column */}
+
                       <div className="space-y-3">
                         <div className="flex items-start gap-2">
                           <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
@@ -324,7 +311,7 @@ const PaymentPage = () => {
                         </div>
                       </div>
                     </div>
-                    {/* Diagnosis Section */}
+
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <div className="bg-[#D5E8E8] p-3 rounded-lg">
                         <div className="flex items-start gap-2">
@@ -341,10 +328,9 @@ const PaymentPage = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Card Footer */}
+
                   <div className="px-6 py-4 border-t border-gray-200">
                     {normalizedStatus === "PAID" ? (
-                      // 🟩 Nếu đã thanh toán → Hiển thị nút "Chi tiết"
                       <button
                         onClick={() =>
                           navigate("/staff/payment-detail", {
@@ -356,7 +342,6 @@ const PaymentPage = () => {
                         Chi tiết
                       </button>
                     ) : (
-                      // 🟦 Nếu chưa thanh toán → Hiển thị nút "Thanh Toán", nhưng chỉ enable nếu là COMPLETED
                       <button
                         onClick={() =>
                           isCompleted &&
@@ -380,7 +365,7 @@ const PaymentPage = () => {
             })}
           </div>
         )}
-        {/* Empty State */}
+
         {!loading && appointments.length === 0 && (
           <div className="text-center py-12">
             <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
