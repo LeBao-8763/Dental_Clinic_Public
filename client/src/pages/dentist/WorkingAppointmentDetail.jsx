@@ -315,8 +315,6 @@ const WorkingAppointmentDetail = () => {
     PILL: ["Viên/ngày", "Viên/lần"],
     CREAM: ["Tuýp/ngày", "Lần/ngày"],
     LIQUID: ["ml/ngày", "ml/lần"],
-    TUBE: ["Ống/ngày", "Ống/lần"],
-    SYRUP: ["Thìa/ngày", "Thìa/lần"],
     DEFAULT: ["Đơn vị/ngày"],
   };
 
@@ -1048,11 +1046,11 @@ const WorkingAppointmentDetail = () => {
                           <p className="text-sm text-gray-600">
                             Tồn kho:{" "}
                             <span className="font-semibold">
-                              {medicine.total_stock -
-                                medicine.reserved_quantity}{" "}
-                              viên
+                              {medicine.total_stock - medicine.reserved_quantity}{" "}
+                              {medicine.retail_unit === "ml" ? "chai" : medicine.retail_unit}
                             </span>
                           </p>
+
                         </div>
                         {selectedMedicine?.id === medicine.id && (
                           <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#009688] text-white text-sm font-bold">

@@ -1,5 +1,8 @@
+import math
+
 from app import db
-from app.models import Prescription, PrescriptionDetail, Medicine, PrescriptionStatusEnum
+from app.models import Prescription, PrescriptionDetail, Medicine, PrescriptionStatusEnum, MedicineTypeEnum
+
 
 def get_all_prescriptions():
     return Prescription.query.all()
@@ -67,6 +70,8 @@ def get_prescription_by_appointment(appointment_id):
             {
                 "medicine_id": med.id,
                 "medicine_name": med.name,
+                "medicine_capacity_per_unit": med.capacity_per_unit,
+                "medicine_type": med.type.name if med.type else None,
                 "dosage": detail.dosage,
                 "unit": detail.unit,
                 "duration_days": detail.duration_days,
@@ -92,21 +97,43 @@ def add_details(data):
 
     existing_details = PrescriptionDetail.query.filter_by(prescription_id=prescription_id).all()
     existing_map = {d.medicine_id: d for d in existing_details}
-
     new_ids = [item['medicine_id'] for item in new_details]
 
     for item in new_details:
         medicine_id = int(item['medicine_id'])
         dosage = int(item['dosage'])
         duration_days = int(item['duration_days'])
-        total_quantity = dosage * duration_days
-
         medicine = Medicine.query.get(medicine_id)
+
+        if not medicine:
+            return {"error": f"Thuốc ID {medicine_id} không tồn tại."}, 400
+
+
+        total_dose = dosage * duration_days
+
+
+        if medicine.type == MedicineTypeEnum.PILL:
+            reserved_qty = total_dose
+        elif medicine.type in [MedicineTypeEnum.CREAM, MedicineTypeEnum.LIQUID]:
+            capacity = medicine.capacity_per_unit or 1
+            reserved_qty = math.ceil(total_dose / capacity)
+        else:
+            reserved_qty = total_dose
 
         if medicine_id in existing_map:
             old_detail = existing_map[medicine_id]
-            old_total = old_detail.dosage * old_detail.duration_days
-            diff = total_quantity - old_total
+
+
+            old_total_dose = old_detail.dosage * old_detail.duration_days
+            if medicine.type == MedicineTypeEnum.PILL:
+                old_reserved = old_total_dose
+            elif medicine.type in [MedicineTypeEnum.CREAM, MedicineTypeEnum.LIQUID]:
+                capacity = medicine.capacity_per_unit or 1
+                old_reserved = math.ceil(old_total_dose / capacity)
+            else:
+                old_reserved = old_total_dose
+
+            diff = reserved_qty - old_reserved
 
             old_detail.dosage = dosage
             old_detail.unit = item['unit']
@@ -114,8 +141,7 @@ def add_details(data):
             old_detail.note = item.get('note')
             old_detail.price = item['price']
 
-            if medicine:
-                medicine.reserved_quantity += diff
+            medicine.reserved_quantity += diff
 
         else:
             new_detail = PrescriptionDetail(
@@ -128,15 +154,22 @@ def add_details(data):
                 price=item['price']
             )
             db.session.add(new_detail)
-            if medicine:
-                medicine.reserved_quantity += total_quantity
+            medicine.reserved_quantity += reserved_qty
+
 
     for old_medicine_id, old_detail in existing_map.items():
         if old_medicine_id not in new_ids:
-            old_total = old_detail.dosage * old_detail.duration_days
-            medicine = Medicine.query.get(old_medicine_id)
-            if medicine:
-                medicine.reserved_quantity -= old_total
+            old_total_dose = old_detail.dosage * old_detail.duration_days
+            old_medicine = Medicine.query.get(old_medicine_id)
+            if old_medicine:
+                if old_medicine.type == MedicineTypeEnum.PILL:
+                    old_reserved = old_total_dose
+                elif old_medicine.type in [MedicineTypeEnum.CREAM, MedicineTypeEnum.LIQUID]:
+                    capacity = old_medicine.capacity_per_unit or 1
+                    old_reserved = math.ceil(old_total_dose / capacity)
+                else:
+                    old_reserved = old_total_dose
+                old_medicine.reserved_quantity -= old_reserved
             db.session.delete(old_detail)
 
     db.session.commit()

@@ -1,4 +1,4 @@
-from app import db
+from app.extensions import db
 from datetime import datetime
 import enum
 from flask_login import UserMixin
@@ -22,7 +22,6 @@ class MedicineTypeEnum(enum.Enum):
     PILL = "PILL"
     CREAM = "CREAM"
     LIQUID = "LIQUID"
-    OTHER = "OTHER"
 
 class AppointmentStatusEnum(enum.Enum):
     PENDING = "PENDING"
@@ -97,6 +96,7 @@ class Medicine(db.Model):
     type = db.Column(db.Enum(MedicineTypeEnum), nullable=False)
     amount_per_unit = db.Column(db.Integer, nullable=False)
     retail_unit = db.Column(db.String(50), nullable=False)
+    capacity_per_unit = db.Column(db.Integer, default=1)
     selling_price = db.Column(db.Numeric(10, 2), nullable=False)
 
 
