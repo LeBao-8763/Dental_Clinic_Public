@@ -1,7 +1,8 @@
 from app import db
 from app.models import Appointment, Invoice, User, RoleEnum, AppointmentStatusEnum, Service, TreatmentRecord, Medicine, \
     PrescriptionDetail, Prescription
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, desc, case
+
 
 def overall_stats(month=None, year=None):
     query = db.session.query(func.sum(Invoice.total).label("total_revenue"))
@@ -36,22 +37,28 @@ def overall_stats(month=None, year=None):
         "avg_per_dentist": avg_per_dentist
     }
 
-def revenue_by_dentist(month=None):
+def revenue_by_dentist(month=None, year=None):
     query = (
         db.session.query(
             User.id.label("dentist_id"),
-            func.concat(User.name).label("dentist_name"),
-            func.sum(Invoice.total).label("total_revenue")
+            User.name.label("dentist_name"),
+            func.coalesce(func.sum(Invoice.total), 0).label("total_revenue")
         )
-        .join(Appointment, Appointment.id == Invoice.appointment_id)
-        .join(User, Appointment.dentist_id == User.id)
         .filter(User.role == RoleEnum.ROLE_DENTIST)
+        .outerjoin(Appointment, Appointment.dentist_id == User.id)
+        .outerjoin(Invoice, Invoice.appointment_id == Appointment.id)
     )
 
     if month:
         query = query.filter(extract("month", Invoice.created_at) == month)
 
-    query = query.group_by(User.id)
+    if year:
+        query = query.filter(extract("year", Invoice.created_at) == year)
+
+    query = (
+        query.group_by(User.id)
+        .order_by(desc("total_revenue"))
+    )
     return query.all()
 
 def revenue_by_day(month=None, year=None, dentist_id=None):
@@ -109,16 +116,16 @@ def general_revenue():
         "completion_rate": completion_rate
     }
 
-def top_services(month=None, year=None, limit=5):
+def top_services(month=None, year=None):
     query = (
         db.session.query(
+            Service.id.label("service_id"),
             Service.name.label("service_name"),
-            func.sum(TreatmentRecord.price).label("revenue")
+            func.coalesce(func.sum(TreatmentRecord.price), 0).label("revenue")
         )
-        .join(Appointment, TreatmentRecord.appointment_id == Appointment.id)
-        .join(Service, TreatmentRecord.service_id == Service.id)
-        .join(Invoice, Invoice.appointment_id == Appointment.id)
-        .filter(Appointment.status == AppointmentStatusEnum.PAID)
+        .outerjoin(TreatmentRecord, TreatmentRecord.service_id == Service.id)
+        .outerjoin(Appointment, Appointment.id == TreatmentRecord.appointment_id)
+        .outerjoin(Invoice, Invoice.appointment_id == Appointment.id)
     )
 
     if month:
@@ -126,21 +133,34 @@ def top_services(month=None, year=None, limit=5):
     if year:
         query = query.filter(extract("year", Invoice.created_at) == year)
 
-    query = query.group_by(Service.id).order_by(func.sum(TreatmentRecord.price).desc())
+    query = (
+        query.group_by(Service.id)
+        .order_by(desc("revenue"))
+    )
 
-    return query.limit(limit).all()
+    return query.all()
 
-def top_medicines(month=None, year=None, limit=5):
+def top_medicines(month=None, year=None):
+    qty_used_expr = case(
+        (Medicine.type == "PILL", PrescriptionDetail.dosage * PrescriptionDetail.duration_days),
+        (Medicine.type.in_(["CREAM", "LIQUID"]),
+         func.ceil((PrescriptionDetail.dosage * PrescriptionDetail.duration_days) /
+                   func.nullif(Medicine.capacity_per_unit, 0))),
+        else_=PrescriptionDetail.dosage * PrescriptionDetail.duration_days
+    )
+
+    revenue_expr = func.coalesce(func.sum(qty_used_expr * PrescriptionDetail.price), 0)
+
     query = (
         db.session.query(
+            Medicine.id.label("medicine_id"),
             Medicine.name.label("medicine_name"),
-            func.sum(PrescriptionDetail.price).label("revenue")
+            revenue_expr.label("revenue")
         )
-        .join(Medicine, PrescriptionDetail.medicine_id == Medicine.id)
-        .join(Prescription, Prescription.id == PrescriptionDetail.prescription_id)
-        .join(Appointment, Appointment.id == Prescription.appointment_id)
-        .join(Invoice, Invoice.appointment_id == Appointment.id)
-        .filter(Appointment.status == AppointmentStatusEnum.PAID)
+        .outerjoin(PrescriptionDetail, PrescriptionDetail.medicine_id == Medicine.id)
+        .outerjoin(Prescription, Prescription.id == PrescriptionDetail.prescription_id)
+        .outerjoin(Appointment, Appointment.id == Prescription.appointment_id)
+        .outerjoin(Invoice, Invoice.appointment_id == Appointment.id)
     )
 
     if month:
@@ -148,6 +168,10 @@ def top_medicines(month=None, year=None, limit=5):
     if year:
         query = query.filter(extract("year", Invoice.created_at) == year)
 
-    query = query.group_by(Medicine.id).order_by(func.sum(PrescriptionDetail.price).desc())
+    query = (
+        query.group_by(Medicine.id)
+        .order_by(desc("revenue"))
+    )
 
-    return query.limit(limit).all()
+    return query.all()
+

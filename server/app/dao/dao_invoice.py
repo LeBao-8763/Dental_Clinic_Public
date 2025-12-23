@@ -1,9 +1,10 @@
+import math
 from decimal import Decimal
 
 from app import db
 from app.models import (
     Appointment, Prescription, PrescriptionDetail,
-    Medicine, MedicineImport, TreatmentRecord, Invoice, PrescriptionStatusEnum, AppointmentStatusEnum
+    Medicine, MedicineImport, TreatmentRecord, Invoice, PrescriptionStatusEnum, AppointmentStatusEnum, MedicineTypeEnum
 )
 from sqlalchemy import func
 
@@ -11,8 +12,10 @@ from sqlalchemy import func
 def create_invoice(appointment_id):
     try:
         appointment = Appointment.query.get(appointment_id)
-        if (appointment.status != AppointmentStatusEnum.PAID
-                and appointment.status != AppointmentStatusEnum.CANCELLED):
+        if not appointment:
+            return {"error": "Không tìm thấy lịch hẹn."}, 404
+
+        if appointment.status not in [AppointmentStatusEnum.PAID, AppointmentStatusEnum.CANCELLED]:
             appointment.status = AppointmentStatusEnum.PAID
 
         prescription = Prescription.query.filter_by(appointment_id=appointment_id).first()
@@ -29,10 +32,19 @@ def create_invoice(appointment_id):
             if not medicine:
                 return {"error": f"Thuốc ID {d.medicine_id} không tồn tại."}, 400
 
-            total_medicine_fee += Decimal(d.price or 0) * Decimal(d.dosage or 0) * Decimal(d.duration_days or 1)
+            total_dose = (d.dosage or 0) * (d.duration_days or 1)
 
-            qty_to_deduct = (d.dosage or 0) * (d.duration_days or 1)
+            if medicine.type == MedicineTypeEnum.PILL:
+                qty_to_deduct = total_dose
+            elif medicine.type in [MedicineTypeEnum.CREAM, MedicineTypeEnum.LIQUID]:
+                capacity = medicine.capacity_per_unit or 1
+                qty_to_deduct = math.ceil(total_dose / capacity)
+            else:
+                qty_to_deduct = total_dose
+
             qty_used = qty_to_deduct
+
+            total_medicine_fee += Decimal(qty_used or 0) * Decimal(d.price or 0)
 
             imports = (
                 MedicineImport.query.filter_by(medicine_id=medicine.id)
@@ -54,9 +66,11 @@ def create_invoice(appointment_id):
             if qty_to_deduct > 0:
                 return {"error": f"Không đủ tồn kho cho thuốc {medicine.name}."}, 400
 
+
             reserved_now = medicine.reserved_quantity or 0
             medicine.reserved_quantity = max(reserved_now - qty_used, 0)
             db.session.add(medicine)
+
 
         total_service_fee = Decimal(
             db.session.query(func.coalesce(func.sum(TreatmentRecord.price), 0))
@@ -98,6 +112,7 @@ def create_invoice(appointment_id):
         db.session.rollback()
         print(e)
         return {"error": str(e)}, 500
+
 
 def get_invoice_by_aptId(apt_id):
     return Invoice.query.filter_by(appointment_id=apt_id).first()

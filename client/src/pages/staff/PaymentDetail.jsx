@@ -128,10 +128,28 @@ const PaymentDetail = () => {
     (sum, service) => sum + service.price,
     0
   );
-  const totalMedicationPrice = medications.reduce(
-    (sum, med) => sum + (med.dosage * med.duration_days * med.price || 0),
-    0
-  );
+const totalMedicationPrice = medications.reduce((sum, med) => {
+  if (!med) return sum;
+
+  const dosage = med.dosage || 0;
+  const days = med.duration_days || 0;
+  const price = med.price || 0;
+  const capacity = med.medicine_capacity_per_unit || 1;
+  const type = med.medicine_type || "PILL";
+
+  const totalDose = dosage * days;
+  let qtyToDeduct = totalDose;
+
+  if (type === "CREAM" || type === "LIQUID") {
+    qtyToDeduct = Math.ceil(totalDose / capacity);
+  }
+
+  // Tổng tiền mỗi loại thuốc
+  const totalMedPrice = qtyToDeduct * price;
+
+  return sum + totalMedPrice;
+}, 0);
+
   const vat = (Number(totalServicePrice) + Number(totalMedicationPrice)) * 0.1;
 
   const grandTotal = totalServicePrice + totalMedicationPrice + vat;
@@ -351,30 +369,35 @@ const PaymentDetail = () => {
                 </tr>
               </thead>
               <tbody>
-                {medications.map((medication, index) => (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="py-4 text-gray-900">
-                      {medication.medicine_name}
-                    </td>
-                    <td className="py-4 text-center text-gray-900">
-                      {medication.dosage}
-                    </td>
-                    <td className="py-4 text-center text-gray-900">
-                      {medication.unit}
-                    </td>
-                    <td className="py-4 text-center text-gray-900">
-                      {medication.duration_days} ngày
-                    </td>
-                    <td className="py-3 text-right font-medium text-gray-900">
-                      {(
-                        medication.dosage *
-                        medication.duration_days *
-                        medication.price
-                      ).toLocaleString("vi-VN")}{" "}
-                      đ
-                    </td>
-                  </tr>
-                ))}
+                {medications.map((medication, index) => {
+                    const dosage = medication.dosage || 0;
+                    const days = medication.duration_days || 0;
+                    const price = medication.price || 0;
+                    const capacity = medication.medicine_capacity_per_unit || 1;
+                    const type = medication.medicine_type || "PILL";
+
+                    const totalDose = dosage * days;
+                    let qtyToDeduct = totalDose;
+
+                    if (type === "CREAM" || type === "LIQUID") {
+                      qtyToDeduct = Math.ceil(totalDose / capacity);
+                    }
+
+                    const totalPrice = qtyToDeduct * price;
+
+                    return (
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="py-4 text-gray-900">{medication.medicine_name}</td>
+                        <td className="py-4 text-center text-gray-900">{dosage}</td>
+                        <td className="py-4 text-center text-gray-900">{medication.unit}</td>
+                        <td className="py-4 text-center text-gray-900">{days} ngày</td>
+                        <td className="py-3 text-right font-medium text-gray-900">
+                          {totalPrice.toLocaleString("vi-VN")} đ
+                        </td>
+                      </tr>
+                    );
+                  })}
+
               </tbody>
             </table>
 

@@ -13,7 +13,7 @@ const Login = () => {
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [setErrors] = useState({});
+  const [errors, setErrors] = useState({});
   // Register fields
   const [registerData, setRegisterData] = useState({
     name: "",

@@ -1,7 +1,7 @@
 CREATE DATABASE dental_clinic;
 USE dental_clinic;
 
--- Bảng người dùng (bác sĩ, bệnh nhân, nhân viên)
+
 CREATE TABLE user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
@@ -15,28 +15,28 @@ CREATE TABLE user (
     status ENUM('ACTIVE', 'INACTIVE')
 );
 
-INSERT INTO user (
-    name,
-    gender,
-    phone_number,
-    username,
-    avatar,
-    password,
-    role,
-    status
-)
-VALUES (
-    'Super Admin',
-    'MALE',
-    '0900000000',
-    'admin',
-    'https://res.cloudinary.com/demo/image/upload/v1720000000/admin_avatar.png',
-    '$2b$12$hyIMo6YEVU9idNLte253zubgnWmtUFEmmg4Qd6yBIZe/SyLNQKbs6', -- password: Gi@B@o123
-    'ROLE_ADMIN',
-    'ACTIVE'
-);
+-- INSERT INTO user (
+--     name,
+--     gender,
+--     phone_number,
+--     username,
+--     avatar,
+--     password,
+--     role,
+--     status
+-- )
+-- VALUES (
+--     'Super Admin',
+--     'MALE',
+--     '0900000000',
+--     'admin',
+--     'https://res.cloudinary.com/demo/image/upload/v1720000000/admin_avatar.png',
+--     '$2b$12$hyIMo6YEVU9idNLte253zubgnWmtUFEmmg4Qd6yBIZe/SyLNQKbs6', -- password: Gi@B@o123
+--     'ROLE_ADMIN',
+--     'ACTIVE'
+-- );
 
--- Bảng thông tin bác sĩ
+
 CREATE TABLE dentist_profile (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT,
@@ -51,18 +51,19 @@ CREATE TABLE dentist_profile (
 );
 
 
--- Bảng thuốc
+
 CREATE TABLE medicine (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
-    reserved_quantity INT, -- Trừ tạm khi kê đơn chưa thanh toán
-    type ENUM('PILL', 'CREAM', 'LIQUID', 'OTHER'),
+    reserved_quantity INT,
+    type ENUM('PILL', 'CREAM', 'LIQUID'),
     amount_per_unit INT,
     retail_unit VARCHAR(50),
+    capacity_per_unit INT DEFAULT 1,
     selling_price DECIMAL(10,2)
 );
 
--- Bảng nhập thuốc
+
 CREATE TABLE medicine_import (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     medicine_id BIGINT,
@@ -71,12 +72,12 @@ CREATE TABLE medicine_import (
     expiration_date DATETIME,
     quantity_imported INT,
     price DECIMAL(10,2),
-    stock_quantity INT, -- số lượng còn lại trong lô này
+    stock_quantity INT,
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
 
 
--- Bảng giờ hoạt động chung của phòng khám (do admin cấu hình)
+
 CREATE TABLE clinic_hours (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     day_of_week ENUM(
@@ -88,8 +89,7 @@ CREATE TABLE clinic_hours (
 );
 
 
--- Bảng lịch làm việc của bác sĩ (bác sĩ chọn khung giờ mình làm)
--- Lưu các khoảng giờ liên tục, không lưu từng slot nhỏ
+
 CREATE TABLE dentist_schedule (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT NOT NULL,
@@ -105,7 +105,7 @@ CREATE TABLE dentist_schedule (
     FOREIGN KEY (dentist_id) REFERENCES user(id)
 );
 
--- Bảng ngoại lệ (bác sĩ xin nghỉ, bận đột xuất,...)
+
 CREATE TABLE dentist_custom_schedule (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT NOT NULL,
@@ -117,7 +117,7 @@ CREATE TABLE dentist_custom_schedule (
     FOREIGN KEY (dentist_id) REFERENCES user(id)
 );
 
--- Bảng lịch hẹn (khi bệnh nhân đặt slot cụ thể)
+
 CREATE TABLE appointments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dentist_id BIGINT,
@@ -140,7 +140,7 @@ CREATE TABLE appointments (
     FOREIGN KEY (patient_id) REFERENCES user(id)
 );
 
--- Bảng tracking việc hủy đặt lịch trên một ngày của khách hàng
+
 CREATE TABLE user_booking_stats(
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT,
@@ -152,7 +152,7 @@ CREATE TABLE user_booking_stats(
 );
 
 
--- Bảng dịch vụ
+
 CREATE TABLE service (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
@@ -160,7 +160,7 @@ CREATE TABLE service (
     description VARCHAR(255)
 );
 
--- Bảng hồ sơ điều trị
+
 CREATE TABLE treatment_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     appointment_id BIGINT,
@@ -171,7 +171,7 @@ CREATE TABLE treatment_record (
     FOREIGN KEY (service_id) REFERENCES service(id)
 );
 
--- Bảng toa thuốc
+
 CREATE TABLE prescriptions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     appointment_id BIGINT NOT NULL,
@@ -181,7 +181,7 @@ CREATE TABLE prescriptions (
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
 );
 
--- Bảng chi tiết toa thuốc
+
 CREATE TABLE prescription_details (
     prescription_id BIGINT NOT NULL,
     medicine_id BIGINT NOT NULL,
@@ -195,9 +195,9 @@ CREATE TABLE prescription_details (
     FOREIGN KEY (medicine_id) REFERENCES medicine(id)
 );
 
--- Bảng hóa đơn
+
 CREATE TABLE invoice (
-    appointment_id BIGINT PRIMARY KEY,  -- Khóa chính cũng là khóa ngoại
+    appointment_id BIGINT PRIMARY KEY,
     total_service_fee DECIMAL(10,2) DEFAULT 0,
     total_medicine_fee DECIMAL(10,2) DEFAULT 0,
     vat DECIMAL(10,2) DEFAULT 0,
@@ -206,7 +206,7 @@ CREATE TABLE invoice (
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
 );
 
--- Bảng các thông tin liên quan đến nha khoa
+
 CREATE TABLE post (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255),

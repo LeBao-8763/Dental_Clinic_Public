@@ -6,12 +6,12 @@ import cloudinary
 from flask import flash, redirect, request
 from flask_admin.contrib.sqla import ModelView
 from markupsafe import Markup
-from wtforms import MultipleFileField, SelectField, PasswordField, FileField
+from wtforms import MultipleFileField, FileField
 from wtforms.validators import DataRequired, Regexp
 
 from app.dao import dao_stats
 from app.extensions import db
-from app.models import User, Medicine, ClinicHours, GenderEnum, RoleEnum, StatusEnum, MedicineTypeEnum, DayOfWeekEnum, \
+from app.models import User, Medicine, ClinicHours, RoleEnum, StatusEnum, \
     MedicineImport, Service, DentistProfile, Post
 from flask_admin import BaseView, expose
 from flask_login import logout_user, current_user
@@ -47,13 +47,13 @@ class StatsView(AuthenticatedBaseView):
         if dentist_id:
             daily_revenue = dao_stats.revenue_by_day(month=month, year=year, dentist_id=dentist_id)
             overall = dao_stats.overall_stats(month=month, year=year)
-            dentist_revenue = dao_stats.revenue_by_dentist(month=month)
+            dentist_revenue = dao_stats.revenue_by_dentist(month=month, year=year)
             top_services = dao_stats.top_services(month=month, year=year)
             top_medicines = dao_stats.top_medicines(month=month, year=year)
         else:
             daily_revenue = dao_stats.revenue_by_day(month=month, year=year)
             overall = dao_stats.overall_stats(month=month, year=year)
-            dentist_revenue = dao_stats.revenue_by_dentist(month=month)
+            dentist_revenue = dao_stats.revenue_by_dentist(month=month, year=year)
             top_services = dao_stats.top_services(month=month, year=year)
             top_medicines = dao_stats.top_medicines(month=month, year=year)
 
@@ -151,21 +151,20 @@ class UserView(AuthenticatedModelView):
     form_overrides = {
         'avatar': FileField
     }
-    # Các field chung
+
     common_fields = ('name', 'gender', 'username', 'phone_number', 'role', 'status', 'avatar')
 
-    # Create form: có thêm password
+
     form_create_rules = common_fields + ('password',)
 
-    # Edit form: KHÔNG có password
+
     form_edit_rules = common_fields
 
-    # Xóa form_columns và form_overrides liên quan đến password
-    # Không cần nữa vì rules sẽ quyết định field nào hiển thị
+
 
     def on_model_change(self, form, model, is_created):
         if is_created:
-            # Chỉ hash khi tạo mới và có nhập password
+
             if form.password.data:
                 model.password = bcrypt.hashpw(model.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         file = form.avatar.data
@@ -175,13 +174,12 @@ class UserView(AuthenticatedModelView):
                 model.avatar = upload_result.get('secure_url')
             except Exception as e:
                 flash(f"Lỗi upload avatar: {e}", "error")
-        # Khi edit: không làm gì với password → giữ nguyên giá trị cũ trong DB
+
         return super().on_model_change(form, model, is_created)
 
-    # Không cần on_form_prefill nữa vì password không xuất hiện ở edit
+
 
     def on_form_prefill(self, form, id):
-        """Tự động điền giá trị enum khi edit"""
         user = self.session.get(self.model, id)
         if user:
             if user.gender:
@@ -222,6 +220,7 @@ class MedicineView(AuthenticatedModelView):
         'type': 'Loại thuốc',
         'amount_per_unit': 'Đơn vị',
         'retail_unit': 'Đơn vị bán lẻ',
+        'capacity_per_unit': 'Lượng trên 1 đơn vị',
         'selling_price': 'Giá bán (VNĐ)',
     }
     form_choices = {
@@ -229,7 +228,6 @@ class MedicineView(AuthenticatedModelView):
             ('PILL', 'Viên uống'),
             ('CREAM', 'Kem bôi'),
             ('LIQUID', 'Dung dịch'),
-            ('OTHER', 'Khác'),
         ]
     }
     column_formatters = {
@@ -237,14 +235,13 @@ class MedicineView(AuthenticatedModelView):
             'PILL': 'Viên uống',
             'CREAM': 'Kem bôi',
             'LIQUID': 'Dung dịch',
-            'OTHER': 'Khác'
         }.get(m.type.value if isinstance(m.type, enum.Enum) else m.type, 'Không xác định')
     }
 
 class MedicineImportView(AuthenticatedModelView):
     can_view_details = True
 
-    # 🔹 Hiển thị cột trong danh sách
+
     column_list = (
         'medicine', 'import_date', 'production_date',
         'expiration_date', 'quantity_imported', 'price', 'stock_quantity'
@@ -342,7 +339,6 @@ class PostView(AuthenticatedModelView):
     }
 
     def _upload_many_to_cloudinary(self, file_list):
-        """Upload nhiều file lên Cloudinary và trả về danh sách URL"""
         uploaded_urls = []
         for file in file_list:
             if file and hasattr(file, 'filename'):
@@ -354,12 +350,11 @@ class PostView(AuthenticatedModelView):
         return uploaded_urls
 
     def on_model_change(self, form, model, is_created):
-        """Khi admin nhấn Lưu"""
         files = form.img.data
         if files:
             urls = self._upload_many_to_cloudinary(files)
             if urls:
-                model.img = json.dumps(urls)  # lưu dạng JSON chuỗi
+                model.img = json.dumps(urls)
 
 
 def init_admin(admin):
