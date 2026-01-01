@@ -10,7 +10,7 @@ api = Api(
     version='1.0',
     title='API Phòng khám nha khoa',
     description='Quản lý API với tài liệu Swagger UI.',
-    doc='/swagger-ui/' # Đường dẫn để truy cập Swagger UI (ví dụ: /api/swagger-ui/)
+    doc='/swagger-ui/'
 )
 
 auth_ns = api.namespace('auth', description='Các thao tác liên quan đến chứng thực người dùng')
@@ -24,7 +24,6 @@ treatment_record_ns=api.namespace('treatment_records', description='Các thao t�
 dentist_profile_ns=api.namespace('dentist_profiles', description='Các thao tác liên quan đến hồ sơ bác sĩ')
 dentist_custom_shedule_ns=api.namespace('dentist_custom_schedules', description='Các thao tác liên quan đến lịch làm việc tùy chỉnh của bác sĩ')
 medicine_ns=api.namespace('medicines', description='Các thao tác liên quan đến thuốc')
-medicine_import_ns=api.namespace('medicines_import', description='Các thao tác liên quan đến nhập thuốc')
 prescription_ns=api.namespace('prescription', description='Các thao tác liên quan đến kê toa thuốc')
 post_ns=api.namespace('post',description='Các thao tác liên quan đến bài viết/blog của nha khoa')
 invoice_ns=api.namespace('invoice', description='Các thao tác liên quan đến hóa đơn')
@@ -67,18 +66,6 @@ medicine_model = api.model('Medicine', {
     'retail_unit': fields.String(description='Đơn vị bán lẻ'),
     'selling_price': fields.Float(required=True, description='Giá bán'),
     'total_stock': fields.Integer,
-})
-
-medicine_import_model = api.model('MedicineImport', {
-    'id': fields.Integer(readOnly=True, description='ID bản ghi nhập thuốc'),
-    'user_id': fields.Integer(required=True, description='ID nhân viên nhập thuốc'),
-    'medicine_id': fields.Integer(required=True, description='ID thuốc được nhập'),
-    'import_date': fields.DateTime(description='Ngày nhập thuốc'),
-    'production_date': fields.DateTime(description='Ngày sản xuất'),
-    'expiration_date': fields.DateTime(description='Hạn sử dụng'),
-    'quantity_imported': fields.Integer(required=True, description='Số lượng nhập'),
-    'price': fields.Float(required=True, description='Giá nhập lô thuốc'),
-    'stock_quantity': fields.Integer(description='Tồn kho sau khi nhập')
 })
 
 clinic_hours_model = api.model('ClinicHours', {
@@ -357,16 +344,6 @@ medicine_parser.add_argument('type', type=str, required=True, choices=['PILL', '
 medicine_parser.add_argument('amount_per_unit', type=int, required=True, help='Số lượng trên 1 đơn vị')
 medicine_parser.add_argument('retail_unit', type=str, required=True, help='Đơn vị bán lẻ')
 medicine_parser.add_argument('selling_price', type=int, required=True, help='Giá bán')
-
-''' MEDICINE IMPORT '''
-medicine_import_parser = reqparse.RequestParser()
-medicine_import_parser.add_argument('user_id', type=int, required=True, help='ID nhân viên nhập thuốc')
-medicine_import_parser.add_argument('medicine_id', type=int, required=True, help='ID thuốc được nhập')
-medicine_import_parser.add_argument('quantity_imported', type=int, required=True, help='Số lượng nhập')
-medicine_import_parser.add_argument('import_date', type=str, required=False, help='Ngày nhập')
-medicine_import_parser.add_argument('production_date', type=str, required=True, help='Ngày sản xuất (YYYY-MM-DD)')
-medicine_import_parser.add_argument('expiration_date', type=str, required=True, help='Hạn sử dụng (YYYY-MM-DD)')
-medicine_import_parser.add_argument('price', type=float, required=True, help='Giá nhập lô thuốc')
 
 ''' PRESCRIPTION '''
 prescription_parser = reqparse.RequestParser()

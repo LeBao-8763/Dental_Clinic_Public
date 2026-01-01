@@ -50,7 +50,6 @@ def create_app():
         dentist_profile_api,
         custom_schedule_api,
         medicine_api,
-        medicine_import_api,
         prescription_api,
         post_api,
         invoice_api,
