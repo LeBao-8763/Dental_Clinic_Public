@@ -2,6 +2,7 @@ import axios from "axios";
 import store from "../store/store";
 import { sessionExpired } from "../store/slices/authSlice";
 
+// const BASE_URL = "http://127.0.0.1:5000/api/";
 const BASE_URL = "https://win8763.pythonanywhere.com/api/";
 
 export const endpoints = {
@@ -62,7 +63,7 @@ export const endpoints = {
   prescription: {
     create: "prescription/",
     get_by_aptId: (apt_id) => `prescription/by-appointment/${apt_id}`,
-    add_details: (prescriptionId) => `prescription/${prescriptionId}/details`,
+    add_or_delete_details: (prescriptionId) => `prescription/${prescriptionId}/details`,
   },
   invoice: {
     create: "invoice/",

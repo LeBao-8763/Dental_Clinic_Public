@@ -53,6 +53,16 @@ class PrescriptionDetailList(Resource):
             return {'message': 'Xóa thuốc khỏi toa thành công'}, 200
         else:
             return result[0], 400
+    
+    @prescription_ns.expect(prescription_detail_parser)
+    @jwt_required()
+    @role_required([RoleEnum.ROLE_DENTIST.value])
+    def put(self, prescription_id):
+        data = request.get_json()
+        result = dao_prescription.update_details(prescription_id, data)
+        if result is True:
+            return {"message": "Cập nhật thuốc trong toa thành công!"}, 200
+        return result
 
 @prescription_ns.route('/by-appointment/<int:appointment_id>')
 class PrescriptionByAppointment(Resource):

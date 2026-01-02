@@ -6,11 +6,15 @@ from .dao_user_booking_stats import create_user_booking_stats
 from datetime import datetime
 
 def create_user(name, gender,username, password, phone_number,role=None, avatar=None):
-    user=User.query.filter_by(phone_number=phone_number).first()
 
-    if user is not None:
-        return user
-        
+    exiting_username = User.query.filter_by(username=username).first()
+    if exiting_username is not None:
+        raise ValueError("Username đã tồn tại")
+    
+    exiting_phone = User.query.filter_by(phone_number=phone_number).first()
+    if exiting_phone is not None:
+        raise ValueError("Số điện thoại đã tồn tại")
+
     try:
         gender_enum = GenderEnum(gender)
     except ValueError:
@@ -19,6 +23,7 @@ def create_user(name, gender,username, password, phone_number,role=None, avatar=
     if password is not None:    
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
+    user = None
 
     if not role:
         user = User(
@@ -124,30 +129,3 @@ def get_user_list(role, gender=None, from_time_str=None, to_time_str=None, dayOf
 def get_all_users():
     return User.query.all()
 
-def update_user_role(user_id, new_role):
-    user = User.query.get(user_id)
-    if not user:
-        return None
-    user.role = RoleEnum[new_role]
-    db.session.commit()
-    return user
-
-def update_user(user_id, username=None, phone_number=None, name=None, role=None, gender=None):
-    user = User.query.get(user_id)
-    if not user:
-        return None
-    if username: user.username = username
-    if phone_number: user.phone_number = phone_number
-    if name: user.name = name
-    if role: user.role = role
-    if gender: user.gender = gender
-    db.session.commit()
-    return user
-
-def delete_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        return False
-    db.session.delete(user)
-    db.session.commit()
-    return True

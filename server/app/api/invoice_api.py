@@ -21,6 +21,9 @@ class CreateInvoice(Resource):
         appointment_id = data.get("appointment_id")
 
         result, status = dao_invoice.create_invoice(appointment_id)
+        if "error" in result:
+            return result, status
+
         return result, status
 
 @invoice_ns.route('/<int:apt_id>')

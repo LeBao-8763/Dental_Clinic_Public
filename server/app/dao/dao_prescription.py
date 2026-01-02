@@ -44,7 +44,7 @@ def get_prescription_by_appointment(appointment_id):
                 "unit": detail.unit,
                 "duration_days": detail.duration_days,
                 "note": detail.note,
-                "price": detail.price,
+                "price": float(detail.price),
             }
             for detail, med in details
         ],
@@ -60,6 +60,7 @@ def calculate_total_dose(dosage, duration_days, type, capacity_per_unit):
         total_dose = math.ceil(total_dose / capacity)
 
     return total_dose
+
 
 def add_details(prescription_id, data):
     details = data['details']
@@ -92,20 +93,56 @@ def add_details(prescription_id, data):
             unit=item['unit'],
             duration_days=item['duration_days'],
             note=item.get('note'),
-            price=medicine.price
+            price = item["price"]
         )
         db.session.add(detail)
 
     db.session.commit()
     return True
 
+def update_details(prescription_id, data):
+    prescription = Prescription.query.get(prescription_id)
+    if not prescription:
+        return {"error": "Không tìm thấy toa thuốc."}, False
+
+    for item in data['details']:
+        old_detail = PrescriptionDetail.query.get((prescription_id, item['medicine_id']))
+
+        medicine = Medicine.query.get(old_detail.medicine_id)
+        if not medicine:
+            return {"error": f"Không tìm thấy thuốc với ID {medicine.id}."}, False
+        old_total = calculate_total_dose(
+            dosage=old_detail.dosage,
+            duration_days=old_detail.duration_days,
+            type=medicine.type,
+            capacity_per_unit=medicine.capacity_per_unit
+        )
+        new_total = calculate_total_dose(
+            dosage=item['dosage'],
+            duration_days=item['duration_days'],
+            type=medicine.type,
+            capacity_per_unit=medicine.capacity_per_unit
+        )
+        # Cập nhật tồn kho (reserved_quantity)
+        medicine.reserved_quantity += (new_total - old_total)
+        db.session.add(medicine)
+
+        # Cập nhật chi tiết toa thuốc
+        old_detail.dosage = item['dosage']
+        old_detail.duration_days = item['duration_days']
+        old_detail.note = item['note']
+        db.session.add(old_detail)
+
+    db.session.commit()
+    return True
+
 def delete_details(prescription_id, data):
-    prescription = PrescriptionDetail.query.get(prescription_id)
+    prescription = Prescription.query.get(prescription_id)
     if not prescription:
         return {"error": "Không tìm thấy toa thuốc."}, False
     
     for item in data['details']:
-        detail = PrescriptionDetail.query.get(item['id'])
+        detail = PrescriptionDetail.query.get((prescription_id, item['medicine_id']))
         medicine = Medicine.query.get(detail.medicine_id)
         if not medicine:
             return {"error": f"Không tìm thấy thuốc với ID {medicine.id}."}, False

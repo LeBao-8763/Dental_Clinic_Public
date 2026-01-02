@@ -5,6 +5,10 @@ from app.models import User, GenderEnum, RoleEnum, StatusEnum
 from config import Config
 from app.extensions import db, jwt, admin, login
 from app.admin_view import init_admin
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def create_default_admin():
     admin_username = "admin"
@@ -26,7 +30,7 @@ def create_default_admin():
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = "ifojaiwejfoijw%^^$@$@#fnjjkasd89432814FAfjwoif"
+    app.secret_key = os.getenv("FLASK_ADMIN_SECRET_KEY", "fallback-admin-secret-key")
     app.config.from_object(Config)
     CORS(app)
 

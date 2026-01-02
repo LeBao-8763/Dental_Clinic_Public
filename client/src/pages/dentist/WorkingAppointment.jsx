@@ -27,7 +27,8 @@ const WorkingAppointment = () => {
     { label: "Tất cả", value: "" },
     { label: "Chưa khám", value: "PENDING" },
     { label: "Đang khám", value: "IN_PROGRESS" },
-    { label: "Đã khám", value: "PAID" },
+    { label: "Đã khám", value: "COMPLETED" },
+    { label: "Đã thanh toán", value: "PAID" },
     { label: "Hủy", value: "CANCELED" },
   ];
 
@@ -45,7 +46,7 @@ const WorkingAppointment = () => {
     PENDING: "Chưa khám",
     CONSULTING: "Đang khám",
     PRESCRIPTION: "Đang khám",
-    COMPLETED: "Đang khám",
+    COMPLETED: "Đã khám",
     PAID: "Đã khám",
     CANCELLED: "Hủy",
     CANCELED: "Hủy",

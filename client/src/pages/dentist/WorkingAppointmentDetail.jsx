@@ -27,10 +27,12 @@ const WorkingAppointmentDetail = () => {
   const [days, setDays] = useState("");
   const [note, setNote] = useState("");
   const [prescribedMedicines, setPrescribedMedicines] = useState([]);
+  const [originalMedicines, setOriginalMedicines] = useState([]); // dữ liệu gốc từ BE
   const navigate = useNavigate();
   const location = useLocation();
   const { appointmentId } = location.state || {};
   const [initialDiagnosis, setInitialDiagnosis] = useState("");
+  
 
   const arraysEqual = (a, b) => {
     if (a.length !== b.length) return false;
@@ -252,16 +254,13 @@ const WorkingAppointmentDetail = () => {
         try {
           let prescriptionId;
           if (prescription) {
-            console.log("Đang cập nhật toa thuốc hiện có:", prescription.id);
-
             prescriptionId = prescription.id;
-            await addPrescriptionDetails(prescriptionId);
+            await savePrescriptionChanges(prescriptionId);
           } else {
             prescriptionId = await createPrescription();
-            await addPrescriptionDetails(prescriptionId);
+            await savePrescriptionChanges(prescriptionId);
             setPrescription({ id: prescriptionId });
           }
-          console.log("có chạy đây không");
           await updateAppointment(currentStep);
         } catch (err) {
           console.error("Lỗi khi lưu toa thuốc:", err);
@@ -290,9 +289,9 @@ const WorkingAppointmentDetail = () => {
   };
 
   const unitOptionsByType = {
-    PILL: ["Viên/ngày", "Viên/lần"],
-    CREAM: ["Tuýp/ngày", "Lần/ngày"],
-    LIQUID: ["ml/ngày", "ml/lần"],
+    PILL: [ "lần/ngày"],
+    CREAM: ["lần/ngày"],
+    LIQUID: [ "lần/ngày"],
     DEFAULT: ["Đơn vị/ngày"],
   };
 
@@ -346,9 +345,8 @@ const WorkingAppointmentDetail = () => {
     setSelectedMedicine(null);
     setDosage("");
     setDays("");
-    setUnit("Viên/ngày");
+    setUnit("");
     setNote("");
-    toast.success("Đã thêm thuốc vào đơn!");
   };
 
   const handleRemoveMedicine = (id) => {
@@ -369,24 +367,66 @@ const WorkingAppointmentDetail = () => {
     return res.data.id;
   };
 
-  const addPrescriptionDetails = async (prescriptionId) => {
-    console.log("Thêm chi tiết toa thuốc cho ID:", prescribedMedicines);
-    const payload = {
-      details: prescribedMedicines.map((m) => ({
-        medicine_id: m.medicine_id,
-        dosage: m.dosage,
-        unit: m.unit,
-        duration_days: m.duration_days,
-        note: m.note,
-        price: m.price,
-      })),
-    };
-    await privateApi.post(
-      endpoints.prescription.add_details(prescriptionId),
-      payload
+  const savePrescriptionChanges = async (prescriptionId) => {
+  const toAdd = prescribedMedicines.filter(
+    (newMed) =>
+      !originalMedicines.some((oldMed) => oldMed.medicine_id === newMed.medicine_id)
+  );
+
+  const toDelete = originalMedicines.filter(
+    (oldMed) =>
+      !prescribedMedicines.some((newMed) => newMed.medicine_id === oldMed.medicine_id)
+  );
+
+  // 🟡 Tìm thuốc bị chỉnh sửa (liều lượng, số ngày, ghi chú, ...)
+  const toUpdate = prescribedMedicines.filter((newMed) => {
+    const oldMed = originalMedicines.find(
+      (o) => o.medicine_id === newMed.medicine_id
     );
-    toast.success("Đã lưu thuốc vào toa!");
-  };
+    if (!oldMed) return false; // thuốc mới => sẽ được thêm ở toAdd
+    return (
+      oldMed.dosage !== newMed.dosage ||
+      oldMed.days !== newMed.days ||
+      oldMed.note !== newMed.note
+    );
+  });
+
+  console.log("🟢 Thêm:", toAdd);
+  console.log("🟠 Cập nhật:", toUpdate);
+  console.log("🔴 Xóa:", toDelete);
+
+  try {
+    if (toAdd.length > 0) {
+      await privateApi.post(
+        endpoints.prescription.add_or_delete_details(prescriptionId),
+        { details: toAdd }
+      );
+      toast.success("Đã thêm thuốc mới vào toa!");
+    }
+
+    if (toUpdate.length > 0) {
+      await privateApi.put(
+        endpoints.prescription.add_or_delete_details(prescriptionId),
+        { details: toUpdate }
+      );
+      toast.success("Đã cập nhật thông tin thuốc!");
+    }
+
+    if (toDelete.length > 0) {
+      await privateApi.delete(
+        endpoints.prescription.add_or_delete_details(prescriptionId),
+        { data: { details: toDelete } }
+      );
+      toast.success("Đã xóa thuốc khỏi toa!");
+    }
+
+    setOriginalMedicines([...prescribedMedicines]);
+  } catch (err) {
+    console.error("Lỗi khi lưu toa:", err);
+    toast.error("Không thể lưu thay đổi toa thuốc!");
+  }
+};
+
 
   const fetchMedicines = async () => {
     try {
@@ -407,10 +447,11 @@ const WorkingAppointmentDetail = () => {
           if (res.data) {
             setPrescription(res.data);
             setPrescribedMedicines(res.data.details || []);
-            console.log("Toa thuốc cũ:", res.data);
+            setOriginalMedicines(res.data.details || []);
           } else {
             setPrescription(null);
             setPrescribedMedicines([]);
+            setOriginalMedicines([]);
           }
         } catch (err) {
           console.log("Không tìm thấy toa thuốc cho cuộc hẹn này:", err);
@@ -517,21 +558,6 @@ const WorkingAppointmentDetail = () => {
       return appointment.gender;
     } else {
       return appointment.user.gender;
-    }
-  };
-
-  const getPatientAge = () => {
-    if (appointment.is_guest && appointment.date_of_birth) {
-      const birthDate = new Date(appointment.date_of_birth);
-      const today = new Date("2025-12-19");
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      return `${age} tuổi`;
-    } else {
-      return "Không xác định";
     }
   };
 
@@ -719,29 +745,7 @@ const WorkingAppointmentDetail = () => {
                     {getPatientPhone()}
                   </p>
                 </div>
-                <div className="bg-linear-to-r from-[#FFF3E0] to-[#FFE0B2] rounded-xl p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg
-                      className="w-5 h-5 text-[#F57C00]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <span className="text-xs font-bold text-[#F57C00] tracking-wide">
-                      TUỔI
-                    </span>
-                  </div>
-                  <p className="font-bold text-gray-900 text-lg">
-                    {getPatientAge()}
-                  </p>
-                </div>
+                
                 <div className="bg-linear-to-r from-[#E8F5E9] to-[#C8E6C9] rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-2 mb-2">
                     <svg
@@ -1083,29 +1087,13 @@ const WorkingAppointmentDetail = () => {
                     Đơn Vị
                   </label>
 
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009688] focus:border-[#009688] transition-all shadow-sm appearance-none cursor-pointer"
-                  >
+                  <p className="w-full px-4 py-3 bg-[#FAFAFA] border border-gray-200 rounded-xl shadow-sm">
                     {(
                       unitOptionsByType[selectedMedicine?.type] ||
                       unitOptionsByType.DEFAULT
-                    ).map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                    )[0]}
+                  </p>
 
-                  {selectedMedicine && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Loại thuốc:{" "}
-                      <span className="font-semibold">
-                        {selectedMedicine.type}
-                      </span>
-                    </p>
-                  )}
                 </div>
 
                 <div className="mb-6">
@@ -1316,14 +1304,6 @@ const WorkingAppointmentDetail = () => {
                   </div>
                   <p className="font-bold text-gray-900 text-lg">
                     {getPatientPhone()}
-                  </p>
-                </div>
-                <div className="bg-[#F5F5F5] rounded-xl p-5 shadow-sm">
-                  <div className="text-xs font-bold text-gray-600 tracking-wide mb-2">
-                    TUỔI
-                  </div>
-                  <p className="font-bold text-gray-900 text-lg">
-                    {getPatientAge()}
                   </p>
                 </div>
                 <div className="bg-[#F5F5F5] rounded-xl p-5 shadow-sm">
