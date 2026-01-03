@@ -2,8 +2,7 @@ import axios from "axios";
 import store from "../store/store";
 import { sessionExpired } from "../store/slices/authSlice";
 
-// const BASE_URL = "http://127.0.0.1:5000/api/";
-const BASE_URL = "https://win8763.pythonanywhere.com/api/";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api/";
 
 export const endpoints = {
   login: "auth/login",
